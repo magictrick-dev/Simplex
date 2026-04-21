@@ -1,4 +1,5 @@
 #include <utils/defs.hpp>
+#include <utils/resources.hpp>
 
 #ifndef SIMPLEX_PLATFORM_INFORMATION
 #   define SIMPLEX_PLATFORM_INFORMATION
