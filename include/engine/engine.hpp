@@ -10,7 +10,13 @@ enum RenderFormatType
 class IRenderEngine
 {
     public:
-        virtual inline bool initialize(int32_t width, int32_t height, RenderFormatType format) = 0;
+        inline IRenderEngine(int32_t width, int32_t height, RenderFormatType type)
+            : framebuffer_width(width), framebuffer_height(height), framebuffer_format(type)
+        {
+
+        }
+
+        virtual inline bool initialize() = 0;
         virtual inline bool shutdown() = 0;
 
         inline int32_t get_width() { return this->framebuffer_width; }
