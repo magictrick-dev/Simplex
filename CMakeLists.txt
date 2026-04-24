@@ -11,6 +11,12 @@ ADD_SUBDIRECTORY("vendor/glfw")
 ADD_SUBDIRECTORY("vendor/glm/GLM")
 
 IF (WIN32)
+
+    IF (CMAKE_CXX_COMPILER_ID MATCHES "Clang" OR CMAKE_CXX_COMPILER_ID MATCHES "GNU")
+        ADD_COMPILE_OPTIONS(-Wno-nontrivial-memcall)
+    ENDIF (CMAKE_CXX_COMPILER_ID MATCHES "Clang" OR CMAKE_CXX_COMPILER_ID MATCHES "GNU")
+
+    FIND_PACKAGE(OpenGL REQUIRED)
     ADD_EXECUTABLE(Simplex WIN32
         "vendor/glad/GLAD/glad.c"
         "vendor/glad/GLAD/glad_wgl.c"
@@ -27,10 +33,11 @@ IF (WIN32)
         "vendor/IMGUI/imgui/implot_internal.h"
         "vendor/IMGUI/imgui/implot_items.cpp"
 
+        "source/cli.cpp"
         "source/entry.cpp"
     )
 
-    SET_PROPERTY(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT Simplex) 
+    SET_PROPERTY(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT Simplex)
 ENDIF (WIN32)
 
 IF (APPLE)
@@ -50,6 +57,7 @@ IF (APPLE)
         "vendor/IMGUI/imgui/implot_internal.h"
         "vendor/IMGUI/imgui/implot_items.cpp"
 
+        "source/cli.cpp"
         "source/entry.cpp"
     )
 ENDIF (APPLE)
