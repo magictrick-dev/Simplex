@@ -1,5 +1,6 @@
 #include <utils/defs.hpp>
 #include <utils/resources.hpp>
+#include <cli/cli.hpp>
 
 #ifndef SIMPLEX_PLATFORM_INFORMATION
 #   define SIMPLEX_PLATFORM_INFORMATION
@@ -34,8 +35,42 @@ print_engine_information()
 static int
 entry(int argc, char **argv)
 {
+
     print_engine_information();
+
+    CLIParser cli(argc, argv);
+
+    // Flags.
+    cli.add_flag_rule('r', "Re-run the previous session.");
+    cli.add_flag_rule('M', "Enable memory diagnostics.");
+
+    // Arguments.
+    cli.add_argument_rule("--no-hardware",          {},                                              "Disable hardware acceleration.");
+    cli.add_argument_rule("--memory-limit",         { CLIValueType::Integer },                       "Cap the resident memory footprint.");
+    cli.add_argument_rule("--image-format",         { CLIValueType::String },                        "Override the emitted image format (PPM, BMP, ...).");
+    cli.add_argument_rule("--image-size",           { CLIValueType::Integer, CLIValueType::Integer },"Force the output image dimensions.");
+    cli.add_argument_rule("--run-all-tests",        {},                                              "Run the full test suite.");
+    cli.add_argument_rule("--run-rdview-tests",     {},                                              "Run the rdview test suite.");
+    cli.add_argument_rule("--run-memory-tests",     {},                                              "Run the memory test suite.");
+    cli.add_argument_rule("--force-renderer",       { CLIValueType::String },                        "Force a specific renderer backend.");
+    cli.add_argument_rule("--compare-to",           { CLIValueType::String, CLIValueType::String },  "Compare against the given renderer backends.");
+
+    // Positionals.
+    cli.add_positional_rule(1, CLIValueType::Path, "Input scene description file (.rd).");
+
+    try
+    {
+        cli.parse();
+    }
+    catch (const CLIParseException &e)
+    {
+        fprintf(stderr, "CLI error: %s\n", e.what());
+        cli.print_help();
+        return 1;
+    }
+
     return 0;
+
 }
 
 #if defined(__APPLE__) && defined(__MACH__)
