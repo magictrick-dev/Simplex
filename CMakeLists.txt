@@ -32,10 +32,11 @@ IF (WIN32)
         "vendor/IMGUI/imgui/implot_internal.h"
         "vendor/IMGUI/imgui/implot_items.cpp"
 
+        "source/cli.cpp"
         "source/entry.cpp"
     )
 
-    SET_PROPERTY(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT Simplex) 
+    SET_PROPERTY(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT Simplex)
 ENDIF (WIN32)
 
 IF (APPLE)
@@ -55,6 +56,7 @@ IF (APPLE)
         "vendor/IMGUI/imgui/implot_internal.h"
         "vendor/IMGUI/imgui/implot_items.cpp"
 
+        "source/cli.cpp"
         "source/entry.cpp"
     )
 ENDIF (APPLE)
