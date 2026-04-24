@@ -1,7 +1,11 @@
 #pragma once
+#include <utils/defs.hpp>
+#include <filesystem>
+#include <string>
 
-enum RDTokenType
+enum RDViewTokenType
 {
+    RDTokenType_Invalid,
     RDTokenType_Integer,
     RDTOkenType_Real,
     RDTokenType_String,
@@ -9,89 +13,160 @@ enum RDTokenType
     RDTokenType_Identifier,
 };
 
-enum RDIdentifierType
+enum RDViewIdentifierType
 {
     // General Commands
-    RDIdentifierType_Display,
-    RDIdentifierType_Format,
-    RDIdentifierType_Include,
+    RDViewIdentifierType_Display,
+    RDViewIdentifierType_Format,
+    RDViewIdentifierType_Include,
 
     // File Structuring
-    RDIdentifierType_FrameBegin,
-    RDIdentifierType_FrameEnd,
-    RDIdentifierType_WorldBegin,
-    RDIdentifierType_WorldEnd,
-    RDIdentifierType_ObjectBegin,
-    RDIdentifierType_ObjectEnd,
-    RDIdentifierType_ObjectInstance,
+    RDViewIdentifierType_FrameBegin,
+    RDViewIdentifierType_FrameEnd,
+    RDViewIdentifierType_WorldBegin,
+    RDViewIdentifierType_WorldEnd,
+    RDViewIdentifierType_ObjectBegin,
+    RDViewIdentifierType_ObjectEnd,
+    RDViewIdentifierType_ObjectInstance,
 
     // Drawing Attributes
-    RDIdentifierType_Background,
-    RDIdentifierType_Color,
-    RDIdentifierType_Opacity,
+    RDViewIdentifierType_Background,
+    RDViewIdentifierType_Color,
+    RDViewIdentifierType_Opacity,
 
     // Options
-    RDIdentifierType_OptionArray,
-    RDIdentifierType_OptionBool,
-    RDIdentifierType_OptionList,
-    RDIdentifierType_OptionReal,
-    RDIdentifierType_OptionString,
+    RDViewIdentifierType_OptionArray,
+    RDViewIdentifierType_OptionBool,
+    RDViewIdentifierType_OptionList,
+    RDViewIdentifierType_OptionReal,
+    RDViewIdentifierType_OptionString,
 
     // Camera
-    RDIdentifierType_CameraAt,
-    RDIdentifierType_CameraEye,
-    RDIdentifierType_CameraFOV,
-    RDIdentifierType_CameraUp,
-    RDIdentifierType_Clipping,
+    RDViewIdentifierType_CameraAt,
+    RDViewIdentifierType_CameraEye,
+    RDViewIdentifierType_CameraFOV,
+    RDViewIdentifierType_CameraUp,
+    RDViewIdentifierType_Clipping,
 
     // Geometry
-    RDIdentifierType_Point,
-    RDIdentifierType_Line,
-    RDIdentifierType_Circle,
-    RDIdentifierType_Fill,
-    RDIdentifierType_Disk,
-    RDIdentifierType_Cone,
-    RDIdentifierType_Cube,
-    RDIdentifierType_Cylinder,
-    RDIdentifierType_Sphere,
-    RDIdentifierType_Torus,
-    RDIdentifierType_Tube,
-    RDIdentifierType_Paraboloid,
-    RDIdentifierType_Hyperboloid,
-    RDIdentifierType_SqSphere,
-    RDIdentifierType_SqTorus,
-    RDIdentifierType_PointSet,
-    RDIdentifierType_LineSet,
-    RDIdentifierType_PolySet,
-    RDIdentifierType_Curve,
-    RDIdentifierType_Patch,
-    RDIdentifierType_Subdivision,
+    RDViewIdentifierType_Point,
+    RDViewIdentifierType_Line,
+    RDViewIdentifierType_Circle,
+    RDViewIdentifierType_Fill,
+    RDViewIdentifierType_Disk,
+    RDViewIdentifierType_Cone,
+    RDViewIdentifierType_Cube,
+    RDViewIdentifierType_Cylinder,
+    RDViewIdentifierType_Sphere,
+    RDViewIdentifierType_Torus,
+    RDViewIdentifierType_Tube,
+    RDViewIdentifierType_Paraboloid,
+    RDViewIdentifierType_Hyperboloid,
+    RDViewIdentifierType_SqSphere,
+    RDViewIdentifierType_SqTorus,
+    RDViewIdentifierType_PointSet,
+    RDViewIdentifierType_LineSet,
+    RDViewIdentifierType_PolySet,
+    RDViewIdentifierType_Curve,
+    RDViewIdentifierType_Patch,
+    RDViewIdentifierType_Subdivision,
 
     // Geometric Transformations
-    RDIdentifierType_Translate,
-    RDIdentifierType_Scale,
-    RDIdentifierType_Rotate,
-    RDIdentifierType_Matrix,
-    RDIdentifierType_XformPush,
-    RDIdentifierType_XformPop,
+    RDViewIdentifierType_Translate,
+    RDViewIdentifierType_Scale,
+    RDViewIdentifierType_Rotate,
+    RDViewIdentifierType_Matrix,
+    RDViewIdentifierType_XformPush,
+    RDViewIdentifierType_XformPop,
 
     // Lighting
-    RDIdentifierType_AmbientLight,
-    RDIdentifierType_FarLight,
-    RDIdentifierType_PointLight,
-    RDIdentifierType_ConeLight,
+    RDViewIdentifierType_AmbientLight,
+    RDViewIdentifierType_FarLight,
+    RDViewIdentifierType_PointLight,
+    RDViewIdentifierType_ConeLight,
 
     // Surface Attributes
-    RDIdentifierType_Ka,
-    RDIdentifierType_Kd,
-    RDIdentifierType_Ks,
-    RDIdentifierType_Specular,
-    RDIdentifierType_Surface,
+    RDViewIdentifierType_Ka,
+    RDViewIdentifierType_Kd,
+    RDViewIdentifierType_Ks,
+    RDViewIdentifierType_Specular,
+    RDViewIdentifierType_Surface,
 
     // Attribute Mapping
-    RDIdentifierType_MapLoad,
-    RDIdentifierType_Map,
-    RDIdentifierType_MapSample,
-    RDIdentifierType_MapBound,
-    RDIdentifierType_MapBorder,
+    RDViewIdentifierType_MapLoad,
+    RDViewIdentifierType_Map,
+    RDViewIdentifierType_MapSample,
+    RDViewIdentifierType_MapBound,
+    RDViewIdentifierType_MapBorder,
+};
+
+struct RDViewToken
+{
+
+    RDViewTokenType type;
+    size_t line;
+    size_t column;
+    size_t length;
+
+    union
+    {
+        struct boolean      { int64_t value; };
+        struct integer      { int64_t value; };
+        struct real         { real64_t value; };
+        struct string       { std::string_view value; };
+        struct identifier   { std::string_view value; };
+        struct keyword      { RDViewIdentifierType type; };
+    };
+
+};
+
+struct RDViewSourceFile
+{
+    std::filesystem::path path;
+    std::filesystem::path parent_path;
+    std::string_view source;
+    size_t offset;
+    size_t step;
+    size_t line;
+    size_t column;
+};
+
+enum RDViewTokenizerResult
+{
+    RDViewTokenizerResult_OK,
+    RDViewTokenizerResult_NoSourcesIncludes,
+    RDViewTokenizerResult_FileNotFound,
+    RDViewTokenizerResult_FileNotAccessible,
+    RDViewTokenizerResult_CircularSource,
+};
+
+class RDViewTokenizer
+{
+    public:
+        RDViewTokenizer();
+        virtual ~RDViewTokenizer();
+
+        RDViewTokenizerResult tokenize();
+        RDViewTokenizerResult include_source(std::filesystem::path path_to, 
+                                             std::filesystem::path included_from = "");
+        
+        inline size_t count() const { return this->tokens.size(); }
+        inline RDViewToken& get_token_at(size_t index) { return this->tokens[index]; }
+        inline RDViewToken& operator[](size_t index) { return this->tokens[index]; };
+        inline const RDViewToken& get_token_at(size_t index) const { return this->tokens[index]; }
+        inline const RDViewToken& operator[](size_t index) const { return this->tokens[index]; }
+
+    private:
+        void consume_whitespace();
+        bool handle_numbers();
+        bool handle_strings();
+        bool handle_identifiers();
+
+        void synchronize();
+
+    private:
+        std::vector<RDViewSourceFile*> source_files;
+        std::vector<std::filesystem::path, RDViewSourceFile*> source_map;
+        std::vector<RDViewToken> tokens;
+
 };
