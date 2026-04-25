@@ -5,6 +5,7 @@
 
 enum RDViewTokenType
 {
+    RDTokenType_EOF,
     RDTokenType_Invalid,
     RDTokenType_Integer,
     RDTOkenType_Real,
@@ -15,6 +16,10 @@ enum RDViewTokenType
 
 enum RDViewIdentifierType
 {
+
+    // Catchall
+    RDViewIdentifierType_Invalid,
+
     // General Commands
     RDViewIdentifierType_Display,
     RDViewIdentifierType_Format,
@@ -120,53 +125,31 @@ struct RDViewToken
 
 };
 
-struct RDViewSourceFile
-{
-    std::filesystem::path path;
-    std::filesystem::path parent_path;
-    std::string_view source;
-    size_t offset;
-    size_t step;
-    size_t line;
-    size_t column;
-};
-
-enum RDViewTokenizerResult
-{
-    RDViewTokenizerResult_OK,
-    RDViewTokenizerResult_NoSourcesIncludes,
-    RDViewTokenizerResult_FileNotFound,
-    RDViewTokenizerResult_FileNotAccessible,
-    RDViewTokenizerResult_CircularSource,
-};
-
 class RDViewTokenizer
 {
     public:
-        RDViewTokenizer();
+        RDViewTokenizer(std::string_view source_contents, std::filesystem::path source_path);
         virtual ~RDViewTokenizer();
-
-        RDViewTokenizerResult tokenize();
-        RDViewTokenizerResult include_source(std::filesystem::path path_to, 
-                                             std::filesystem::path included_from = "");
-        
-        inline size_t count() const { return this->tokens.size(); }
-        inline RDViewToken& get_token_at(size_t index) { return this->tokens[index]; }
-        inline RDViewToken& operator[](size_t index) { return this->tokens[index]; };
-        inline const RDViewToken& get_token_at(size_t index) const { return this->tokens[index]; }
-        inline const RDViewToken& operator[](size_t index) const { return this->tokens[index]; }
 
     private:
         void consume_whitespace();
         bool handle_numbers();
         bool handle_strings();
         bool handle_identifiers();
+        RDViewIdentifierType classify_identifier();
 
         void synchronize();
+        char peak() const;
+        char peak_at(size_t count) const;
+        void consume();
+        bool is_eof() const;
 
     private:
-        std::vector<RDViewSourceFile*> source_files;
-        std::vector<std::filesystem::path, RDViewSourceFile*> source_map;
-        std::vector<RDViewToken> tokens;
+        std::filesystem::path path;
+        std::string_view source;
+        size_t offset;
+        size_t step;
+        size_t line;
+        size_t column;
 
 };
