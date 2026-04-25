@@ -27,12 +27,13 @@ add_flag_rule(char letter, const std::string &description)
 }
 
 void CLIParser::
-add_argument_rule(const std::string &name, const std::vector<CLIValueType> &parameters, const std::string &description)
+add_argument_rule(const std::string &name, const std::vector<CLIValueType> &parameters, const std::string &description, bool required)
 {
     CLIArgumentRule rule;
     rule.name        = CLIParser::to_lower(name);
     rule.parameters  = parameters;
     rule.description = description;
+    rule.required    = required;
     this->argument_rules.push_back(rule);
 }
 
@@ -139,6 +140,29 @@ parse()
         this->parsed_positionals[i]     = CLIParser::classify(token, expect);
         i++;
 
+    }
+
+    // Enforce required positionals.
+    for (const auto &r : this->positional_rules)
+    {
+        if (this->parsed_positionals.find(r.index) == this->parsed_positionals.end())
+        {
+            std::ostringstream os;
+            os << "Missing required positional argument at index " << r.index
+               << " <" << CLIParser::type_name(r.type) << ">: " << r.description;
+            throw CLIParseException(os.str());
+        }
+    }
+
+    // Enforce required arguments.
+    for (const auto &r : this->argument_rules)
+    {
+        if (r.required && this->parsed_arguments.find(r.name) == this->parsed_arguments.end())
+        {
+            std::ostringstream os;
+            os << "Missing required argument '" << r.name << "'.";
+            throw CLIParseException(os.str());
+        }
     }
 
 }

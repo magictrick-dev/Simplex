@@ -57,6 +57,7 @@ struct CLIArgumentRule
     std::string                 name;           // Stored lower-case (case-insensitive).
     std::vector<CLIValueType>   parameters;     // Expected parameter types; empty == none.
     std::string                 description;
+    bool                        required = false;
 };
 
 struct CLIPositionalRule
@@ -82,7 +83,8 @@ class CLIParser
         // --- Rule registration -------------------------------------------------
         void    add_flag_rule       (char letter,              const std::string &description);
         void    add_argument_rule   (const std::string &name,  const std::vector<CLIValueType> &parameters,
-                                                               const std::string &description);
+                                                               const std::string &description,
+                                                               bool required = false);
         void    add_positional_rule (int32_t index,            CLIValueType type,
                                                                const std::string &description);
 
