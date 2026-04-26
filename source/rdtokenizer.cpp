@@ -3,18 +3,71 @@
 RDViewTokenizer::
 RDViewTokenizer(std::string_view source_contents, std::filesystem::path source_path)
 {
+
     this->source = source_contents;
     this->path = source_path;
+
     this->offset = 0;
     this->step = 0;
     this->line = 1;
     this->column = 1;
+
+    this->previous_token = &this->tokens[0];
+    this->current_token = &this->tokens[1];
+    this->next_token = &this->tokens[2];
+
+    this->previous_token->type = RDViewTokenType_EOF;
+    this->current_token->type = RDViewTokenType_EOF;
+    this->next_token->type = RDViewTokenType_EOF;
+
 }
 
 RDViewTokenizer::
 ~RDViewTokenizer()
 {
 
+}
+
+RDViewToken RDViewTokenizer:: 
+get_previous_token() const
+{
+    SIMPLEX_NO_IMPLEMENTATION();
+}
+
+RDViewToken RDViewTokenizer:: 
+get_current_token() const
+{
+    SIMPLEX_NO_IMPLEMENTATION();
+}
+
+RDViewToken RDViewTokenizer:: 
+get_next_token() const
+{
+    SIMPLEX_NO_IMPLEMENTATION();
+}
+
+bool RDViewTokenizer:: 
+shift()
+{
+    SIMPLEX_NO_IMPLEMENTATION();
+}
+
+bool RDViewTokenizer:: 
+previous_token_is(RDViewTokenType type) const
+{
+    SIMPLEX_NO_IMPLEMENTATION();
+}
+
+bool RDViewTokenizer:: 
+current_token_is(RDViewTokenType type) const
+{
+    SIMPLEX_NO_IMPLEMENTATION();
+}
+
+bool RDViewTokenizer:: 
+next_token_is(RDViewTokenType type) const
+{
+    SIMPLEX_NO_IMPLEMENTATION();
 }
 
 void RDViewTokenizer::

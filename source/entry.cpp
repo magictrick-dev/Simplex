@@ -1,6 +1,9 @@
 #include <utils/defs.hpp>
 #include <utils/resources.hpp>
 #include <cli/cli.hpp>
+#include <rdview/rdtokenizer.hpp>
+#include <iostream>
+#include <fstream>
 
 #ifndef SIMPLEX_PLATFORM_INFORMATION
 #   define SIMPLEX_PLATFORM_INFORMATION
@@ -30,6 +33,25 @@ print_engine_information()
     printf("    - Platform              : %s\n", SIMPLEX_PLATFORM_TYPE);
     printf("    - Frontend Renderer     : %s\n", SIMPLEX_FRONTEND_RENDERER);
     printf("    - Backend Renderer      : %s\n", SIMPLEX_BACKEND_RENDERER);
+}
+
+static inline bool
+fetch_and_test(std::filesystem::path path)
+{
+
+    if (!std::filesystem::exists(path)) return false;
+    size_t file_size = std::filesystem::file_size(path);
+    std::string file_source(file_size, '\0');
+    std::ifstream file_stream(path);
+    if (!file_stream.is_open()) return false;
+    file_stream.read(&file_source[0], file_size);
+    file_stream.close();
+
+    std::string_view file_source_view(file_source);
+    RDViewTokenizer tokenizer(file_source, path);
+
+    return true;
+
 }
 
 static int
@@ -68,6 +90,9 @@ entry(int argc, char **argv)
         cli.print_help();
         return 1;
     }
+
+    std::filesystem::path file_path = std::filesystem::weakly_canonical("./tests/rdview/s01.rd");
+    return fetch_and_test(file_path);
 
     return 0;
 

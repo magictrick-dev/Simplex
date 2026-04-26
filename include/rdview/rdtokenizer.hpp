@@ -5,13 +5,13 @@
 
 enum RDViewTokenType
 {
-    RDTokenType_EOF,
-    RDTokenType_Invalid,
-    RDTokenType_Integer,
-    RDTOkenType_Real,
-    RDTokenType_String,
-    RDTokenType_Boolean,
-    RDTokenType_Identifier,
+    RDViewTokenType_EOF,
+    RDViewTokenType_Invalid,
+    RDViewTokenType_Integer,
+    RDViewTokenType_Real,
+    RDViewTokenType_String,
+    RDViewTokenType_Boolean,
+    RDViewTokenType_Identifier,
 };
 
 enum RDViewIdentifierType
@@ -131,6 +131,15 @@ class RDViewTokenizer
         RDViewTokenizer(std::string_view source_contents, std::filesystem::path source_path);
         virtual ~RDViewTokenizer();
 
+        RDViewToken get_previous_token() const;
+        RDViewToken get_current_token() const;
+        RDViewToken get_next_token() const;
+
+        bool shift();
+        bool previous_token_is(RDViewTokenType type) const;
+        bool current_token_is(RDViewTokenType type) const;
+        bool next_token_is(RDViewTokenType type) const;
+
     private:
         void consume_whitespace();
         bool handle_numbers();
@@ -151,5 +160,10 @@ class RDViewTokenizer
         size_t step;
         size_t line;
         size_t column;
+
+        RDViewToken tokens[3];
+        RDViewToken *previous_token;
+        RDViewToken *current_token;
+        RDViewToken *next_token;
 
 };
