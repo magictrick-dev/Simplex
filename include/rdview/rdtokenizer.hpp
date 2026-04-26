@@ -103,10 +103,13 @@ enum RDViewIdentifierType
     RDViewIdentifierType_MapSample,
     RDViewIdentifierType_MapBound,
     RDViewIdentifierType_MapBorder,
+
 };
 
 struct RDViewToken
 {
+
+    inline RDViewToken() { } // NOTE(Chris): std::string_view will complain if not defined...
 
     RDViewTokenType type;
     size_t line;
@@ -115,12 +118,12 @@ struct RDViewToken
 
     union
     {
-        struct boolean      { int64_t value; };
-        struct integer      { int64_t value; };
-        struct real         { real64_t value; };
-        struct string       { std::string_view value; };
-        struct identifier   { std::string_view value; };
-        struct keyword      { RDViewIdentifierType type; };
+        struct { int64_t value;                } boolean;
+        struct { int64_t value;                } integer;
+        struct { real64_t value;               } real;
+        struct { std::string_view value;       } string;
+        struct { std::string_view value;       } identifier;
+        struct { RDViewIdentifierType type;    } keyword;
     };
 
 };
@@ -141,17 +144,20 @@ class RDViewTokenizer
         bool next_token_is(RDViewTokenType type) const;
 
     private:
-        void consume_whitespace();
-        bool handle_numbers();
-        bool handle_strings();
-        bool handle_identifiers();
-        RDViewIdentifierType classify_identifier();
+        void match(RDViewToken *token);
+
+        void handle_whitespace();
+        bool handle_numbers(RDViewToken *token);
+        bool handle_strings(RDViewToken *token);
+        bool handle_identifiers(RDViewToken *token);
+        RDViewIdentifierType classify_identifier(RDViewToken *token);
 
         void synchronize();
         char peak() const;
         char peak_at(size_t count) const;
         void consume();
         bool is_eof() const;
+        void format_token_as(RDViewToken *token, RDViewTokenType type);
 
     private:
         std::filesystem::path path;
