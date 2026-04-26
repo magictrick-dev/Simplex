@@ -49,7 +49,13 @@ fetch_and_test(std::filesystem::path path)
 
     std::string_view file_source_view(file_source);
     RDViewTokenizer tokenizer(file_source, path);
+    while (!tokenizer.current_token_is(RDViewTokenType_EOF))
+    {
+        std::cout << tokenizer.get_current_token() << std::endl;
+        tokenizer.shift();
+    }
 
+    std::cout << tokenizer.get_current_token() << std::endl; // Should EOF token.
     return true;
 
 }
@@ -91,7 +97,7 @@ entry(int argc, char **argv)
         return 1;
     }
 
-    std::filesystem::path file_path = std::filesystem::weakly_canonical("./tests/rdview/s01.rd");
+    std::filesystem::path file_path = std::filesystem::weakly_canonical(cli.get_arg(1));
     return fetch_and_test(file_path);
 
     return 0;
