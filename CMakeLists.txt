@@ -35,7 +35,7 @@ IF (WIN32)
 
         "source/cli.cpp"
         "source/entry.cpp"
-        "source/rdtokenizer.cpp"
+        "source/rdview.cpp"
     )
 
     SET_PROPERTY(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT Simplex)

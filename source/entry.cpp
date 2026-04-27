@@ -1,9 +1,11 @@
 #include <utils/defs.hpp>
 #include <utils/resources.hpp>
 #include <cli/cli.hpp>
-#include <rdview/rdtokenizer.hpp>
+#include <parsers/rdview.hpp>
 #include <iostream>
 #include <fstream>
+#include <sstream>
+#include <iomanip>
 
 #ifndef SIMPLEX_PLATFORM_INFORMATION
 #   define SIMPLEX_PLATFORM_INFORMATION
@@ -47,17 +49,29 @@ fetch_and_test(std::filesystem::path path)
     file_stream.read(&file_source[0], file_size);
     file_stream.close();
 
+    int32_t errors = 0;
     std::string_view file_source_view(file_source);
     RDViewTokenizer tokenizer(file_source, path);
     while (!tokenizer.current_token_is(RDViewTokenType_EOF))
     {
-        std::cout << tokenizer.get_current_token() << std::endl;
+        RDViewToken current = tokenizer.get_current_token();
+        //std::cout << current << std::endl;
+        if (current.type == RDViewTokenType_Invalid) errors++;
         tokenizer.shift();
     }
 
-    std::cout << tokenizer.get_current_token() << std::endl; // Should EOF token.
-    return true;
+    //std::cout << tokenizer.get_current_token() << std::endl; // Should EOF token.
+    return errors == 0;
 
+}
+
+static inline std::string 
+format_path_name(int number) 
+{
+    if (number >= 0 && number <= 9) {
+        return "0" + std::to_string(number);
+    }
+    return std::to_string(number);
 }
 
 static int
@@ -97,8 +111,19 @@ entry(int argc, char **argv)
         return 1;
     }
 
-    std::filesystem::path file_path = std::filesystem::weakly_canonical(cli.get_arg(1));
-    return fetch_and_test(file_path);
+    std::string base_path = "./tests/rdview/";
+    //std::filesystem::path file_path = std::filesystem::weakly_canonical(cli.get_arg(1));
+    for (size_t i = 0; i < 50; ++i)
+    {
+        std::string file_name = "s";
+        file_name += format_path_name(i+1);
+        file_name += ".rd";
+
+        std::filesystem::path file_path = std::filesystem::weakly_canonical(base_path + file_name);
+        bool result = fetch_and_test(file_path);
+        std::cout << file_path << ": " << (result ? "Success" : "Failed") << std::endl;
+
+    }
 
     return 0;
 

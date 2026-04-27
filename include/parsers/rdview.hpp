@@ -1,17 +1,111 @@
 // -------------------------------------------------------------------------------------------------
-// RDViewTokenizer
+// RDView Parser
 //      Christopher DeJong / magictrick-dev 
 //      April 2026
 // -------------------------------------------------------------------------------------------------
+// 
+// RDView Grammar
+// - Reference Notes
+//          The following grammar roughly describes how the RDView scripting language works.
+//          For the sake of my sanity, I left out some commands that I don't think I will be
+//          adding to the engine. Additionally, the grammar tries to closely replicate the original
+//          formatting requirements, but there will be some small deviations that would otherwise
+//          not be present in the original graphics renderer.
 //
-// The tokenizer is primarily responsible for turning raw text .rd files into tokens.
-// It is an on-demand tokenizer so that larger rdview files don't occupy large amounts memory space
-// for pre-tokenized inputs. In most cases, you will only ever need to peak at the current token
-// and potentially the next token as required. Shifting the tokenizer will prepare the next token
-// in the queue.
+//          Additionally, the context free grammar syntax is a bit loose, you should be able to
+//          largely follow the intent if you get the basics of CFGs and regular expressions.
 //
-// Since the tokenizer requires that your input is a string_view, the actual source file must
-// remain in memory for as long as the tokenizer is needed.
+//          If you see any productions that have a ".[]" with some numerical constant inside,
+//          that's how many you should expect of that, likewise if you see ".[n]", it is parameter
+//          or property dependent (though it is fixed number). Something like a PolySet, for example,
+//          defines vertices and faces, and the number of elements of the vertex is defined by the string.
+//          The following values after that is determined by that information.
+//
+// - Structural 
+//          ROOT                    :   DISPLAY FORMAT (SINGLEFRAME_BODY | MULTIFRAME_BODY)
+//          SINGLEFRAME_BODY        :   (INCLUDE | PROPERTIES | DEFINITIONS)* WORLD EOF
+//          MULTIFRAME_BODY         :   (INCLUDE | PROPERTIES | DEFINITIONS)* (FRAME MULTIFRAMEBODY | EOF)
+//          DEFINITIONS             :   OBJECT | OPTION_ARRAY | OPTION_BOOL | OPTION_LIST | 
+//                                      OPTION_REAL | OPTION_STRING
+// 
+//          INCLUDE                 :   string
+//          DISPLAY                 :   "Display" string string string
+//          FORMAT                  :   "Format" integer integer
+//          OBJECT                  :   "ObjectBegin" integer? string WORLD_COMMANDS* "ObjectEnd"
+//
+//          FRAME                   :   "FrameBegin" integer FRAME_COMMANDS* WORLD "FrameEnd"
+//          WORLD                   :   "WorldBegin" WORLD_COMMANDS* "WorldEnd"
+//
+// - Properties
+//          PROPERTIES              :   FRAME_COMMANDS
+//          FRAME_COMMANDS          :   BACKGROUND | COLOR | OPACITY | CAMERA | LIGHTING | 
+//                                      SURFACE_ATTRIBUTES | MAP_LOAD | ATTRIBUTE_MAPPING | MAP
+//          WORLD_COMMANDS          :   OPACITY | COLOR | GEOMETRY | TRANSFORMS | LIGHTING | 
+//                                      SURFACE_ATTRIBUTES | ATTRIBUTE_MAPPING
+//          CAMERA                  :   CAMERA_AT | CAMERA_EYE | CAMERA_FOV | CAMERA_UP | CLIPPING
+//          GEOMETRY                :   POINT | POINT_SET | LINE | LINE_SET | CIRCLE | FILL | CONE |
+//                                      CUBE | CURVE | CYLINDER | DISK | HYPERBOLOID | PARABOLOID |
+//                                      PATCH | POLY_SET | SPHERE | SQ_SPHERE | SQ_TORUS |
+//                                      TORUS | TUBE | OBJECT_INSTANCE
+//          TRANSFORMS              :   MATRIX | ROTATE | SCALE | TRANSLATE | XFORMPUSH | XFORMPOP
+//          LIGHTING                :   AMBIENT_LIGHT | FAR_LIGHT | POINT_LIGHT | CONE_LIGHT
+//          SURFACE_ATTRIBUTES      :   KA | KD | KS | SPECULAR | SURFACE
+//          ATTRIBUTE_MAPPING       :   MAP_SAMPLE | MAP_BOUND | MAP_BORDER
+//  
+// - Commands
+//          OPTION_ARRAY            :   "OptionArray" string integer numerical.[n]
+//          OPTION_BOOL             :   "OptionBool" string (integer | "true" | "false" | "on" | "off")
+//          OPTION_LIST             :   "OptionList" string integer string.[n]
+//          OPTION_REAL             :   "OptionReal" string numerical
+//          OPTION_STRING           :   "OptionString" string string
+//          BACKGROUND              :   "Background" real real real
+//          COLOR                   :   "Color" real real real
+//          OPACITY                 :   "Opacity" real
+//          CAMERA_AT               :   "CameraAt" numerical.[3]
+//          CAMERA_EYE              :   "CameraEye" numerical.[3]
+//          CAMERA_FOV              :   "CameraFOV" numerical
+//          CLIPPING                :   "Clipping" numerical.[2]
+//          POINT                   :   "Point" numerical.[3]
+//          POINT_SET               :   "PointSet" string integer numerical.[n]
+//          LINE                    :   "Line" numerical.[6]
+//          LINE_SET                :   "LineSet" string integer integer numerical.[n]
+//          CIRCLE                  :   "Circle" numerical.[4]
+//          FILL                    :   "Fill" numerical.[3]
+//          CONE                    :   "Cone" numerical.[3]
+//          CUBE                    :   "Cube"
+//          CURVE                   :   "Curve" string string integer numerical.[n]
+//          CYLINDER                :   "Cylinder" numerical.[4]
+//          DISK                    :   "Disk" numerical.[3]
+//          HYPERBOLOID             :   "Hyperboloid" numerical.[7]
+//          PARABOLOID              :   "Paraboloid" numerical.[4]
+//          PATCH                   :   "Patch" string string integer integer numerical.[n]
+//          POLY_SET                :   "PolySet" string integer integer numerical.[n] integer.[n]
+//          SPHERE                  :   "Sphere" numerical.[4]
+//          SQ_SPHERE               :   "SqSphere" numerical integer numerical.[3]
+//          SQ_TORUS                :   "SqTorus" numerical.[2] integer numerical.[4]
+//          TORUS                   :   "Torus" numerical.[5]
+//          TUBE                    :   "Tube" numerical.[7]
+//          OBJECT_INSTANCE         :   "ObjectInstance" string numerical.[n]
+//          MATRIX                  :   "Matrix" numerical.[16]
+//          ROTATE                  :   "Rotate" numerical.[2]
+//          SCALE                   :   "Scale" numerical.[3]
+//          TRANSLATE               :   "Translate" numerical.[3]
+//          XFORMPUSH               :   "XformPush"
+//          XFORMPOP                :   "XformPop"
+//          AMBIENT_LIGHT           :   "AmbientLight" numerical.[4]
+//          FAR_LIGHT               :   "FarLight" numerical.[7]
+//          POINT_LIGHT             :   "PointLight" numerical.[9]
+//          CONE_LIGHT              :   "ConeLight" numerical.[12]
+//          KA                      :   "Ka" real
+//          KD                      :   "Kd" real
+//          KS                      :   "Ks" real
+//          SPECULAR                :   "Specular" real.[4]
+//          SURFACE                 :   "Surface" string
+//          MAP_LOAD                :   "MapLoad" string string
+//          MAP                     :   "Map" string string
+//          MAP_SAMPLE              :   "MapSample" string string string
+//          MAP_BOUND               :   "MapBound" string real real real
+//          MAP_BORDER              :   "MapBorder" string string string
 //
 // -------------------------------------------------------------------------------------------------
 #pragma once
