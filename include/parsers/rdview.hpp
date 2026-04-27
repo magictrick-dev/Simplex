@@ -358,6 +358,7 @@ operator<<(std::ostream &os, const RDViewToken &token)
         case RDViewTokenType_Boolean:       { os << " " << (token.boolean.value ? "true" : "false"); } break;
         case RDViewTokenType_Identifier:    { os << " " << token.identifier.value;                   } break;
         case RDViewTokenType_Keyword:       { os << " " << to_string(token.keyword.type);            } break;
+        default: { } break;
     }
 
     return os;
@@ -410,4 +411,112 @@ class RDViewTokenizer
         RDViewToken *current_token;
         RDViewToken *next_token;
 
+};
+
+enum RDViewNodeType
+{
+    RDViewNodeType_NodeInterface,
+    RDViewNodeType_Root,
+    RDViewNodeType_SingleframeBody,
+    RDViewNodeType_MultiframeBody,
+    RDViewNodeType_Definitions,
+    RDViewNodeType_Include,
+    RDViewNodeType_Display,
+    RDViewNodeType_Format,
+    RDViewNodeType_Object,
+    RDViewNodeType_Frame,
+    RDViewNodeType_World,
+    RDViewNodeType_Properties,
+    RDViewNodeType_FrameCommands,
+    RDViewNodeType_WorldCommands,
+    RDViewNodeType_Camera,
+    RDViewNodeType_Geometry,
+    RDViewNodeType_Transforms,
+    RDViewNodeType_Lighting,
+    RDViewNodeType_SurfaceAttributes,
+    RDViewNodeType_AttributeMapping,
+    RDViewNodeType_OptionArray,
+    RDViewNodeType_OptionBool,
+    RDViewNodeType_OptionList,
+    RDViewNodeType_OptionReal,
+    RDViewNodeType_OptionString,
+    RDViewNodeType_Background,
+    RDViewNodeType_Color,
+    RDViewNodeType_Opacity,
+    RDViewNodeType_CameraAt,
+    RDViewNodeType_CameraEye,
+    RDViewNodeType_CameraFOV,
+    RDViewNodeType_Clipping,
+    RDViewNodeType_Point,
+    RDViewNodeType_PointSet,
+    RDViewNodeType_Line,
+    RDViewNodeType_LineSet,
+    RDViewNodeType_Circle,
+    RDViewNodeType_Fill,
+    RDViewNodeType_Cone,
+    RDViewNodeType_Cube,
+    RDViewNodeType_Curve,
+    RDViewNodeType_Cylinder,
+    RDViewNodeType_Disk,
+    RDViewNodeType_Hyperboloid,
+    RDViewNodeType_Paraboloid,
+    RDViewNodeType_Patch,
+    RDViewNodeType_PolySet,
+    RDViewNodeType_Sphere,
+    RDViewNodeType_SqSphere,
+    RDViewNodeType_SqTorus,
+    RDViewNodeType_Torus,
+    RDViewNodeType_Tube,
+    RDViewNodeType_ObjectInstance,
+    RDViewNodeType_Matrix,
+    RDViewNodeType_Rotate,
+    RDViewNodeType_Scale,
+    RDViewNodeType_Translate,
+    RDViewNodeType_XformPush,
+    RDViewNodeType_XformPop,
+    RDViewNodeType_AmbientLight,
+    RDViewNodeType_FarLight,
+    RDViewNodeType_PointLight,
+    RDViewNodeType_ConeLight,
+    RDViewNodeType_Ka,
+    RDViewNodeType_Kd,
+    RDViewNodeType_Ks,
+    RDViewNodeType_Specular,
+    RDViewNodeType_Surface,
+    RDViewNodeType_MapLoad,
+    RDViewNodeType_Map,
+    RDViewNodeType_MapSample,
+    RDViewNodeType_MapBound,
+    RDViewNodeType_MapBorder,
+};
+
+class RDViewNodeVisitor;
+class RDViewNodeInterface
+{
+    public:
+        inline          RDViewNodeInterface() { };
+        virtual inline ~RDViewNodeInterface() { };
+
+        virtual void    accept(RDViewNodeVisitor *visitor) = 0;
+
+        inline RDViewNodeType get_node_type() const 
+        { 
+            SIMPLEX_ASSERT(this->node_type != RDViewNodeType_NodeInterface);
+            return this->node_type; 
+        }
+
+    protected:
+        RDViewNodeType node_type = RDViewNodeType_NodeInterface;
+
+};
+
+class RDViewParser
+{
+    public:
+        RDViewParser();
+        ~RDViewParser();
+
+    private:
+        std::stack<RDViewTokenizer> tokenizer_stack;
+        RDViewTokenizer *tokenizer;
 };
