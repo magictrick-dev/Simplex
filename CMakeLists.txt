@@ -60,6 +60,7 @@ IF (APPLE)
 
         "source/cli.cpp"
         "source/entry.cpp"
+        "source/rdview.cpp"
     )
 ENDIF (APPLE)
 
