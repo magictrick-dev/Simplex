@@ -1,6 +1,11 @@
 #include <utils/defs.hpp>
 #include <utils/resources.hpp>
 #include <cli/cli.hpp>
+#include <parsers/rdview.hpp>
+#include <iostream>
+#include <fstream>
+#include <sstream>
+#include <iomanip>
 
 #ifndef SIMPLEX_PLATFORM_INFORMATION
 #   define SIMPLEX_PLATFORM_INFORMATION
@@ -30,6 +35,43 @@ print_engine_information()
     printf("    - Platform              : %s\n", SIMPLEX_PLATFORM_TYPE);
     printf("    - Frontend Renderer     : %s\n", SIMPLEX_FRONTEND_RENDERER);
     printf("    - Backend Renderer      : %s\n", SIMPLEX_BACKEND_RENDERER);
+}
+
+static inline bool
+fetch_and_test(std::filesystem::path path)
+{
+
+    if (!std::filesystem::exists(path)) return false;
+    size_t file_size = std::filesystem::file_size(path);
+    std::string file_source(file_size, '\0');
+    std::ifstream file_stream(path);
+    if (!file_stream.is_open()) return false;
+    file_stream.read(&file_source[0], file_size);
+    file_stream.close();
+
+    int32_t errors = 0;
+    std::string_view file_source_view(file_source);
+    RDViewTokenizer tokenizer(file_source, path);
+    while (!tokenizer.current_token_is(RDViewTokenType_EOF))
+    {
+        RDViewToken current = tokenizer.get_current_token();
+        //std::cout << current << std::endl;
+        if (current.type == RDViewTokenType_Invalid) errors++;
+        tokenizer.shift();
+    }
+
+    //std::cout << tokenizer.get_current_token() << std::endl; // Should EOF token.
+    return errors == 0;
+
+}
+
+static inline std::string 
+format_path_name(int number) 
+{
+    if (number >= 0 && number <= 9) {
+        return "0" + std::to_string(number);
+    }
+    return std::to_string(number);
 }
 
 static int
@@ -67,6 +109,20 @@ entry(int argc, char **argv)
         fprintf(stderr, "CLI error: %s\n", e.what());
         cli.print_help();
         return 1;
+    }
+
+    std::string base_path = "./tests/rdview/";
+    //std::filesystem::path file_path = std::filesystem::weakly_canonical(cli.get_arg(1));
+    for (size_t i = 0; i < 50; ++i)
+    {
+        std::string file_name = "s";
+        file_name += format_path_name(i+1);
+        file_name += ".rd";
+
+        std::filesystem::path file_path = std::filesystem::weakly_canonical(base_path + file_name);
+        bool result = fetch_and_test(file_path);
+        std::cout << file_path << ": " << (result ? "Success" : "Failed") << std::endl;
+
     }
 
     return 0;
