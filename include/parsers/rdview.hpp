@@ -41,14 +41,14 @@
 // - Structural 
 //          ROOT                    :   DISPLAY FORMAT (SINGLEFRAME_BODY | MULTIFRAME_BODY)
 //          SINGLEFRAME_BODY        :   (INCLUDE | PROPERTIES | DEFINITIONS)* WORLD EOF
-//          MULTIFRAME_BODY         :   (INCLUDE | PROPERTIES | DEFINITIONS)* (FRAME MULTIFRAMEBODY | EOF)
+//          MULTIFRAME_BODY         :   (INCLUDE | PROPERTIES | DEFINITIONS)* (FRAME MULTIFRAME_BODY | EOF)
 //          DEFINITIONS             :   OBJECT | OPTION_ARRAY | OPTION_BOOL | OPTION_LIST | 
 //                                      OPTION_REAL | OPTION_STRING
 // 
-//          INCLUDE                 :   string
+//          INCLUDE                 :   "Include" string
 //          DISPLAY                 :   "Display" string string string
 //          FORMAT                  :   "Format" integer integer
-//          OBJECT                  :   "ObjectBegin" integer? string WORLD_COMMANDS* "ObjectEnd"
+//          OBJECT                  :   "ObjectBegin" integer? string OBJECT_COMMANDS* "ObjectEnd"
 //
 //          FRAME                   :   "FrameBegin" integer FRAME_COMMANDS* WORLD "FrameEnd"
 //          WORLD                   :   "WorldBegin" WORLD_COMMANDS* "WorldEnd"
@@ -57,13 +57,15 @@
 //          PROPERTIES              :   FRAME_COMMANDS
 //          FRAME_COMMANDS          :   BACKGROUND | COLOR | OPACITY | CAMERA | LIGHTING | 
 //                                      SURFACE_ATTRIBUTES | MAP_LOAD | ATTRIBUTE_MAPPING | MAP
-//          WORLD_COMMANDS          :   OPACITY | COLOR | GEOMETRY | TRANSFORMS | LIGHTING | 
-//                                      SURFACE_ATTRIBUTES | ATTRIBUTE_MAPPING
+//          WORLD_COMMANDS          :   OPACITY | COLOR | GEOMETRY | TRANSFORMS | LIGHTING |
+//                                      SURFACE_ATTRIBUTES | ATTRIBUTE_MAPPING | MAP
+//          OBJECT_COMMANDS         :   OPACITY | COLOR | GEOMETRY | TRANSFORMS |
+//                                      SURFACE_ATTRIBUTES | ATTRIBUTE_MAPPING | MAP
 //          CAMERA                  :   CAMERA_AT | CAMERA_EYE | CAMERA_FOV | CAMERA_UP | CLIPPING
 //          GEOMETRY                :   POINT | POINT_SET | LINE | LINE_SET | CIRCLE | FILL | CONE |
 //                                      CUBE | CURVE | CYLINDER | DISK | HYPERBOLOID | PARABOLOID |
 //                                      PATCH | POLY_SET | SPHERE | SQ_SPHERE | SQ_TORUS |
-//                                      TORUS | TUBE | OBJECT_INSTANCE
+//                                      TORUS | TUBE | SUBDIVISION | OBJECT_INSTANCE
 //          TRANSFORMS              :   MATRIX | ROTATE | SCALE | TRANSLATE | XFORMPUSH | XFORMPOP
 //          LIGHTING                :   AMBIENT_LIGHT | FAR_LIGHT | POINT_LIGHT | CONE_LIGHT
 //          SURFACE_ATTRIBUTES      :   KA | KD | KS | SPECULAR | SURFACE
@@ -81,6 +83,7 @@
 //          CAMERA_AT               :   "CameraAt" numerical.[3]
 //          CAMERA_EYE              :   "CameraEye" numerical.[3]
 //          CAMERA_FOV              :   "CameraFOV" numerical
+//          CAMERA_UP               :   "CameraUp" numerical.[3]
 //          CLIPPING                :   "Clipping" numerical.[2]
 //          POINT                   :   "Point" numerical.[3]
 //          POINT_SET               :   "PointSet" string integer numerical.[n]
@@ -98,20 +101,21 @@
 //          PATCH                   :   "Patch" string string integer integer numerical.[n]
 //          POLY_SET                :   "PolySet" string integer integer numerical.[n] integer.[n]
 //          SPHERE                  :   "Sphere" numerical.[4]
-//          SQ_SPHERE               :   "SqSphere" numerical integer numerical.[3]
+//          SQ_SPHERE               :   "SqSphere" numerical integer numerical.[4]
 //          SQ_TORUS                :   "SqTorus" numerical.[2] integer numerical.[4]
 //          TORUS                   :   "Torus" numerical.[5]
 //          TUBE                    :   "Tube" numerical.[7]
+//          SUBDIVISION             :   "Subdivision" string string integer integer integer numerical.[n] integer.[n] integer.[n] real.[n]
 //          OBJECT_INSTANCE         :   "ObjectInstance" string numerical.[n]
 //          MATRIX                  :   "Matrix" numerical.[16]
-//          ROTATE                  :   "Rotate" numerical.[2]
+//          ROTATE                  :   "Rotate" string numerical
 //          SCALE                   :   "Scale" numerical.[3]
 //          TRANSLATE               :   "Translate" numerical.[3]
 //          XFORMPUSH               :   "XformPush"
 //          XFORMPOP                :   "XformPop"
 //          AMBIENT_LIGHT           :   "AmbientLight" numerical.[4]
 //          FAR_LIGHT               :   "FarLight" numerical.[7]
-//          POINT_LIGHT             :   "PointLight" numerical.[9]
+//          POINT_LIGHT             :   "PointLight" numerical.[7]
 //          CONE_LIGHT              :   "ConeLight" numerical.[12]
 //          KA                      :   "Ka" real
 //          KD                      :   "Kd" real
@@ -121,8 +125,48 @@
 //          MAP_LOAD                :   "MapLoad" string string
 //          MAP                     :   "Map" string string
 //          MAP_SAMPLE              :   "MapSample" string string string
-//          MAP_BOUND               :   "MapBound" string real real real
+//          MAP_BOUND               :   "MapBound" string real real real real
 //          MAP_BORDER              :   "MapBorder" string string string
+//
+//
+// RDViewParser
+// - Implementation Notes
+//          The RDViewParser uses a standard recursive descent parser. Since the RDView language
+//          specification allows for file imports (basically just a copy-and-paste) but doesn't
+//          verify circular dependencies, I decided that I will do basic circular dependency checks
+//          since it isn't a hard process to do.
+//
+//          RDView files either contain a single world block or multiple frame + world blocks in series.
+//          Certain commands are only valid outside the frame block, outside the world block, or only
+//          in the world block. The root source file *must* define the display and format attributes
+//          in order *first* before any other commands. Object definitions must be tracked and unique,
+//          so much like a language that uses a symbol-table to track variable names and scope, we
+//          need to ensure that objects are also properly defined before they are used.
+//
+//              - Root-only Commands
+//              - Frame-only Commands
+//              - World-only Commands
+//              - World and Frame Commands
+//              - Root, World, and Frame Commands
+//
+//          Regarding includes, we make some basic assumptions that they are root-level only includes;
+//          meaning it's just a convienent way to separate more complex frame-sequences across multiple
+//          files. The include process simply lexically analyzes it, and treats it as if you're just
+//          adding more nodes in that spot.
+//
+//          Error handling in this parser is designed to be expressive enough that it will help a
+//          developer spot and find errors. In this rare case, exception handling is clean enough
+//          for this problem. If any error is present, the AST's final generation is considered
+//          invalid and traversal is considered undefined.
+//
+//          The visitor interface allows a developer to construct a custom tree-walk interpreter
+//          if required. Interfacing with an engine simply requires crafting a tree-walk visitor
+//          that invokes the engine interfaces that correspond to the commands in RDView. As you
+//          might imagine, certain commands might not exist in the engine interface, so a new visitor
+//          must be made for each engine to connects to. In cases where these don't exist, these just
+//          map to no-ops. A print visitor is defined for debugging and testing. A pretty-printer
+//          also exists to regurgitate a similar source file for comparison; useful to ensure that
+//          the grammar interpretation reflects developer intent.
 //
 // -------------------------------------------------------------------------------------------------
 #pragma once
@@ -131,6 +175,9 @@
 #include <string>
 #include <iostream>
 #include <unordered_map>
+#include <vector>
+#include <stack>
+#include <algorithm>
 
 enum RDViewTokenType
 {
@@ -446,6 +493,7 @@ enum RDViewNodeType
     RDViewNodeType_Properties,
     RDViewNodeType_FrameCommands,
     RDViewNodeType_WorldCommands,
+    RDViewNodeType_ObjectCommands,
     RDViewNodeType_Camera,
     RDViewNodeType_Geometry,
     RDViewNodeType_Transforms,
@@ -463,6 +511,7 @@ enum RDViewNodeType
     RDViewNodeType_CameraAt,
     RDViewNodeType_CameraEye,
     RDViewNodeType_CameraFOV,
+    RDViewNodeType_CameraUp,
     RDViewNodeType_Clipping,
     RDViewNodeType_Point,
     RDViewNodeType_PointSet,
@@ -484,6 +533,7 @@ enum RDViewNodeType
     RDViewNodeType_SqTorus,
     RDViewNodeType_Torus,
     RDViewNodeType_Tube,
+    RDViewNodeType_Subdivision,
     RDViewNodeType_ObjectInstance,
     RDViewNodeType_Matrix,
     RDViewNodeType_Rotate,
@@ -505,6 +555,15 @@ enum RDViewNodeType
     RDViewNodeType_MapSample,
     RDViewNodeType_MapBound,
     RDViewNodeType_MapBorder,
+    RDViewNodeType_Primitive,
+};
+
+enum RDViewPrimitiveType
+{
+    RDViewPrimitiveType_Integer,
+    RDViewPrimitiveType_Real,
+    RDViewPrimitiveType_String,
+    RDViewPrimitiveType_Boolean,
 };
 
 class RDViewNodeVisitor;
@@ -540,6 +599,7 @@ struct RDViewNodeWorld;
 struct RDViewNodeProperties;
 struct RDViewNodeFrameCommands;
 struct RDViewNodeWorldCommands;
+struct RDViewNodeObjectCommands;
 struct RDViewNodeCamera;
 struct RDViewNodeGeometry;
 struct RDViewNodeTransforms;
@@ -557,6 +617,7 @@ struct RDViewNodeOpacity;
 struct RDViewNodeCameraAt;
 struct RDViewNodeCameraEye;
 struct RDViewNodeCameraFOV;
+struct RDViewNodeCameraUp;
 struct RDViewNodeClipping;
 struct RDViewNodePoint;
 struct RDViewNodePointSet;
@@ -578,6 +639,7 @@ struct RDViewNodeSqSphere;
 struct RDViewNodeSqTorus;
 struct RDViewNodeTorus;
 struct RDViewNodeTube;
+struct RDViewNodeSubdivision;
 struct RDViewNodeObjectInstance;
 struct RDViewNodeMatrix;
 struct RDViewNodeRotate;
@@ -599,6 +661,7 @@ struct RDViewNodeMap;
 struct RDViewNodeMapSample;
 struct RDViewNodeMapBound;
 struct RDViewNodeMapBorder;
+struct RDViewNodePrimitive;
 
 class RDViewNodeVisitor
 {
@@ -617,6 +680,7 @@ class RDViewNodeVisitor
         virtual void accept(RDViewNodeProperties *node) { };
         virtual void accept(RDViewNodeFrameCommands *node) { };
         virtual void accept(RDViewNodeWorldCommands *node) { };
+        virtual void accept(RDViewNodeObjectCommands *node) { };
         virtual void accept(RDViewNodeCamera *node) { };
         virtual void accept(RDViewNodeGeometry *node) { };
         virtual void accept(RDViewNodeTransforms *node) { };
@@ -634,6 +698,7 @@ class RDViewNodeVisitor
         virtual void accept(RDViewNodeCameraAt *node) { };
         virtual void accept(RDViewNodeCameraEye *node) { };
         virtual void accept(RDViewNodeCameraFOV *node) { };
+        virtual void accept(RDViewNodeCameraUp *node) { };
         virtual void accept(RDViewNodeClipping *node) { };
         virtual void accept(RDViewNodePoint *node) { };
         virtual void accept(RDViewNodePointSet *node) { };
@@ -655,6 +720,7 @@ class RDViewNodeVisitor
         virtual void accept(RDViewNodeSqTorus *node) { };
         virtual void accept(RDViewNodeTorus *node) { };
         virtual void accept(RDViewNodeTube *node) { };
+        virtual void accept(RDViewNodeSubdivision *node) { };
         virtual void accept(RDViewNodeObjectInstance *node) { };
         virtual void accept(RDViewNodeMatrix *node) { };
         virtual void accept(RDViewNodeRotate *node) { };
@@ -676,6 +742,7 @@ class RDViewNodeVisitor
         virtual void accept(RDViewNodeMapSample *node) { };
         virtual void accept(RDViewNodeMapBound *node) { };
         virtual void accept(RDViewNodeMapBorder *node) { };
+        virtual void accept(RDViewNodePrimitive *node) { };
 };
 
 struct RDViewNodeRoot : public RDViewNodeInterface 
@@ -774,15 +841,23 @@ struct RDViewNodeFrameCommands : public RDViewNodeInterface
         inline virtual void visit(RDViewNodeVisitor *visitor) override { visitor->accept(this); }
 };
 
-struct RDViewNodeWorldCommands : public RDViewNodeInterface 
-{ 
+struct RDViewNodeWorldCommands : public RDViewNodeInterface
+{
     public:
         inline RDViewNodeWorldCommands() { this->node_type = RDViewNodeType_WorldCommands; }
         inline virtual ~RDViewNodeWorldCommands() { }
         inline virtual void visit(RDViewNodeVisitor *visitor) override { visitor->accept(this); }
 };
 
-struct RDViewNodeCamera : public RDViewNodeInterface 
+struct RDViewNodeObjectCommands : public RDViewNodeInterface
+{
+    public:
+        inline RDViewNodeObjectCommands() { this->node_type = RDViewNodeType_ObjectCommands; }
+        inline virtual ~RDViewNodeObjectCommands() { }
+        inline virtual void visit(RDViewNodeVisitor *visitor) override { visitor->accept(this); }
+};
+
+struct RDViewNodeCamera : public RDViewNodeInterface
 { 
     public:
         inline RDViewNodeCamera() { this->node_type = RDViewNodeType_Camera; }
@@ -910,15 +985,23 @@ struct RDViewNodeCameraEye : public RDViewNodeInterface
         inline virtual void visit(RDViewNodeVisitor *visitor) override { visitor->accept(this); }
 };
 
-struct RDViewNodeCameraFOV : public RDViewNodeInterface 
-{ 
+struct RDViewNodeCameraFOV : public RDViewNodeInterface
+{
     public:
         inline RDViewNodeCameraFOV() { this->node_type = RDViewNodeType_CameraFOV; }
         inline virtual ~RDViewNodeCameraFOV() { }
         inline virtual void visit(RDViewNodeVisitor *visitor) override { visitor->accept(this); }
 };
 
-struct RDViewNodeClipping : public RDViewNodeInterface 
+struct RDViewNodeCameraUp : public RDViewNodeInterface
+{
+    public:
+        inline RDViewNodeCameraUp() { this->node_type = RDViewNodeType_CameraUp; }
+        inline virtual ~RDViewNodeCameraUp() { }
+        inline virtual void visit(RDViewNodeVisitor *visitor) override { visitor->accept(this); }
+};
+
+struct RDViewNodeClipping : public RDViewNodeInterface
 { 
     public:
         inline RDViewNodeClipping() { this->node_type = RDViewNodeType_Clipping; }
@@ -1078,15 +1161,23 @@ struct RDViewNodeTorus : public RDViewNodeInterface
         inline virtual void visit(RDViewNodeVisitor *visitor) override { visitor->accept(this); }
 };
 
-struct RDViewNodeTube : public RDViewNodeInterface 
-{ 
+struct RDViewNodeTube : public RDViewNodeInterface
+{
     public:
         inline RDViewNodeTube() { this->node_type = RDViewNodeType_Tube; }
         inline virtual ~RDViewNodeTube() { }
         inline virtual void visit(RDViewNodeVisitor *visitor) override { visitor->accept(this); }
 };
 
-struct RDViewNodeObjectInstance : public RDViewNodeInterface 
+struct RDViewNodeSubdivision : public RDViewNodeInterface
+{
+    public:
+        inline RDViewNodeSubdivision() { this->node_type = RDViewNodeType_Subdivision; }
+        inline virtual ~RDViewNodeSubdivision() { }
+        inline virtual void visit(RDViewNodeVisitor *visitor) override { visitor->accept(this); }
+};
+
+struct RDViewNodeObjectInstance : public RDViewNodeInterface
 { 
     public:
         inline RDViewNodeObjectInstance() { this->node_type = RDViewNodeType_ObjectInstance; }
@@ -1254,6 +1345,13 @@ struct RDViewNodeMapBorder : public RDViewNodeInterface
         inline virtual void visit(RDViewNodeVisitor *visitor) override { visitor->accept(this); }
 };
 
+struct RDViewNodePrimitive : public RDViewNodeInterface
+{
+    public:
+        inline RDViewNodePrimitive() { this->node_type = RDViewNodeType_Primitive; }
+        inline ~RDViewNodePrimitive() { }
+        inline virtual void visit(RDViewNodeVisitor *visitor) override { visitor->accept(this); }
+};
 
 class RDViewParser
 {
@@ -1262,7 +1360,110 @@ class RDViewParser
         ~RDViewParser();
 
     private:
+        
+        // Core structural nodes.
+        RDViewNodeInterface* match_root();
+        RDViewNodeInterface* match_singleframe_body();
+        RDViewNodeInterface* match_multiframe_body();
+        RDViewNodeInterface* match_definitions();
+
+        // Semi-structural nodes.
+        RDViewNodeInterface* match_include();
+        RDViewNodeInterface* match_display();
+        RDViewNodeInterface* match_format();
+        RDViewNodeInterface* match_object();
+        RDViewNodeInterface* match_frame();
+        RDViewNodeInterface* match_world();
+        RDViewNodeInterface* match_properties();
+        RDViewNodeInterface* match_frame_commands();
+        RDViewNodeInterface* match_world_commands();
+        RDViewNodeInterface* match_object_commands();
+        RDViewNodeInterface* match_camera();
+        RDViewNodeInterface* match_geometry();
+        RDViewNodeInterface* match_transforms();
+        RDViewNodeInterface* match_lighting();
+        RDViewNodeInterface* match_surface_attributes();
+        RDViewNodeInterface* match_attribute_mapping();
+
+        // Commands
+        RDViewNodeInterface* match_option_array();
+        RDViewNodeInterface* match_option_bool();
+        RDViewNodeInterface* match_option_list();
+        RDViewNodeInterface* match_option_real();
+        RDViewNodeInterface* match_option_string();
+        RDViewNodeInterface* match_background();
+        RDViewNodeInterface* match_color();
+        RDViewNodeInterface* match_opacity();
+        RDViewNodeInterface* match_camera_at();
+        RDViewNodeInterface* match_camera_eye();
+        RDViewNodeInterface* match_camera_fov();
+        RDViewNodeInterface* match_camera_up();
+        RDViewNodeInterface* match_clipping();
+        RDViewNodeInterface* match_point();
+        RDViewNodeInterface* match_point_set();
+        RDViewNodeInterface* match_line();
+        RDViewNodeInterface* match_line_set();
+        RDViewNodeInterface* match_circle();
+        RDViewNodeInterface* match_fill();
+        RDViewNodeInterface* match_cone();
+        RDViewNodeInterface* match_cube();
+        RDViewNodeInterface* match_curve();
+        RDViewNodeInterface* match_cylinder();
+        RDViewNodeInterface* match_disk();
+        RDViewNodeInterface* match_hyperboloid();
+        RDViewNodeInterface* match_paraboloid();
+        RDViewNodeInterface* match_patch();
+        RDViewNodeInterface* match_poly_set();
+        RDViewNodeInterface* match_sphere();
+        RDViewNodeInterface* match_sq_sphere();
+        RDViewNodeInterface* match_sq_torus();
+        RDViewNodeInterface* match_torus();
+        RDViewNodeInterface* match_tube();
+        RDViewNodeInterface* match_subdivision();
+        RDViewNodeInterface* match_object_instance();
+        RDViewNodeInterface* match_matrix();
+        RDViewNodeInterface* match_rotate();
+        RDViewNodeInterface* match_scale();
+        RDViewNodeInterface* match_translate();
+        RDViewNodeInterface* match_xformpush();
+        RDViewNodeInterface* match_xformpop();
+        RDViewNodeInterface* match_ambient_light();
+        RDViewNodeInterface* match_far_light();
+        RDViewNodeInterface* match_point_light();
+        RDViewNodeInterface* match_cone_light();
+        RDViewNodeInterface* match_ka();
+        RDViewNodeInterface* match_kd();
+        RDViewNodeInterface* match_ks();
+        RDViewNodeInterface* match_specular();
+        RDViewNodeInterface* match_surface();
+        RDViewNodeInterface* match_map_load();
+        RDViewNodeInterface* match_map();
+        RDViewNodeInterface* match_map_sample();
+        RDViewNodeInterface* match_map_bound();
+        RDViewNodeInterface* match_map_border();
+        RDViewNodeInterface* match_primitive();
+
+    private:
+        template <typename T, typename... Args> inline T* create_node(Args ...args)
+        {
+
+            static_assert(std::is_base_of<RDViewNodeInterface, T>::value);
+            void *memory_buffer = malloc(sizeof(T));
+            T *node = new (memory_buffer) T*(args...);
+            this->nodes.push_back(node);
+            return node;
+
+        }
+
+        inline void destroy_node(RDViewNodeInterface *node)
+        {
+            node->~RDViewNodeInterface();
+            free(node);
+        }
+
+    private:
         std::vector<RDViewNodeInterface*> nodes;
         std::stack<RDViewTokenizer> tokenizer_stack;
         RDViewTokenizer *tokenizer;
+
 };
