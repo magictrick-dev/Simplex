@@ -99,12 +99,14 @@
 #include <utils/defs.hpp>
 #include <filesystem>
 #include <string>
+#include <sstream>
 #include <iostream>
 #include <unordered_map>
 #include <vector>
 #include <stack>
 #include <algorithm>
 #include <variant>
+#include <exception>
 
 enum RDViewTokenType
 {
@@ -219,6 +221,7 @@ struct RDViewToken
     size_t line;
     size_t column;
     size_t length;
+    size_t offset;
 
     std::filesystem::path source_file_path;
     std::string_view source_file_contents;
@@ -416,15 +419,10 @@ enum RDViewNodeType
     RDViewNodeType_Object,
     RDViewNodeType_Frame,
     RDViewNodeType_World,
-    RDViewNodeType_FrameCommands,
-    RDViewNodeType_WorldCommands,
-    RDViewNodeType_ObjectCommands,
     RDViewNodeType_Camera,
     RDViewNodeType_Geometry,
     RDViewNodeType_Transforms,
     RDViewNodeType_Lighting,
-    RDViewNodeType_SurfaceAttributes,
-    RDViewNodeType_AttributeMapping,
     RDViewNodeType_OptionArray,
     RDViewNodeType_OptionBool,
     RDViewNodeType_OptionList,
@@ -498,15 +496,10 @@ to_string(RDViewNodeType type)
         case RDViewNodeType_Object:             { return "RDViewNodeType_Object";            } break;
         case RDViewNodeType_Frame:              { return "RDViewNodeType_Frame";             } break;
         case RDViewNodeType_World:              { return "RDViewNodeType_World";             } break;
-        case RDViewNodeType_FrameCommands:      { return "RDViewNodeType_FrameCommands";     } break;
-        case RDViewNodeType_WorldCommands:      { return "RDViewNodeType_WorldCommands";     } break;
-        case RDViewNodeType_ObjectCommands:     { return "RDViewNodeType_ObjectCommands";    } break;
         case RDViewNodeType_Camera:             { return "RDViewNodeType_Camera";            } break;
         case RDViewNodeType_Geometry:           { return "RDViewNodeType_Geometry";          } break;
         case RDViewNodeType_Transforms:         { return "RDViewNodeType_Transforms";        } break;
         case RDViewNodeType_Lighting:           { return "RDViewNodeType_Lighting";          } break;
-        case RDViewNodeType_SurfaceAttributes:  { return "RDViewNodeType_SurfaceAttributes"; } break;
-        case RDViewNodeType_AttributeMapping:   { return "RDViewNodeType_AttributeMapping";  } break;
         case RDViewNodeType_OptionArray:        { return "RDViewNodeType_OptionArray";       } break;
         case RDViewNodeType_OptionBool:         { return "RDViewNodeType_OptionBool";        } break;
         case RDViewNodeType_OptionList:         { return "RDViewNodeType_OptionList";        } break;
@@ -621,15 +614,10 @@ struct RDViewNodeFormat;
 struct RDViewNodeObject;
 struct RDViewNodeFrame;
 struct RDViewNodeWorld;
-struct RDViewNodeFrameCommands;
-struct RDViewNodeWorldCommands;
-struct RDViewNodeObjectCommands;
 struct RDViewNodeCamera;
 struct RDViewNodeGeometry;
 struct RDViewNodeTransforms;
 struct RDViewNodeLighting;
-struct RDViewNodeSurfaceAttributes;
-struct RDViewNodeAttributeMapping;
 struct RDViewNodeOptionArray;
 struct RDViewNodeOptionBool;
 struct RDViewNodeOptionList;
@@ -700,15 +688,10 @@ class RDViewNodeVisitor
         virtual void accept(RDViewNodeObject *node) { };
         virtual void accept(RDViewNodeFrame *node) { };
         virtual void accept(RDViewNodeWorld *node) { };
-        virtual void accept(RDViewNodeFrameCommands *node) { };
-        virtual void accept(RDViewNodeWorldCommands *node) { };
-        virtual void accept(RDViewNodeObjectCommands *node) { };
         virtual void accept(RDViewNodeCamera *node) { };
         virtual void accept(RDViewNodeGeometry *node) { };
         virtual void accept(RDViewNodeTransforms *node) { };
         virtual void accept(RDViewNodeLighting *node) { };
-        virtual void accept(RDViewNodeSurfaceAttributes *node) { };
-        virtual void accept(RDViewNodeAttributeMapping *node) { };
         virtual void accept(RDViewNodeOptionArray *node) { };
         virtual void accept(RDViewNodeOptionBool *node) { };
         virtual void accept(RDViewNodeOptionList *node) { };
@@ -911,22 +894,6 @@ struct RDViewNodeLighting : public RDViewNodeInterface
     public:
         inline RDViewNodeLighting() { this->node_type = RDViewNodeType_Lighting; }
         inline virtual ~RDViewNodeLighting() { }
-        inline virtual void visit(RDViewNodeVisitor *visitor) override { visitor->accept(this); }
-};
-
-struct RDViewNodeSurfaceAttributes : public RDViewNodeInterface 
-{ 
-    public:
-        inline RDViewNodeSurfaceAttributes() { this->node_type = RDViewNodeType_SurfaceAttributes; }
-        inline virtual ~RDViewNodeSurfaceAttributes() { }
-        inline virtual void visit(RDViewNodeVisitor *visitor) override { visitor->accept(this); }
-};
-
-struct RDViewNodeAttributeMapping : public RDViewNodeInterface 
-{ 
-    public:
-        inline RDViewNodeAttributeMapping() { this->node_type = RDViewNodeType_AttributeMapping; }
-        inline virtual ~RDViewNodeAttributeMapping() { }
         inline virtual void visit(RDViewNodeVisitor *visitor) override { visitor->accept(this); }
 };
 
@@ -1655,13 +1622,116 @@ struct RDViewNodePrimitive : public RDViewNodeInterface
         std::variant<int64_t, real64_t, bool, std::string> primitive_value;
 };
 
+// NOTE(Chris): Base class exception for parsing errors. All deriving exceptions specify how
+//              the parser should synchronize after catching an exception.
+class RDViewParserError : public std::exception 
+{ 
+    protected:
+        inline void set_message(const std::string &message) { this->message = message; }
+        inline void set_message(std::string &&message) { this->message = message; }
+
+        inline virtual const char *what() const override
+        {
+            return this->message.c_str();
+        }
+
+    private:
+        std::string message;
+};
+
+// Unexpected Token -   Unexpected tokens are tokens that aren't in the grammar. Symbol characters,
+//                      for example the '@' symbol are in this category.
+class RDViewParserErrorUT : public RDViewParserError
+{
+    public:
+        inline RDViewParserErrorUT(RDViewToken token)
+        {
+
+            std::string location = token.source_file_path.string();
+            std::string contents(token.source_file_contents.substr(token.offset, token.length));
+
+            std::stringstream message_stream;
+            message_stream  << location << "(" << token.line << ", " << token.column 
+                            << "): " << "Unexpected token '" << contents << "' encountered.";
+            this->set_message(message_stream.str());
+
+        }
+
+};
+
+// Unexpected Command - Unexpected commands are commands that are defined in areas of the file
+//                      where they aren't defined. For example, issuing a "Cube" command outside
+//                      a world block or object block is considered an unexpected command.
+class RDViewParserErrorUC : public RDViewParserError
+{
+    public:
+        inline RDViewParserErrorUC(RDViewToken token, std::string location)
+        {
+            std::string location = token.source_file_path.string();
+            std::string contents(token.source_file_contents.substr(token.offset, token.length));
+
+            std::stringstream message_stream;
+            message_stream  << location << "(" << token.line << ", " << token.column 
+                            << "): Unexpected command encountered in " << location << ".";
+            this->set_message(message_stream.str());
+        }
+};
+
+// Invalid Command Format - Invalid command formats arise when a command is defined, but the
+//                          input parameters aren't correct. Something like encountering a string
+//                          where a real is expected triggers this error.
+class RDViewParserErrorICF : public RDViewParserError
+{
+    public:
+        inline RDViewParserErrorICF(RDViewToken token, std::string expected_format)
+        {
+
+            std::string location = token.source_file_path.string();
+            std::string contents(token.source_file_contents.substr(token.offset, token.length));
+
+            std::stringstream message_stream;
+            message_stream  << location << "(" << token.line << ", " << token.column 
+                            << "): Incorrect command formatting, " << expected_format << ".";
+            this->set_message(message_stream.str());
+
+        }
+};
+
+// Invalid Named Reference -    Invalid named references are for when the user attempts to reference
+//                              something like an object instance by name that hasn't yet been defined.
+class RDViewParserErrorINR : public RDViewParserError
+{
+    public:
+        inline RDViewParserErrorINR(RDViewToken token, std::string name)
+        {
+
+            std::string location = token.source_file_path.string();
+            std::string contents(token.source_file_contents.substr(token.offset, token.length));
+
+            std::stringstream message_stream;
+            message_stream  << location << "(" << token.line << ", " << token.column 
+                            << "): Unexpected named reference to: '" << name << "'.";
+            this->set_message(message_stream.str());
+
+        }
+};
+
 class RDViewParser
 {
     public:
         RDViewParser();
         ~RDViewParser();
 
+        inline RDViewNodeInterface* get_root() const { return this->root; }
+
     private:
+        void synchronize_to(RDViewTokenType token_type);
+        void synchronize_up_to(RDViewTokenType token_type);
+
+        bool is_previous_token(RDViewTokenType token_type) const;
+        bool is_current_token(RDViewTokenType token_type) const;
+        bool is_next_token(RDViewTokenType token_type) const;
+
         RDViewNodeInterface* match_root();
         RDViewNodeInterface* match_body();
         RDViewNodeInterface* match_definitions();
@@ -1672,15 +1742,10 @@ class RDViewParser
         RDViewNodeInterface* match_object();
         RDViewNodeInterface* match_frame();
         RDViewNodeInterface* match_world();
-        RDViewNodeInterface* match_frame_commands();
-        RDViewNodeInterface* match_world_commands();
-        RDViewNodeInterface* match_object_commands();
         RDViewNodeInterface* match_camera();
         RDViewNodeInterface* match_geometry();
         RDViewNodeInterface* match_transforms();
         RDViewNodeInterface* match_lighting();
-        RDViewNodeInterface* match_surface_attributes();
-        RDViewNodeInterface* match_attribute_mapping();
 
         RDViewNodeInterface* match_option_array();
         RDViewNodeInterface* match_option_bool();
@@ -1758,6 +1823,7 @@ class RDViewParser
         }
 
     private:
+        RDViewNodeInterface* root;
         std::vector<RDViewNodeInterface*> nodes;
         std::stack<RDViewTokenizer> tokenizer_stack;
         RDViewTokenizer *tokenizer;

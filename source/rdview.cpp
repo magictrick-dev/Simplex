@@ -114,6 +114,7 @@ void RDViewTokenizer::
 format_token_as(RDViewToken *token, RDViewTokenType type)
 {
     token->type                     = type;
+    token->offset                   = this->offset;
     token->line                     = this->line;
     token->column                   = this->column;
     token->length                   = this->step - this->offset;
@@ -775,6 +776,39 @@ RDViewParser::
 
 }
 
+void RDViewParser::
+synchronize_to(RDViewTokenType token_type)
+{
+    SIMPLEX_NO_IMPLEMENTATION("");
+}
+
+void RDViewParser::
+synchronize_up_to(RDViewTokenType token_type)
+{
+    SIMPLEX_NO_IMPLEMENTATION("");
+}
+
+bool RDViewParser:: 
+is_previous_token(RDViewTokenType token_type) const
+{
+    const bool result = (this->tokenizer->previous_token_is(token_type));
+    return result;
+}
+
+bool RDViewParser:: 
+is_current_token(RDViewTokenType token_type) const
+{
+    const bool result = (this->tokenizer->current_token_is(token_type));
+    return result;
+}
+
+bool RDViewParser:: 
+is_next_token(RDViewTokenType token_type) const
+{
+    const bool result = (this->tokenizer->next_token_is(token_type));
+    return result;
+}
+
 RDViewNodeInterface* RDViewParser::
 match_root()
 {
@@ -839,27 +873,6 @@ match_world()
 }
 
 RDViewNodeInterface* RDViewParser::
-match_frame_commands()
-{
-    SIMPLEX_NO_IMPLEMENTATION("");
-    return nullptr;
-}
-
-RDViewNodeInterface* RDViewParser::
-match_world_commands()
-{
-    SIMPLEX_NO_IMPLEMENTATION("");
-    return nullptr;
-}
-
-RDViewNodeInterface* RDViewParser::
-match_object_commands()
-{
-    SIMPLEX_NO_IMPLEMENTATION("");
-    return nullptr;
-}
-
-RDViewNodeInterface* RDViewParser::
 match_camera()
 {
     SIMPLEX_NO_IMPLEMENTATION("");
@@ -882,20 +895,6 @@ match_transforms()
 
 RDViewNodeInterface* RDViewParser::
 match_lighting()
-{
-    SIMPLEX_NO_IMPLEMENTATION("");
-    return nullptr;
-}
-
-RDViewNodeInterface* RDViewParser::
-match_surface_attributes()
-{
-    SIMPLEX_NO_IMPLEMENTATION("");
-    return nullptr;
-}
-
-RDViewNodeInterface* RDViewParser::
-match_attribute_mapping()
 {
     SIMPLEX_NO_IMPLEMENTATION("");
     return nullptr;
