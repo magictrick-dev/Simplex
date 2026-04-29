@@ -1142,7 +1142,7 @@ struct RDViewNodeLineSet : public RDViewNodeInterface
         size_t vertices;
         size_t indices;
         std::vector<real32_t> vertex_values;
-        std::vector<int32_t> indices;
+        std::vector<int32_t> index_values;
 };
 
 struct RDViewNodeCircle : public RDViewNodeInterface 
@@ -1708,14 +1708,14 @@ class RDViewParserErrorUT : public RDViewParserError
 class RDViewParserErrorUC : public RDViewParserError
 {
     public:
-        inline RDViewParserErrorUC(RDViewToken token, std::string location)
+        inline RDViewParserErrorUC(RDViewToken token, std::string place)
         {
             std::string location = token.source_file_path.string();
             std::string contents(token.source_file_contents.substr(token.offset, token.length));
 
             std::stringstream message_stream;
             message_stream  << location << "(" << token.line << ", " << token.column 
-                            << "): Unexpected command encountered in " << location << ".";
+                            << "): Unexpected command encountered in " << place << ".";
             this->set_message(message_stream.str());
         }
 };
