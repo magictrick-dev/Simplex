@@ -585,6 +585,17 @@ to_string(RDViewPrimitiveType type)
     return "";
 }
 
+enum RDViewVertexAttributeType
+{
+    RDViewVertexAttributeType_Invalid,
+    RDViewVertexAttributeType_Position,
+    RDViewVertexAttributeType_Direction,
+    RDViewVertexAttributeType_Color,
+    RDViewVertexAttributeType_Weight,
+    RDViewVertexAttributeType_Texture,
+    RDViewVertexAttributeType_Opacity,
+};
+
 class RDViewNodeVisitor;
 class RDViewNodeInterface
 {
@@ -593,6 +604,38 @@ class RDViewNodeInterface
         virtual inline ~RDViewNodeInterface() { };
 
         virtual void    visit(RDViewNodeVisitor *visitor) = 0;
+
+        inline static size_t get_attribute_size(RDViewVertexAttributeType attribute_type)
+        {
+            switch (attribute_type)
+            {
+                case RDViewVertexAttributeType_Invalid:     { return 0; } break;
+                case RDViewVertexAttributeType_Position:    { return 3; } break;
+                case RDViewVertexAttributeType_Direction:   { return 3; } break;
+                case RDViewVertexAttributeType_Color:       { return 3; } break;
+                case RDViewVertexAttributeType_Weight:      { return 1; } break;
+                case RDViewVertexAttributeType_Texture:     { return 2; } break;
+                case RDViewVertexAttributeType_Opacity:     { return 1; } break;
+            }
+
+            return 0;
+        }
+
+        inline static RDViewVertexAttributeType classify_attribute_type(char c)
+        {
+            switch(c)
+            {
+                case 'P': { return RDViewVertexAttributeType_Position; } break;
+                case 'D':
+                case 'N': { return RDViewVertexAttributeType_Direction; } break;
+                case 'C': { return RDViewVertexAttributeType_Color; } break;
+                case 'W': { return RDViewVertexAttributeType_Weight; } break;
+                case 'T': { return RDViewVertexAttributeType_Texture; } break;
+                case 'O': { return RDViewVertexAttributeType_Opacity; } break;
+            }
+        
+            return RDViewVertexAttributeType_Invalid;
+        }
 
         inline RDViewNodeType get_node_type() const 
         { 
@@ -1630,7 +1673,7 @@ class RDViewParserError : public std::exception
         inline void set_message(const std::string &message) { this->message = message; }
         inline void set_message(std::string &&message) { this->message = message; }
 
-        inline virtual const char *what() const override
+        inline virtual const char *what() const noexcept override
         {
             return this->message.c_str();
         }
