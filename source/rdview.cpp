@@ -1,5 +1,9 @@
 #include <parsers/rdview.hpp>
 
+// -------------------------------------------------------------------------------------------------
+// RDViewTokenizer
+// -------------------------------------------------------------------------------------------------
+
 enum RDViewDFAState
 {
     RDViewDFAState_WhitespaceEntry,
@@ -110,6 +114,7 @@ void RDViewTokenizer::
 format_token_as(RDViewToken *token, RDViewTokenType type)
 {
     token->type                     = type;
+    token->offset                   = this->offset;
     token->line                     = this->line;
     token->column                   = this->column;
     token->length                   = this->step - this->offset;
@@ -745,4 +750,544 @@ is_eof() const
 {
     bool result = (this->source[this->step] == '\0' || this->step >= this->source.length());
     return result;
+}
+
+// -------------------------------------------------------------------------------------------------
+// RDViewParser
+// -------------------------------------------------------------------------------------------------
+
+RDViewParser::
+RDViewParser()
+{
+
+}
+
+RDViewParser::
+~RDViewParser()
+{
+
+    for (auto &node : this->nodes)
+    {
+        destroy_node(node);
+        node = nullptr;
+    }
+
+    this->nodes.clear();
+
+}
+
+void RDViewParser::
+synchronize_to(RDViewTokenType token_type)
+{
+    SIMPLEX_NO_IMPLEMENTATION("");
+}
+
+void RDViewParser::
+synchronize_up_to(RDViewTokenType token_type)
+{
+    SIMPLEX_NO_IMPLEMENTATION("");
+}
+
+bool RDViewParser:: 
+is_previous_token(RDViewTokenType token_type) const
+{
+    const bool result = (this->tokenizer->previous_token_is(token_type));
+    return result;
+}
+
+bool RDViewParser:: 
+is_current_token(RDViewTokenType token_type) const
+{
+    const bool result = (this->tokenizer->current_token_is(token_type));
+    return result;
+}
+
+bool RDViewParser:: 
+is_next_token(RDViewTokenType token_type) const
+{
+    const bool result = (this->tokenizer->next_token_is(token_type));
+    return result;
+}
+
+RDViewNodeInterface* RDViewParser::
+match_root()
+{
+    SIMPLEX_NO_IMPLEMENTATION("");
+    return nullptr;
+}
+
+RDViewNodeInterface* RDViewParser::
+match_body()
+{
+    SIMPLEX_NO_IMPLEMENTATION("");
+    return nullptr;
+}
+
+RDViewNodeInterface* RDViewParser::
+match_definitions()
+{
+    SIMPLEX_NO_IMPLEMENTATION("");
+    return nullptr;
+}
+
+RDViewNodeInterface* RDViewParser::
+match_include()
+{
+    SIMPLEX_NO_IMPLEMENTATION("");
+    return nullptr;
+}
+
+RDViewNodeInterface* RDViewParser::
+match_display()
+{
+    SIMPLEX_NO_IMPLEMENTATION("");
+    return nullptr;
+}
+
+RDViewNodeInterface* RDViewParser::
+match_format()
+{
+    SIMPLEX_NO_IMPLEMENTATION("");
+    return nullptr;
+}
+
+RDViewNodeInterface* RDViewParser::
+match_object()
+{
+    SIMPLEX_NO_IMPLEMENTATION("");
+    return nullptr;
+}
+
+RDViewNodeInterface* RDViewParser::
+match_frame()
+{
+    SIMPLEX_NO_IMPLEMENTATION("");
+    return nullptr;
+}
+
+RDViewNodeInterface* RDViewParser::
+match_world()
+{
+    SIMPLEX_NO_IMPLEMENTATION("");
+    return nullptr;
+}
+
+RDViewNodeInterface* RDViewParser::
+match_camera()
+{
+    SIMPLEX_NO_IMPLEMENTATION("");
+    return nullptr;
+}
+
+RDViewNodeInterface* RDViewParser::
+match_geometry()
+{
+    SIMPLEX_NO_IMPLEMENTATION("");
+    return nullptr;
+}
+
+RDViewNodeInterface* RDViewParser::
+match_transforms()
+{
+    SIMPLEX_NO_IMPLEMENTATION("");
+    return nullptr;
+}
+
+RDViewNodeInterface* RDViewParser::
+match_lighting()
+{
+    SIMPLEX_NO_IMPLEMENTATION("");
+    return nullptr;
+}
+
+RDViewNodeInterface* RDViewParser::
+match_option_array()
+{
+    SIMPLEX_NO_IMPLEMENTATION("");
+    return nullptr;
+}
+
+RDViewNodeInterface* RDViewParser::
+match_option_bool()
+{
+    SIMPLEX_NO_IMPLEMENTATION("");
+    return nullptr;
+}
+
+RDViewNodeInterface* RDViewParser::
+match_option_list()
+{
+    SIMPLEX_NO_IMPLEMENTATION("");
+    return nullptr;
+}
+
+RDViewNodeInterface* RDViewParser::
+match_option_real()
+{
+    SIMPLEX_NO_IMPLEMENTATION("");
+    return nullptr;
+}
+
+RDViewNodeInterface* RDViewParser::
+match_option_string()
+{
+    SIMPLEX_NO_IMPLEMENTATION("");
+    return nullptr;
+}
+
+RDViewNodeInterface* RDViewParser::
+match_background()
+{
+    SIMPLEX_NO_IMPLEMENTATION("");
+    return nullptr;
+}
+
+RDViewNodeInterface* RDViewParser::
+match_color()
+{
+    SIMPLEX_NO_IMPLEMENTATION("");
+    return nullptr;
+}
+
+RDViewNodeInterface* RDViewParser::
+match_opacity()
+{
+    SIMPLEX_NO_IMPLEMENTATION("");
+    return nullptr;
+}
+
+RDViewNodeInterface* RDViewParser::
+match_camera_at()
+{
+    SIMPLEX_NO_IMPLEMENTATION("");
+    return nullptr;
+}
+
+RDViewNodeInterface* RDViewParser::
+match_camera_eye()
+{
+    SIMPLEX_NO_IMPLEMENTATION("");
+    return nullptr;
+}
+
+RDViewNodeInterface* RDViewParser::
+match_camera_fov()
+{
+    SIMPLEX_NO_IMPLEMENTATION("");
+    return nullptr;
+}
+
+RDViewNodeInterface* RDViewParser::
+match_camera_up()
+{
+    SIMPLEX_NO_IMPLEMENTATION("");
+    return nullptr;
+}
+
+RDViewNodeInterface* RDViewParser::
+match_clipping()
+{
+    SIMPLEX_NO_IMPLEMENTATION("");
+    return nullptr;
+}
+
+RDViewNodeInterface* RDViewParser::
+match_point()
+{
+    SIMPLEX_NO_IMPLEMENTATION("");
+    return nullptr;
+}
+
+RDViewNodeInterface* RDViewParser::
+match_point_set()
+{
+    SIMPLEX_NO_IMPLEMENTATION("");
+    return nullptr;
+}
+
+RDViewNodeInterface* RDViewParser::
+match_line()
+{
+    SIMPLEX_NO_IMPLEMENTATION("");
+    return nullptr;
+}
+
+RDViewNodeInterface* RDViewParser::
+match_line_set()
+{
+    SIMPLEX_NO_IMPLEMENTATION("");
+    return nullptr;
+}
+
+RDViewNodeInterface* RDViewParser::
+match_circle()
+{
+    SIMPLEX_NO_IMPLEMENTATION("");
+    return nullptr;
+}
+
+RDViewNodeInterface* RDViewParser::
+match_fill()
+{
+    SIMPLEX_NO_IMPLEMENTATION("");
+    return nullptr;
+}
+
+RDViewNodeInterface* RDViewParser::
+match_cone()
+{
+    SIMPLEX_NO_IMPLEMENTATION("");
+    return nullptr;
+}
+
+RDViewNodeInterface* RDViewParser::
+match_cube()
+{
+    SIMPLEX_NO_IMPLEMENTATION("");
+    return nullptr;
+}
+
+RDViewNodeInterface* RDViewParser::
+match_curve()
+{
+    SIMPLEX_NO_IMPLEMENTATION("");
+    return nullptr;
+}
+
+RDViewNodeInterface* RDViewParser::
+match_cylinder()
+{
+    SIMPLEX_NO_IMPLEMENTATION("");
+    return nullptr;
+}
+
+RDViewNodeInterface* RDViewParser::
+match_disk()
+{
+    SIMPLEX_NO_IMPLEMENTATION("");
+    return nullptr;
+}
+
+RDViewNodeInterface* RDViewParser::
+match_hyperboloid()
+{
+    SIMPLEX_NO_IMPLEMENTATION("");
+    return nullptr;
+}
+
+RDViewNodeInterface* RDViewParser::
+match_paraboloid()
+{
+    SIMPLEX_NO_IMPLEMENTATION("");
+    return nullptr;
+}
+
+RDViewNodeInterface* RDViewParser::
+match_patch()
+{
+    SIMPLEX_NO_IMPLEMENTATION("");
+    return nullptr;
+}
+
+RDViewNodeInterface* RDViewParser::
+match_poly_set()
+{
+    SIMPLEX_NO_IMPLEMENTATION("");
+    return nullptr;
+}
+
+RDViewNodeInterface* RDViewParser::
+match_sphere()
+{
+    SIMPLEX_NO_IMPLEMENTATION("");
+    return nullptr;
+}
+
+RDViewNodeInterface* RDViewParser::
+match_sq_sphere()
+{
+    SIMPLEX_NO_IMPLEMENTATION("");
+    return nullptr;
+}
+
+RDViewNodeInterface* RDViewParser::
+match_sq_torus()
+{
+    SIMPLEX_NO_IMPLEMENTATION("");
+    return nullptr;
+}
+
+RDViewNodeInterface* RDViewParser::
+match_torus()
+{
+    SIMPLEX_NO_IMPLEMENTATION("");
+    return nullptr;
+}
+
+RDViewNodeInterface* RDViewParser::
+match_tube()
+{
+    SIMPLEX_NO_IMPLEMENTATION("");
+    return nullptr;
+}
+
+RDViewNodeInterface* RDViewParser::
+match_subdivision()
+{
+    SIMPLEX_NO_IMPLEMENTATION("");
+    return nullptr;
+}
+
+RDViewNodeInterface* RDViewParser::
+match_object_instance()
+{
+    SIMPLEX_NO_IMPLEMENTATION("");
+    return nullptr;
+}
+
+RDViewNodeInterface* RDViewParser::
+match_matrix()
+{
+    SIMPLEX_NO_IMPLEMENTATION("");
+    return nullptr;
+}
+
+RDViewNodeInterface* RDViewParser::
+match_rotate()
+{
+    SIMPLEX_NO_IMPLEMENTATION("");
+    return nullptr;
+}
+
+RDViewNodeInterface* RDViewParser::
+match_scale()
+{
+    SIMPLEX_NO_IMPLEMENTATION("");
+    return nullptr;
+}
+
+RDViewNodeInterface* RDViewParser::
+match_translate()
+{
+    SIMPLEX_NO_IMPLEMENTATION("");
+    return nullptr;
+}
+
+RDViewNodeInterface* RDViewParser::
+match_xformpush()
+{
+    SIMPLEX_NO_IMPLEMENTATION("");
+    return nullptr;
+}
+
+RDViewNodeInterface* RDViewParser::
+match_xformpop()
+{
+    SIMPLEX_NO_IMPLEMENTATION("");
+    return nullptr;
+}
+
+RDViewNodeInterface* RDViewParser::
+match_ambient_light()
+{
+    SIMPLEX_NO_IMPLEMENTATION("");
+    return nullptr;
+}
+
+RDViewNodeInterface* RDViewParser::
+match_far_light()
+{
+    SIMPLEX_NO_IMPLEMENTATION("");
+    return nullptr;
+}
+
+RDViewNodeInterface* RDViewParser::
+match_point_light()
+{
+    SIMPLEX_NO_IMPLEMENTATION("");
+    return nullptr;
+}
+
+RDViewNodeInterface* RDViewParser::
+match_cone_light()
+{
+    SIMPLEX_NO_IMPLEMENTATION("");
+    return nullptr;
+}
+
+RDViewNodeInterface* RDViewParser::
+match_ka()
+{
+    SIMPLEX_NO_IMPLEMENTATION("");
+    return nullptr;
+}
+
+RDViewNodeInterface* RDViewParser::
+match_kd()
+{
+    SIMPLEX_NO_IMPLEMENTATION("");
+    return nullptr;
+}
+
+RDViewNodeInterface* RDViewParser::
+match_ks()
+{
+    SIMPLEX_NO_IMPLEMENTATION("");
+    return nullptr;
+}
+
+RDViewNodeInterface* RDViewParser::
+match_specular()
+{
+    SIMPLEX_NO_IMPLEMENTATION("");
+    return nullptr;
+}
+
+RDViewNodeInterface* RDViewParser::
+match_surface()
+{
+    SIMPLEX_NO_IMPLEMENTATION("");
+    return nullptr;
+}
+
+RDViewNodeInterface* RDViewParser::
+match_map_load()
+{
+    SIMPLEX_NO_IMPLEMENTATION("");
+    return nullptr;
+}
+
+RDViewNodeInterface* RDViewParser::
+match_map()
+{
+    SIMPLEX_NO_IMPLEMENTATION("");
+    return nullptr;
+}
+
+RDViewNodeInterface* RDViewParser::
+match_map_sample()
+{
+    SIMPLEX_NO_IMPLEMENTATION("");
+    return nullptr;
+}
+
+RDViewNodeInterface* RDViewParser::
+match_map_bound()
+{
+    SIMPLEX_NO_IMPLEMENTATION("");
+    return nullptr;
+}
+
+RDViewNodeInterface* RDViewParser::
+match_map_border()
+{
+    SIMPLEX_NO_IMPLEMENTATION("");
+    return nullptr;
+}
+
+RDViewNodeInterface* RDViewParser::
+match_primitive()
+{
+    SIMPLEX_NO_IMPLEMENTATION("");
+    return nullptr;
 }
