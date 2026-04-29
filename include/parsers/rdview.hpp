@@ -1630,7 +1630,7 @@ class RDViewParserError : public std::exception
         inline void set_message(const std::string &message) { this->message = message; }
         inline void set_message(std::string &&message) { this->message = message; }
 
-        inline virtual const char *what() const override
+        inline virtual const char *what() const noexcept override
         {
             return this->message.c_str();
         }
