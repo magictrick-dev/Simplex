@@ -4,44 +4,11 @@
 //      April 2026
 // -------------------------------------------------------------------------------------------------
 //
-// RDView Lexer
-// - Implementation Notes
-//          The lexer is a tokenizer design that uses a DFA to classify tokens. The implementation
-//          expects that the tokenizer's source file to remain in memory because it uses a string_view
-//          to the source. Tokens, by extension, also require this property and for a token to be valid
-//          for use, the source text must be in memory.
-//
-//          This effectively means you MUST NOT cache tokens. In short, the parser will immediately
-//          discord tokens as it consumes them. The parser itself does not rely on the text files
-//          being in memory after it successfully generates the AST.
-//
-//          TODO(Chris):    I intend to decouple tokens from the source and store their respective
-//                          values internal using std::variant, meaning tokens CAN be cached for use
-//                          on the GUI-side. The plan is to eventually use the tokenizer for syntax
-//                          highlighting later down the line (since its faster than using the AST).
-//
-// 
 // RDView Grammar
-// - Reference Notes
-//          The following grammar roughly describes how the RDView scripting language works.
-//          For the sake of my sanity, I left out some commands that I don't think I will be
-//          adding to the engine. Additionally, the grammar tries to closely replicate the original
-//          formatting requirements, but there will be some small deviations that would otherwise
-//          not be present in the original graphics renderer.
-//
-//          Additionally, the context free grammar syntax is a bit loose, you should be able to
-//          largely follow the intent if you get the basics of CFGs and regular expressions.
-//
-//          If you see any productions that have a ".[]" with some numerical constant inside,
-//          that's how many you should expect of that, likewise if you see ".[n]", it is parameter
-//          or property dependent (though it is fixed number). Something like a PolySet, for example,
-//          defines vertices and faces, and the number of elements of the vertex is defined by the string.
-//          The following values after that is determined by that information.
 //
 // - Structural 
-//          ROOT                    :   DISPLAY FORMAT (SINGLEFRAME_BODY | MULTIFRAME_BODY)
-//          SINGLEFRAME_BODY        :   (INCLUDE | PROPERTIES | DEFINITIONS)* WORLD EOF
-//          MULTIFRAME_BODY         :   (INCLUDE | PROPERTIES | DEFINITIONS)* (FRAME MULTIFRAME_BODY | EOF)
+//          ROOT                    :   DISPLAY FORMAT BODY
+//          BODY                    :   (INCLUDE | DEFINITIONS)* ((FRAME | WORLD) BODY | EOF)
 //          DEFINITIONS             :   OBJECT | OPTION_ARRAY | OPTION_BOOL | OPTION_LIST | 
 //                                      OPTION_REAL | OPTION_STRING
 // 
@@ -54,7 +21,6 @@
 //          WORLD                   :   "WorldBegin" WORLD_COMMANDS* "WorldEnd"
 //
 // - Properties
-//          PROPERTIES              :   FRAME_COMMANDS
 //          FRAME_COMMANDS          :   BACKGROUND | COLOR | OPACITY | CAMERA | LIGHTING | 
 //                                      SURFACE_ATTRIBUTES | MAP_LOAD | ATTRIBUTE_MAPPING | MAP
 //          WORLD_COMMANDS          :   OPACITY | COLOR | GEOMETRY | TRANSFORMS | LIGHTING |
@@ -128,46 +94,6 @@
 //          MAP_BOUND               :   "MapBound" string real real real real
 //          MAP_BORDER              :   "MapBorder" string string string
 //
-//
-// RDViewParser
-// - Implementation Notes
-//          The RDViewParser uses a standard recursive descent parser. Since the RDView language
-//          specification allows for file imports (basically just a copy-and-paste) but doesn't
-//          verify circular dependencies, I decided that I will do basic circular dependency checks
-//          since it isn't a hard process to do.
-//
-//          RDView files either contain a single world block or multiple frame + world blocks in series.
-//          Certain commands are only valid outside the frame block, outside the world block, or only
-//          in the world block. The root source file *must* define the display and format attributes
-//          in order *first* before any other commands. Object definitions must be tracked and unique,
-//          so much like a language that uses a symbol-table to track variable names and scope, we
-//          need to ensure that objects are also properly defined before they are used.
-//
-//              - Root-only Commands
-//              - Frame-only Commands
-//              - World-only Commands
-//              - World and Frame Commands
-//              - Root, World, and Frame Commands
-//
-//          Regarding includes, we make some basic assumptions that they are root-level only includes;
-//          meaning it's just a convienent way to separate more complex frame-sequences across multiple
-//          files. The include process simply lexically analyzes it, and treats it as if you're just
-//          adding more nodes in that spot.
-//
-//          Error handling in this parser is designed to be expressive enough that it will help a
-//          developer spot and find errors. In this rare case, exception handling is clean enough
-//          for this problem. If any error is present, the AST's final generation is considered
-//          invalid and traversal is considered undefined.
-//
-//          The visitor interface allows a developer to construct a custom tree-walk interpreter
-//          if required. Interfacing with an engine simply requires crafting a tree-walk visitor
-//          that invokes the engine interfaces that correspond to the commands in RDView. As you
-//          might imagine, certain commands might not exist in the engine interface, so a new visitor
-//          must be made for each engine to connects to. In cases where these don't exist, these just
-//          map to no-ops. A print visitor is defined for debugging and testing. A pretty-printer
-//          also exists to regurgitate a similar source file for comparison; useful to ensure that
-//          the grammar interpretation reflects developer intent.
-//
 // -------------------------------------------------------------------------------------------------
 #pragma once
 #include <utils/defs.hpp>
@@ -178,6 +104,7 @@
 #include <vector>
 #include <stack>
 #include <algorithm>
+#include <variant>
 
 enum RDViewTokenType
 {
@@ -481,8 +408,7 @@ enum RDViewNodeType
 {
     RDViewNodeType_NodeInterface,
     RDViewNodeType_Root,
-    RDViewNodeType_SingleframeBody,
-    RDViewNodeType_MultiframeBody,
+    RDViewNodeType_Body,
     RDViewNodeType_Definitions,
     RDViewNodeType_Include,
     RDViewNodeType_Display,
@@ -490,7 +416,6 @@ enum RDViewNodeType
     RDViewNodeType_Object,
     RDViewNodeType_Frame,
     RDViewNodeType_World,
-    RDViewNodeType_Properties,
     RDViewNodeType_FrameCommands,
     RDViewNodeType_WorldCommands,
     RDViewNodeType_ObjectCommands,
@@ -558,6 +483,92 @@ enum RDViewNodeType
     RDViewNodeType_Primitive,
 };
 
+inline const char *
+to_string(RDViewNodeType type)
+{
+    switch (type)
+    {
+        case RDViewNodeType_NodeInterface:      { return "RDViewNodeType_NodeInterface";     } break;
+        case RDViewNodeType_Root:               { return "RDViewNodeType_Root";              } break;
+        case RDViewNodeType_Body:               { return "RDViewNodeType_Body";              } break;
+        case RDViewNodeType_Definitions:        { return "RDViewNodeType_Definitions";       } break;
+        case RDViewNodeType_Include:            { return "RDViewNodeType_Include";           } break;
+        case RDViewNodeType_Display:            { return "RDViewNodeType_Display";           } break;
+        case RDViewNodeType_Format:             { return "RDViewNodeType_Format";            } break;
+        case RDViewNodeType_Object:             { return "RDViewNodeType_Object";            } break;
+        case RDViewNodeType_Frame:              { return "RDViewNodeType_Frame";             } break;
+        case RDViewNodeType_World:              { return "RDViewNodeType_World";             } break;
+        case RDViewNodeType_FrameCommands:      { return "RDViewNodeType_FrameCommands";     } break;
+        case RDViewNodeType_WorldCommands:      { return "RDViewNodeType_WorldCommands";     } break;
+        case RDViewNodeType_ObjectCommands:     { return "RDViewNodeType_ObjectCommands";    } break;
+        case RDViewNodeType_Camera:             { return "RDViewNodeType_Camera";            } break;
+        case RDViewNodeType_Geometry:           { return "RDViewNodeType_Geometry";          } break;
+        case RDViewNodeType_Transforms:         { return "RDViewNodeType_Transforms";        } break;
+        case RDViewNodeType_Lighting:           { return "RDViewNodeType_Lighting";          } break;
+        case RDViewNodeType_SurfaceAttributes:  { return "RDViewNodeType_SurfaceAttributes"; } break;
+        case RDViewNodeType_AttributeMapping:   { return "RDViewNodeType_AttributeMapping";  } break;
+        case RDViewNodeType_OptionArray:        { return "RDViewNodeType_OptionArray";       } break;
+        case RDViewNodeType_OptionBool:         { return "RDViewNodeType_OptionBool";        } break;
+        case RDViewNodeType_OptionList:         { return "RDViewNodeType_OptionList";        } break;
+        case RDViewNodeType_OptionReal:         { return "RDViewNodeType_OptionReal";        } break;
+        case RDViewNodeType_OptionString:       { return "RDViewNodeType_OptionString";      } break;
+        case RDViewNodeType_Background:         { return "RDViewNodeType_Background";        } break;
+        case RDViewNodeType_Color:              { return "RDViewNodeType_Color";             } break;
+        case RDViewNodeType_Opacity:            { return "RDViewNodeType_Opacity";           } break;
+        case RDViewNodeType_CameraAt:           { return "RDViewNodeType_CameraAt";          } break;
+        case RDViewNodeType_CameraEye:          { return "RDViewNodeType_CameraEye";         } break;
+        case RDViewNodeType_CameraFOV:          { return "RDViewNodeType_CameraFOV";         } break;
+        case RDViewNodeType_CameraUp:           { return "RDViewNodeType_CameraUp";          } break;
+        case RDViewNodeType_Clipping:           { return "RDViewNodeType_Clipping";          } break;
+        case RDViewNodeType_Point:              { return "RDViewNodeType_Point";             } break;
+        case RDViewNodeType_PointSet:           { return "RDViewNodeType_PointSet";          } break;
+        case RDViewNodeType_Line:               { return "RDViewNodeType_Line";              } break;
+        case RDViewNodeType_LineSet:            { return "RDViewNodeType_LineSet";           } break;
+        case RDViewNodeType_Circle:             { return "RDViewNodeType_Circle";            } break;
+        case RDViewNodeType_Fill:               { return "RDViewNodeType_Fill";              } break;
+        case RDViewNodeType_Cone:               { return "RDViewNodeType_Cone";              } break;
+        case RDViewNodeType_Cube:               { return "RDViewNodeType_Cube";              } break;
+        case RDViewNodeType_Curve:              { return "RDViewNodeType_Curve";             } break;
+        case RDViewNodeType_Cylinder:           { return "RDViewNodeType_Cylinder";          } break;
+        case RDViewNodeType_Disk:               { return "RDViewNodeType_Disk";              } break;
+        case RDViewNodeType_Hyperboloid:        { return "RDViewNodeType_Hyperboloid";       } break;
+        case RDViewNodeType_Paraboloid:         { return "RDViewNodeType_Paraboloid";        } break;
+        case RDViewNodeType_Patch:              { return "RDViewNodeType_Patch";             } break;
+        case RDViewNodeType_PolySet:            { return "RDViewNodeType_PolySet";           } break;
+        case RDViewNodeType_Sphere:             { return "RDViewNodeType_Sphere";            } break;
+        case RDViewNodeType_SqSphere:           { return "RDViewNodeType_SqSphere";          } break;
+        case RDViewNodeType_SqTorus:            { return "RDViewNodeType_SqTorus";           } break;
+        case RDViewNodeType_Torus:              { return "RDViewNodeType_Torus";             } break;
+        case RDViewNodeType_Tube:               { return "RDViewNodeType_Tube";              } break;
+        case RDViewNodeType_Subdivision:        { return "RDViewNodeType_Subdivision";       } break;
+        case RDViewNodeType_ObjectInstance:     { return "RDViewNodeType_ObjectInstance";    } break;
+        case RDViewNodeType_Matrix:             { return "RDViewNodeType_Matrix";            } break;
+        case RDViewNodeType_Rotate:             { return "RDViewNodeType_Rotate";            } break;
+        case RDViewNodeType_Scale:              { return "RDViewNodeType_Scale";             } break;
+        case RDViewNodeType_Translate:          { return "RDViewNodeType_Translate";         } break;
+        case RDViewNodeType_XformPush:          { return "RDViewNodeType_XformPush";         } break;
+        case RDViewNodeType_XformPop:           { return "RDViewNodeType_XformPop";          } break;
+        case RDViewNodeType_AmbientLight:       { return "RDViewNodeType_AmbientLight";      } break;
+        case RDViewNodeType_FarLight:           { return "RDViewNodeType_FarLight";          } break;
+        case RDViewNodeType_PointLight:         { return "RDViewNodeType_PointLight";        } break;
+        case RDViewNodeType_ConeLight:          { return "RDViewNodeType_ConeLight";         } break;
+        case RDViewNodeType_Ka:                 { return "RDViewNodeType_Ka";                } break;
+        case RDViewNodeType_Kd:                 { return "RDViewNodeType_Kd";                } break;
+        case RDViewNodeType_Ks:                 { return "RDViewNodeType_Ks";                } break;
+        case RDViewNodeType_Specular:           { return "RDViewNodeType_Specular";          } break;
+        case RDViewNodeType_Surface:            { return "RDViewNodeType_Surface";           } break;
+        case RDViewNodeType_MapLoad:            { return "RDViewNodeType_MapLoad";           } break;
+        case RDViewNodeType_Map:                { return "RDViewNodeType_Map";               } break;
+        case RDViewNodeType_MapSample:          { return "RDViewNodeType_MapSample";         } break;
+        case RDViewNodeType_MapBound:           { return "RDViewNodeType_MapBound";          } break;
+        case RDViewNodeType_MapBorder:          { return "RDViewNodeType_MapBorder";         } break;
+        case RDViewNodeType_Primitive:          { return "RDViewNodeType_Primitive";         } break;
+    }
+
+    SIMPLEX_NO_REACH("");
+    return "";
+}
+
 enum RDViewPrimitiveType
 {
     RDViewPrimitiveType_Integer,
@@ -565,6 +576,21 @@ enum RDViewPrimitiveType
     RDViewPrimitiveType_String,
     RDViewPrimitiveType_Boolean,
 };
+
+inline const char *
+to_string(RDViewPrimitiveType type)
+{
+    switch (type)
+    {
+        case RDViewPrimitiveType_Integer:   { return "RDViewPrimitiveType_Integer";  } break;
+        case RDViewPrimitiveType_Real:      { return "RDViewPrimitiveType_Real";     } break;
+        case RDViewPrimitiveType_String:    { return "RDViewPrimitiveType_String";   } break;
+        case RDViewPrimitiveType_Boolean:   { return "RDViewPrimitiveType_Boolean";  } break;
+    }
+
+    SIMPLEX_NO_REACH("");
+    return "";
+}
 
 class RDViewNodeVisitor;
 class RDViewNodeInterface
@@ -587,8 +613,7 @@ class RDViewNodeInterface
 };
 
 struct RDViewNodeRoot;
-struct RDViewNodeSingleframeBody;
-struct RDViewNodeMultiframeBody;
+struct RDViewNodeBody;
 struct RDViewNodeDefinitions;
 struct RDViewNodeInclude;
 struct RDViewNodeDisplay;
@@ -596,7 +621,6 @@ struct RDViewNodeFormat;
 struct RDViewNodeObject;
 struct RDViewNodeFrame;
 struct RDViewNodeWorld;
-struct RDViewNodeProperties;
 struct RDViewNodeFrameCommands;
 struct RDViewNodeWorldCommands;
 struct RDViewNodeObjectCommands;
@@ -668,8 +692,7 @@ class RDViewNodeVisitor
     public:
         virtual void accept(RDViewNodeInterface *node) { SIMPLEX_NO_REACH("Base node should not be traversed!"); }
         virtual void accept(RDViewNodeRoot *node) { };
-        virtual void accept(RDViewNodeSingleframeBody *node) { };
-        virtual void accept(RDViewNodeMultiframeBody *node) { };
+        virtual void accept(RDViewNodeBody *node) { };
         virtual void accept(RDViewNodeDefinitions *node) { };
         virtual void accept(RDViewNodeInclude *node) { };
         virtual void accept(RDViewNodeDisplay *node) { };
@@ -677,7 +700,6 @@ class RDViewNodeVisitor
         virtual void accept(RDViewNodeObject *node) { };
         virtual void accept(RDViewNodeFrame *node) { };
         virtual void accept(RDViewNodeWorld *node) { };
-        virtual void accept(RDViewNodeProperties *node) { };
         virtual void accept(RDViewNodeFrameCommands *node) { };
         virtual void accept(RDViewNodeWorldCommands *node) { };
         virtual void accept(RDViewNodeObjectCommands *node) { };
@@ -751,22 +773,20 @@ struct RDViewNodeRoot : public RDViewNodeInterface
         inline RDViewNodeRoot() { this->node_type = RDViewNodeType_Root; }
         inline virtual ~RDViewNodeRoot() { }
         inline void visit(RDViewNodeVisitor *visitor) { visitor->accept(this); }
+
+        RDViewNodeInterface *display = NULL;
+        RDViewNodeInterface *format = NULL;
+        RDViewNodeInterface *body = NULL;
 };
 
-struct RDViewNodeSingleframeBody : public RDViewNodeInterface 
+struct RDViewNodeBody : public RDViewNodeInterface 
 { 
     public:
-        inline RDViewNodeSingleframeBody() { this->node_type = RDViewNodeType_SingleframeBody; }
-        inline virtual ~RDViewNodeSingleframeBody() { }
+        inline RDViewNodeBody() { this->node_type = RDViewNodeType_Body; }
+        inline virtual ~RDViewNodeBody() { }
         inline virtual void visit(RDViewNodeVisitor *visitor) override { visitor->accept(this); }
-};
 
-struct RDViewNodeMultiframeBody : public RDViewNodeInterface 
-{ 
-    public:
-        inline RDViewNodeMultiframeBody() { this->node_type = RDViewNodeType_MultiframeBody; }
-        inline virtual ~RDViewNodeMultiframeBody() { }
-        inline virtual void visit(RDViewNodeVisitor *visitor) override { visitor->accept(this); }
+        std::vector<RDViewNodeInterface*> children;
 };
 
 struct RDViewNodeDefinitions : public RDViewNodeInterface 
@@ -775,6 +795,8 @@ struct RDViewNodeDefinitions : public RDViewNodeInterface
         inline RDViewNodeDefinitions() { this->node_type = RDViewNodeType_Definitions; }
         inline virtual ~RDViewNodeDefinitions() { }
         inline virtual void visit(RDViewNodeVisitor *visitor) override { visitor->accept(this); }
+
+        std::vector<RDViewNodeInterface*> children;
 };
 
 struct RDViewNodeInclude : public RDViewNodeInterface 
@@ -783,6 +805,26 @@ struct RDViewNodeInclude : public RDViewNodeInterface
         inline RDViewNodeInclude() { this->node_type = RDViewNodeType_Include; }
         inline virtual ~RDViewNodeInclude() { }
         inline virtual void visit(RDViewNodeVisitor *visitor) override { visitor->accept(this); }
+
+        std::string input_path;
+        std::filesystem::path canonical_path;
+        RDViewNodeInterface *body;
+};
+
+enum RDViewDisplayType
+{
+    RDViewDisplayType_Screen,   // Screen via GUI.
+    RDViewDisplayType_PNM,      // Output directly as PNM.
+    RDViewDisplayType_BMP,      // Output directly as BMP.
+    RDViewDisplayType_PNG,      // Output directly as PNG.
+};
+
+enum RDViewModeType
+{
+    RDViewModeType_RGB,         // Double buffer, regardless.
+    RDViewModeType_RGBSingle,   // Single buffer, immediate draw.
+    RDViewModeType_RGBObject,   // Double buffer, render only after object is drawn.
+    RDViewModeType_RGBDouble,   // Double buffer, wait until render pass is complete.
 };
 
 struct RDViewNodeDisplay : public RDViewNodeInterface 
@@ -791,6 +833,11 @@ struct RDViewNodeDisplay : public RDViewNodeInterface
         inline RDViewNodeDisplay() { this->node_type = RDViewNodeType_Display; }
         inline virtual ~RDViewNodeDisplay() { }
         inline virtual void visit(RDViewNodeVisitor *visitor) override { visitor->accept(this); }
+
+        std::string display_title;
+        RDViewDisplayType display_type;
+        RDViewModeType screen_type;
+        
 };
 
 struct RDViewNodeFormat : public RDViewNodeInterface 
@@ -799,6 +846,10 @@ struct RDViewNodeFormat : public RDViewNodeInterface
         inline RDViewNodeFormat() { this->node_type = RDViewNodeType_Format; }
         inline virtual ~RDViewNodeFormat() { }
         inline virtual void visit(RDViewNodeVisitor *visitor) override { visitor->accept(this); }
+
+        int32_t width = 640;
+        int32_t height = 480;
+
 };
 
 struct RDViewNodeObject : public RDViewNodeInterface 
@@ -815,6 +866,10 @@ struct RDViewNodeFrame : public RDViewNodeInterface
         inline RDViewNodeFrame() { this->node_type = RDViewNodeType_Frame; }
         inline virtual ~RDViewNodeFrame() { }
         inline virtual void visit(RDViewNodeVisitor *visitor) override { visitor->accept(this); }
+
+        int32_t frame_number;
+        RDViewNodeInterface *world;
+        std::vector<RDViewNodeInterface*> children;
 };
 
 struct RDViewNodeWorld : public RDViewNodeInterface 
@@ -823,38 +878,8 @@ struct RDViewNodeWorld : public RDViewNodeInterface
         inline RDViewNodeWorld() { this->node_type = RDViewNodeType_World; }
         inline virtual ~RDViewNodeWorld() { }
         inline virtual void visit(RDViewNodeVisitor *visitor) override { visitor->accept(this); }
-};
 
-struct RDViewNodeProperties : public RDViewNodeInterface 
-{ 
-    public:
-        inline RDViewNodeProperties() { this->node_type = RDViewNodeType_Properties; }
-        inline virtual ~RDViewNodeProperties() { }
-        inline virtual void visit(RDViewNodeVisitor *visitor) override { visitor->accept(this); }
-};
-
-struct RDViewNodeFrameCommands : public RDViewNodeInterface 
-{ 
-    public:
-        inline RDViewNodeFrameCommands() { this->node_type = RDViewNodeType_FrameCommands; }
-        inline virtual ~RDViewNodeFrameCommands() { }
-        inline virtual void visit(RDViewNodeVisitor *visitor) override { visitor->accept(this); }
-};
-
-struct RDViewNodeWorldCommands : public RDViewNodeInterface
-{
-    public:
-        inline RDViewNodeWorldCommands() { this->node_type = RDViewNodeType_WorldCommands; }
-        inline virtual ~RDViewNodeWorldCommands() { }
-        inline virtual void visit(RDViewNodeVisitor *visitor) override { visitor->accept(this); }
-};
-
-struct RDViewNodeObjectCommands : public RDViewNodeInterface
-{
-    public:
-        inline RDViewNodeObjectCommands() { this->node_type = RDViewNodeType_ObjectCommands; }
-        inline virtual ~RDViewNodeObjectCommands() { }
-        inline virtual void visit(RDViewNodeVisitor *visitor) override { visitor->accept(this); }
+        std::vector<RDViewNodeInterface*> children;
 };
 
 struct RDViewNodeCamera : public RDViewNodeInterface
@@ -911,6 +936,9 @@ struct RDViewNodeOptionArray : public RDViewNodeInterface
         inline RDViewNodeOptionArray() { this->node_type = RDViewNodeType_OptionArray; }
         inline virtual ~RDViewNodeOptionArray() { }
         inline virtual void visit(RDViewNodeVisitor *visitor) override { visitor->accept(this); }
+
+        std::string name;
+        std::vector<real32_t> values;
 };
 
 struct RDViewNodeOptionBool : public RDViewNodeInterface 
@@ -919,6 +947,9 @@ struct RDViewNodeOptionBool : public RDViewNodeInterface
         inline RDViewNodeOptionBool() { this->node_type = RDViewNodeType_OptionBool; }
         inline virtual ~RDViewNodeOptionBool() { }
         inline virtual void visit(RDViewNodeVisitor *visitor) override { visitor->accept(this); }
+
+        std::string name;
+        int32_t value;
 };
 
 struct RDViewNodeOptionList : public RDViewNodeInterface 
@@ -927,22 +958,35 @@ struct RDViewNodeOptionList : public RDViewNodeInterface
         inline RDViewNodeOptionList() { this->node_type = RDViewNodeType_OptionList; }
         inline virtual ~RDViewNodeOptionList() { }
         inline virtual void visit(RDViewNodeVisitor *visitor) override { visitor->accept(this); }
+
+        std::string name;
+        std::vector<std::string> values;
 };
 
 struct RDViewNodeOptionReal : public RDViewNodeInterface 
 { 
+
     public:
         inline RDViewNodeOptionReal() { this->node_type = RDViewNodeType_OptionReal; }
         inline virtual ~RDViewNodeOptionReal() { }
         inline virtual void visit(RDViewNodeVisitor *visitor) override { visitor->accept(this); }
+
+        std::string name;
+        real32_t value;
+
 };
 
 struct RDViewNodeOptionString : public RDViewNodeInterface 
 { 
+
     public:
         inline RDViewNodeOptionString() { this->node_type = RDViewNodeType_OptionString; }
         inline virtual ~RDViewNodeOptionString() { }
         inline virtual void visit(RDViewNodeVisitor *visitor) override { visitor->accept(this); }
+
+        std::string name;
+        std::string value;
+
 };
 
 struct RDViewNodeBackground : public RDViewNodeInterface 
@@ -951,6 +995,10 @@ struct RDViewNodeBackground : public RDViewNodeInterface
         inline RDViewNodeBackground() { this->node_type = RDViewNodeType_Background; }
         inline virtual ~RDViewNodeBackground() { }
         inline virtual void visit(RDViewNodeVisitor *visitor) override { visitor->accept(this); }
+
+        real32_t red;
+        real32_t green;
+        real32_t blue;
 };
 
 struct RDViewNodeColor : public RDViewNodeInterface 
@@ -959,6 +1007,10 @@ struct RDViewNodeColor : public RDViewNodeInterface
         inline RDViewNodeColor() { this->node_type = RDViewNodeType_Color; }
         inline virtual ~RDViewNodeColor() { }
         inline virtual void visit(RDViewNodeVisitor *visitor) override { visitor->accept(this); }
+
+        real32_t red;
+        real32_t green;
+        real32_t blue;
 };
 
 struct RDViewNodeOpacity : public RDViewNodeInterface 
@@ -967,6 +1019,8 @@ struct RDViewNodeOpacity : public RDViewNodeInterface
         inline RDViewNodeOpacity() { this->node_type = RDViewNodeType_Opacity; }
         inline virtual ~RDViewNodeOpacity() { }
         inline virtual void visit(RDViewNodeVisitor *visitor) override { visitor->accept(this); }
+
+        real32_t opacity;
 };
 
 struct RDViewNodeCameraAt : public RDViewNodeInterface 
@@ -975,6 +1029,11 @@ struct RDViewNodeCameraAt : public RDViewNodeInterface
         inline RDViewNodeCameraAt() { this->node_type = RDViewNodeType_CameraAt; }
         inline virtual ~RDViewNodeCameraAt() { }
         inline virtual void visit(RDViewNodeVisitor *visitor) override { visitor->accept(this); }
+
+        real32_t x;
+        real32_t y;
+        real32_t z;
+
 };
 
 struct RDViewNodeCameraEye : public RDViewNodeInterface 
@@ -983,6 +1042,10 @@ struct RDViewNodeCameraEye : public RDViewNodeInterface
         inline RDViewNodeCameraEye() { this->node_type = RDViewNodeType_CameraEye; }
         inline virtual ~RDViewNodeCameraEye() { }
         inline virtual void visit(RDViewNodeVisitor *visitor) override { visitor->accept(this); }
+
+        real32_t x;
+        real32_t y;
+        real32_t z;
 };
 
 struct RDViewNodeCameraFOV : public RDViewNodeInterface
@@ -991,6 +1054,8 @@ struct RDViewNodeCameraFOV : public RDViewNodeInterface
         inline RDViewNodeCameraFOV() { this->node_type = RDViewNodeType_CameraFOV; }
         inline virtual ~RDViewNodeCameraFOV() { }
         inline virtual void visit(RDViewNodeVisitor *visitor) override { visitor->accept(this); }
+
+        real32_t FOV;
 };
 
 struct RDViewNodeCameraUp : public RDViewNodeInterface
@@ -999,6 +1064,10 @@ struct RDViewNodeCameraUp : public RDViewNodeInterface
         inline RDViewNodeCameraUp() { this->node_type = RDViewNodeType_CameraUp; }
         inline virtual ~RDViewNodeCameraUp() { }
         inline virtual void visit(RDViewNodeVisitor *visitor) override { visitor->accept(this); }
+
+        real32_t x;
+        real32_t y;
+        real32_t z;
 };
 
 struct RDViewNodeClipping : public RDViewNodeInterface
@@ -1007,6 +1076,9 @@ struct RDViewNodeClipping : public RDViewNodeInterface
         inline RDViewNodeClipping() { this->node_type = RDViewNodeType_Clipping; }
         inline virtual ~RDViewNodeClipping() { }
         inline virtual void visit(RDViewNodeVisitor *visitor) override { visitor->accept(this); }
+
+        real32_t near;
+        real32_t far;
 };
 
 struct RDViewNodePoint : public RDViewNodeInterface 
@@ -1015,6 +1087,10 @@ struct RDViewNodePoint : public RDViewNodeInterface
         inline RDViewNodePoint() { this->node_type = RDViewNodeType_Point; }
         inline virtual ~RDViewNodePoint() { }
         inline virtual void visit(RDViewNodeVisitor *visitor) override { visitor->accept(this); }
+
+        real32_t x;
+        real32_t y;
+        real32_t z;
 };
 
 struct RDViewNodePointSet : public RDViewNodeInterface 
@@ -1023,6 +1099,10 @@ struct RDViewNodePointSet : public RDViewNodeInterface
         inline RDViewNodePointSet() { this->node_type = RDViewNodeType_PointSet; }
         inline virtual ~RDViewNodePointSet() { }
         inline virtual void visit(RDViewNodeVisitor *visitor) override { visitor->accept(this); }
+
+        std::string format;
+        size_t vertices;
+        std::vector<real32_t> values;
 };
 
 struct RDViewNodeLine : public RDViewNodeInterface 
@@ -1031,6 +1111,14 @@ struct RDViewNodeLine : public RDViewNodeInterface
         inline RDViewNodeLine() { this->node_type = RDViewNodeType_Line; }
         inline virtual ~RDViewNodeLine() { }
         inline virtual void visit(RDViewNodeVisitor *visitor) override { visitor->accept(this); }
+
+        real32_t x1;
+        real32_t y1;
+        real32_t z1;
+
+        real32_t x2;
+        real32_t y2;
+        real32_t z2;
 };
 
 struct RDViewNodeLineSet : public RDViewNodeInterface 
@@ -1039,6 +1127,12 @@ struct RDViewNodeLineSet : public RDViewNodeInterface
         inline RDViewNodeLineSet() { this->node_type = RDViewNodeType_LineSet; }
         inline virtual ~RDViewNodeLineSet() { }
         inline virtual void visit(RDViewNodeVisitor *visitor) override { visitor->accept(this); }
+
+        std::string format;
+        size_t vertices;
+        size_t indices;
+        std::vector<real32_t> vertex_values;
+        std::vector<int32_t> indices;
 };
 
 struct RDViewNodeCircle : public RDViewNodeInterface 
@@ -1047,6 +1141,11 @@ struct RDViewNodeCircle : public RDViewNodeInterface
         inline RDViewNodeCircle() { this->node_type = RDViewNodeType_Circle; }
         inline virtual ~RDViewNodeCircle() { }
         inline virtual void visit(RDViewNodeVisitor *visitor) override { visitor->accept(this); }
+
+        real32_t x;
+        real32_t y;
+        real32_t z;
+        real32_t radius;
 };
 
 struct RDViewNodeFill : public RDViewNodeInterface 
@@ -1055,6 +1154,10 @@ struct RDViewNodeFill : public RDViewNodeInterface
         inline RDViewNodeFill() { this->node_type = RDViewNodeType_Fill; }
         inline virtual ~RDViewNodeFill() { }
         inline virtual void visit(RDViewNodeVisitor *visitor) override { visitor->accept(this); }
+
+        real32_t x;
+        real32_t y;
+        real32_t z;
 };
 
 struct RDViewNodeCone : public RDViewNodeInterface 
@@ -1063,6 +1166,10 @@ struct RDViewNodeCone : public RDViewNodeInterface
         inline RDViewNodeCone() { this->node_type = RDViewNodeType_Cone; }
         inline virtual ~RDViewNodeCone() { }
         inline virtual void visit(RDViewNodeVisitor *visitor) override { visitor->accept(this); }
+
+        real32_t height;
+        real32_t radius;
+        real32_t theta;
 };
 
 struct RDViewNodeCube : public RDViewNodeInterface 
@@ -1087,6 +1194,11 @@ struct RDViewNodeCylinder : public RDViewNodeInterface
         inline RDViewNodeCylinder() { this->node_type = RDViewNodeType_Cylinder; }
         inline virtual ~RDViewNodeCylinder() { }
         inline virtual void visit(RDViewNodeVisitor *visitor) override { visitor->accept(this); }
+
+        real32_t radius;
+        real32_t z_min;
+        real32_t z_max;
+        real32_t theta;
 };
 
 struct RDViewNodeDisk : public RDViewNodeInterface 
@@ -1095,6 +1207,10 @@ struct RDViewNodeDisk : public RDViewNodeInterface
         inline RDViewNodeDisk() { this->node_type = RDViewNodeType_Disk; }
         inline virtual ~RDViewNodeDisk() { }
         inline virtual void visit(RDViewNodeVisitor *visitor) override { visitor->accept(this); }
+
+        real32_t height;
+        real32_t radius;
+        real32_t theta;
 };
 
 struct RDViewNodeHyperboloid : public RDViewNodeInterface 
@@ -1103,6 +1219,14 @@ struct RDViewNodeHyperboloid : public RDViewNodeInterface
         inline RDViewNodeHyperboloid() { this->node_type = RDViewNodeType_Hyperboloid; }
         inline virtual ~RDViewNodeHyperboloid() { }
         inline virtual void visit(RDViewNodeVisitor *visitor) override { visitor->accept(this); }
+
+        real32_t x1;
+        real32_t y1;
+        real32_t z1;
+        real32_t x2;
+        real32_t y2;
+        real32_t z2;
+        real32_t theta;
 };
 
 struct RDViewNodeParaboloid : public RDViewNodeInterface 
@@ -1111,6 +1235,16 @@ struct RDViewNodeParaboloid : public RDViewNodeInterface
         inline RDViewNodeParaboloid() { this->node_type = RDViewNodeType_Paraboloid; }
         inline virtual ~RDViewNodeParaboloid() { }
         inline virtual void visit(RDViewNodeVisitor *visitor) override { visitor->accept(this); }
+
+        real32_t radius;
+        real32_t z_min;
+        real32_t z_max;
+        real32_t theta;
+};
+
+enum RDViewPatchType
+{
+    RDViewPatchType_Bezier,
 };
 
 struct RDViewNodePatch : public RDViewNodeInterface 
@@ -1119,6 +1253,10 @@ struct RDViewNodePatch : public RDViewNodeInterface
         inline RDViewNodePatch() { this->node_type = RDViewNodeType_Patch; }
         inline virtual ~RDViewNodePatch() { }
         inline virtual void visit(RDViewNodeVisitor *visitor) override { visitor->accept(this); }
+
+        RDViewPatchType patch_type;
+        std::string format;
+        std::vector<real32_t> values;
 };
 
 struct RDViewNodePolySet : public RDViewNodeInterface 
@@ -1127,6 +1265,12 @@ struct RDViewNodePolySet : public RDViewNodeInterface
         inline RDViewNodePolySet() { this->node_type = RDViewNodeType_PolySet; }
         inline virtual ~RDViewNodePolySet() { }
         inline virtual void visit(RDViewNodeVisitor *visitor) override { visitor->accept(this); }
+
+        std::string format;
+        size_t vertices;
+        size_t indices;
+        std::vector<real32_t> vertex_values;
+        std::vector<int32_t> index_values;
 };
 
 struct RDViewNodeSphere : public RDViewNodeInterface 
@@ -1135,6 +1279,11 @@ struct RDViewNodeSphere : public RDViewNodeInterface
         inline RDViewNodeSphere() { this->node_type = RDViewNodeType_Sphere; }
         inline virtual ~RDViewNodeSphere() { }
         inline virtual void visit(RDViewNodeVisitor *visitor) override { visitor->accept(this); }
+
+        real32_t radius;
+        real32_t z_min;
+        real32_t z_max;
+        real32_t theta;
 };
 
 struct RDViewNodeSqSphere : public RDViewNodeInterface 
@@ -1143,6 +1292,13 @@ struct RDViewNodeSqSphere : public RDViewNodeInterface
         inline RDViewNodeSqSphere() { this->node_type = RDViewNodeType_SqSphere; }
         inline virtual ~RDViewNodeSqSphere() { }
         inline virtual void visit(RDViewNodeVisitor *visitor) override { visitor->accept(this); }
+
+        real32_t radius;
+        real32_t n;
+        real32_t e;
+        real32_t z_min;
+        real32_t z_max;
+        real32_t theta;
 };
 
 struct RDViewNodeSqTorus : public RDViewNodeInterface 
@@ -1151,6 +1307,14 @@ struct RDViewNodeSqTorus : public RDViewNodeInterface
         inline RDViewNodeSqTorus() { this->node_type = RDViewNodeType_SqTorus; }
         inline virtual ~RDViewNodeSqTorus() { }
         inline virtual void visit(RDViewNodeVisitor *visitor) override { visitor->accept(this); }
+
+        real32_t radius_a;
+        real32_t radius_b;
+        real32_t n;
+        real32_t e;
+        real32_t phi_min;
+        real32_t phi_max;
+        real32_t theta_max;
 };
 
 struct RDViewNodeTorus : public RDViewNodeInterface 
@@ -1159,6 +1323,12 @@ struct RDViewNodeTorus : public RDViewNodeInterface
         inline RDViewNodeTorus() { this->node_type = RDViewNodeType_Torus; }
         inline virtual ~RDViewNodeTorus() { }
         inline virtual void visit(RDViewNodeVisitor *visitor) override { visitor->accept(this); }
+
+        real32_t radius_a;
+        real32_t radius_b;
+        real32_t phi_min;
+        real32_t phi_max;
+        real32_t theta_max;
 };
 
 struct RDViewNodeTube : public RDViewNodeInterface
@@ -1167,6 +1337,14 @@ struct RDViewNodeTube : public RDViewNodeInterface
         inline RDViewNodeTube() { this->node_type = RDViewNodeType_Tube; }
         inline virtual ~RDViewNodeTube() { }
         inline virtual void visit(RDViewNodeVisitor *visitor) override { visitor->accept(this); }
+
+        real32_t x1;
+        real32_t y1;
+        real32_t z1;
+        real32_t x2;
+        real32_t y2;
+        real32_t z2;
+        real32_t radius;
 };
 
 struct RDViewNodeSubdivision : public RDViewNodeInterface
@@ -1183,6 +1361,9 @@ struct RDViewNodeObjectInstance : public RDViewNodeInterface
         inline RDViewNodeObjectInstance() { this->node_type = RDViewNodeType_ObjectInstance; }
         inline virtual ~RDViewNodeObjectInstance() { }
         inline virtual void visit(RDViewNodeVisitor *visitor) override { visitor->accept(this); }
+
+        std::string name;
+        std::vector<real32_t> parameters;
 };
 
 struct RDViewNodeMatrix : public RDViewNodeInterface 
@@ -1191,6 +1372,15 @@ struct RDViewNodeMatrix : public RDViewNodeInterface
         inline RDViewNodeMatrix() { this->node_type = RDViewNodeType_Matrix; }
         inline virtual ~RDViewNodeMatrix() { }
         inline virtual void visit(RDViewNodeVisitor *visitor) override { visitor->accept(this); }
+
+        std::vector<real32_t> values;
+};
+
+enum RDViewRotationAxis
+{
+    RDViewRotationAxis_X,
+    RDViewRotationAxis_Y,
+    RDViewRotationAxis_Z,
 };
 
 struct RDViewNodeRotate : public RDViewNodeInterface 
@@ -1199,6 +1389,10 @@ struct RDViewNodeRotate : public RDViewNodeInterface
         inline RDViewNodeRotate() { this->node_type = RDViewNodeType_Rotate; }
         inline virtual ~RDViewNodeRotate() { }
         inline virtual void visit(RDViewNodeVisitor *visitor) override { visitor->accept(this); }
+
+        RDViewRotationAxis axis;
+        real32_t angle;
+        
 };
 
 struct RDViewNodeScale : public RDViewNodeInterface 
@@ -1207,6 +1401,10 @@ struct RDViewNodeScale : public RDViewNodeInterface
         inline RDViewNodeScale() { this->node_type = RDViewNodeType_Scale; }
         inline virtual ~RDViewNodeScale() { }
         inline virtual void visit(RDViewNodeVisitor *visitor) override { visitor->accept(this); }
+
+        real32_t x;
+        real32_t y;
+        real32_t z;
 };
 
 struct RDViewNodeTranslate : public RDViewNodeInterface 
@@ -1215,6 +1413,10 @@ struct RDViewNodeTranslate : public RDViewNodeInterface
         inline RDViewNodeTranslate() { this->node_type = RDViewNodeType_Translate; }
         inline virtual ~RDViewNodeTranslate() { }
         inline virtual void visit(RDViewNodeVisitor *visitor) override { visitor->accept(this); }
+
+        real32_t x;
+        real32_t y;
+        real32_t z;
 };
 
 struct RDViewNodeXformPush : public RDViewNodeInterface 
@@ -1239,6 +1441,11 @@ struct RDViewNodeAmbientLight : public RDViewNodeInterface
         inline RDViewNodeAmbientLight() { this->node_type = RDViewNodeType_AmbientLight; }
         inline virtual ~RDViewNodeAmbientLight() { }
         inline virtual void visit(RDViewNodeVisitor *visitor) override { visitor->accept(this); }
+
+        real32_t r;
+        real32_t g;
+        real32_t b;
+        real32_t intensity;
 };
 
 struct RDViewNodeFarLight : public RDViewNodeInterface 
@@ -1247,6 +1454,14 @@ struct RDViewNodeFarLight : public RDViewNodeInterface
         inline RDViewNodeFarLight() { this->node_type = RDViewNodeType_FarLight; }
         inline virtual ~RDViewNodeFarLight() { }
         inline virtual void visit(RDViewNodeVisitor *visitor) override { visitor->accept(this); }
+        
+        real32_t l_x;
+        real32_t l_y;
+        real32_t l_z;
+        real32_t r;
+        real32_t g;
+        real32_t b;
+        real32_t intensity;
 };
 
 struct RDViewNodePointLight : public RDViewNodeInterface 
@@ -1255,6 +1470,14 @@ struct RDViewNodePointLight : public RDViewNodeInterface
         inline RDViewNodePointLight() { this->node_type = RDViewNodeType_PointLight; }
         inline virtual ~RDViewNodePointLight() { }
         inline virtual void visit(RDViewNodeVisitor *visitor) override { visitor->accept(this); }
+
+        real32_t p_x;
+        real32_t p_y;
+        real32_t p_z;
+        real32_t r;
+        real32_t g;
+        real32_t b;
+        real32_t intensity;
 };
 
 struct RDViewNodeConeLight : public RDViewNodeInterface 
@@ -1263,6 +1486,19 @@ struct RDViewNodeConeLight : public RDViewNodeInterface
         inline RDViewNodeConeLight() { this->node_type = RDViewNodeType_ConeLight; }
         inline virtual ~RDViewNodeConeLight() { }
         inline virtual void visit(RDViewNodeVisitor *visitor) override { visitor->accept(this); }
+
+        real32_t p_x;
+        real32_t p_y;
+        real32_t p_z;
+        real32_t a_x;
+        real32_t a_y;
+        real32_t a_z;
+        real32_t theta_min;
+        real32_t theta_max;
+        real32_t r;
+        real32_t g;
+        real32_t b;
+        real32_t intensity;
 };
 
 struct RDViewNodeKa : public RDViewNodeInterface 
@@ -1271,6 +1507,8 @@ struct RDViewNodeKa : public RDViewNodeInterface
         inline RDViewNodeKa() { this->node_type = RDViewNodeType_Ka; }
         inline virtual ~RDViewNodeKa() { }
         inline virtual void visit(RDViewNodeVisitor *visitor) override { visitor->accept(this); }
+
+        real32_t value;
 };
 
 struct RDViewNodeKd : public RDViewNodeInterface 
@@ -1279,6 +1517,8 @@ struct RDViewNodeKd : public RDViewNodeInterface
         inline RDViewNodeKd() { this->node_type = RDViewNodeType_Kd; }
         inline virtual ~RDViewNodeKd() { }
         inline virtual void visit(RDViewNodeVisitor *visitor) override { visitor->accept(this); }
+
+        real32_t value;
 };
 
 struct RDViewNodeKs : public RDViewNodeInterface 
@@ -1287,6 +1527,8 @@ struct RDViewNodeKs : public RDViewNodeInterface
         inline RDViewNodeKs() { this->node_type = RDViewNodeType_Ks; }
         inline virtual ~RDViewNodeKs() { }
         inline virtual void visit(RDViewNodeVisitor *visitor) override { visitor->accept(this); }
+
+        real32_t value;
 };
 
 struct RDViewNodeSpecular : public RDViewNodeInterface 
@@ -1295,6 +1537,19 @@ struct RDViewNodeSpecular : public RDViewNodeInterface
         inline RDViewNodeSpecular() { this->node_type = RDViewNodeType_Specular; }
         inline virtual ~RDViewNodeSpecular() { }
         inline virtual void visit(RDViewNodeVisitor *visitor) override { visitor->accept(this); }
+
+        real32_t r;
+        real32_t g;
+        real32_t b;
+        real32_t n;
+};
+
+enum RDViewShaderType
+{
+    RDViewShaderType_Matte,
+    RDViewShaderType_Metal,
+    RDViewShaderType_Plastic,
+    RDViewShaderType_PaintedPlastic,
 };
 
 struct RDViewNodeSurface : public RDViewNodeInterface 
@@ -1303,6 +1558,15 @@ struct RDViewNodeSurface : public RDViewNodeInterface
         inline RDViewNodeSurface() { this->node_type = RDViewNodeType_Surface; }
         inline virtual ~RDViewNodeSurface() { }
         inline virtual void visit(RDViewNodeVisitor *visitor) override { visitor->accept(this); }
+
+        RDViewShaderType shader_type;
+};
+
+enum RDViewMapType
+{
+    RDViewMapType_None,
+    RDViewMapType_TextureMap,
+    RDViewMapType_BumpMap,
 };
 
 struct RDViewNodeMapLoad : public RDViewNodeInterface 
@@ -1311,6 +1575,10 @@ struct RDViewNodeMapLoad : public RDViewNodeInterface
         inline RDViewNodeMapLoad() { this->node_type = RDViewNodeType_MapLoad; }
         inline virtual ~RDViewNodeMapLoad() { }
         inline virtual void visit(RDViewNodeVisitor *visitor) override { visitor->accept(this); }
+
+        std::string input_path;
+        std::filesystem::path canonical_path;
+        std::string label;
 };
 
 struct RDViewNodeMap : public RDViewNodeInterface 
@@ -1319,6 +1587,16 @@ struct RDViewNodeMap : public RDViewNodeInterface
         inline RDViewNodeMap() { this->node_type = RDViewNodeType_Map; }
         inline virtual ~RDViewNodeMap() { }
         inline virtual void visit(RDViewNodeVisitor *visitor) override { visitor->accept(this); }
+
+        RDViewMapType map_type;
+        std::string label;
+        
+};
+
+enum RDViewMapLevelType
+{
+    RDViewMapLevelType_Nearest,
+    RDViewMapLevelType_Linear,
 };
 
 struct RDViewNodeMapSample : public RDViewNodeInterface 
@@ -1327,6 +1605,10 @@ struct RDViewNodeMapSample : public RDViewNodeInterface
         inline RDViewNodeMapSample() { this->node_type = RDViewNodeType_MapSample; }
         inline virtual ~RDViewNodeMapSample() { }
         inline virtual void visit(RDViewNodeVisitor *visitor) override { visitor->accept(this); }
+
+        RDViewMapType map_type;
+        RDViewMapLevelType intra_level_type;
+        RDViewMapLevelType inter_level_type;
 };
 
 struct RDViewNodeMapBound : public RDViewNodeInterface 
@@ -1335,6 +1617,19 @@ struct RDViewNodeMapBound : public RDViewNodeInterface
         inline RDViewNodeMapBound() { this->node_type = RDViewNodeType_MapBound; }
         inline virtual ~RDViewNodeMapBound() { }
         inline virtual void visit(RDViewNodeVisitor *visitor) override { visitor->accept(this); }
+
+        RDViewMapType map_type;
+        real32_t s_min;
+        real32_t t_min;
+        real32_t s_max;
+        real32_t t_max;
+};
+
+enum RDViewBorderType
+{
+    RDViewMapBorderType_None,
+    RDViewMapBorderType_Clamp,
+    RDViewMapBorderType_Repeat,
 };
 
 struct RDViewNodeMapBorder : public RDViewNodeInterface 
@@ -1343,6 +1638,10 @@ struct RDViewNodeMapBorder : public RDViewNodeInterface
         inline RDViewNodeMapBorder() { this->node_type = RDViewNodeType_MapBorder; }
         inline virtual ~RDViewNodeMapBorder() { }
         inline virtual void visit(RDViewNodeVisitor *visitor) override { visitor->accept(this); }
+
+        RDViewMapType map_type;
+        RDViewBorderType horizontal_border_type;
+        RDViewBorderType vertical_border_type;
 };
 
 struct RDViewNodePrimitive : public RDViewNodeInterface
@@ -1351,6 +1650,9 @@ struct RDViewNodePrimitive : public RDViewNodeInterface
         inline RDViewNodePrimitive() { this->node_type = RDViewNodeType_Primitive; }
         inline ~RDViewNodePrimitive() { }
         inline virtual void visit(RDViewNodeVisitor *visitor) override { visitor->accept(this); }
+
+        RDViewPrimitiveType primitive_type;
+        std::variant<int64_t, real64_t, bool, std::string> primitive_value;
 };
 
 class RDViewParser
@@ -1360,21 +1662,16 @@ class RDViewParser
         ~RDViewParser();
 
     private:
-        
-        // Core structural nodes.
         RDViewNodeInterface* match_root();
-        RDViewNodeInterface* match_singleframe_body();
-        RDViewNodeInterface* match_multiframe_body();
+        RDViewNodeInterface* match_body();
         RDViewNodeInterface* match_definitions();
 
-        // Semi-structural nodes.
         RDViewNodeInterface* match_include();
         RDViewNodeInterface* match_display();
         RDViewNodeInterface* match_format();
         RDViewNodeInterface* match_object();
         RDViewNodeInterface* match_frame();
         RDViewNodeInterface* match_world();
-        RDViewNodeInterface* match_properties();
         RDViewNodeInterface* match_frame_commands();
         RDViewNodeInterface* match_world_commands();
         RDViewNodeInterface* match_object_commands();
@@ -1385,7 +1682,6 @@ class RDViewParser
         RDViewNodeInterface* match_surface_attributes();
         RDViewNodeInterface* match_attribute_mapping();
 
-        // Commands
         RDViewNodeInterface* match_option_array();
         RDViewNodeInterface* match_option_bool();
         RDViewNodeInterface* match_option_list();

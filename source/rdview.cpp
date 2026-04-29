@@ -775,8 +775,6 @@ RDViewParser::
 
 }
 
-// Core structural nodes.
-
 RDViewNodeInterface* RDViewParser::
 match_root()
 {
@@ -785,14 +783,7 @@ match_root()
 }
 
 RDViewNodeInterface* RDViewParser::
-match_singleframe_body()
-{
-    SIMPLEX_NO_IMPLEMENTATION("");
-    return nullptr;
-}
-
-RDViewNodeInterface* RDViewParser::
-match_multiframe_body()
+match_body()
 {
     SIMPLEX_NO_IMPLEMENTATION("");
     return nullptr;
@@ -804,8 +795,6 @@ match_definitions()
     SIMPLEX_NO_IMPLEMENTATION("");
     return nullptr;
 }
-
-// Semi-structural nodes.
 
 RDViewNodeInterface* RDViewParser::
 match_include()
@@ -844,13 +833,6 @@ match_frame()
 
 RDViewNodeInterface* RDViewParser::
 match_world()
-{
-    SIMPLEX_NO_IMPLEMENTATION("");
-    return nullptr;
-}
-
-RDViewNodeInterface* RDViewParser::
-match_properties()
 {
     SIMPLEX_NO_IMPLEMENTATION("");
     return nullptr;
@@ -918,8 +900,6 @@ match_attribute_mapping()
     SIMPLEX_NO_IMPLEMENTATION("");
     return nullptr;
 }
-
-// Commands.
 
 RDViewNodeInterface* RDViewParser::
 match_option_array()
