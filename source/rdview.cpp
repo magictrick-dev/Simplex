@@ -110,6 +110,14 @@ next_token_is(RDViewTokenType type) const
     return result;
 }
 
+bool RDViewTokenizer::
+is_current_keyword(RDViewKeywordType type) const
+{
+    if (this->current_token_is(RDViewTokenType_Keyword))
+        return (this->current_token->keyword.type == type);
+    return false;
+}
+
 void RDViewTokenizer::
 format_token_as(RDViewToken *token, RDViewTokenType type)
 {
@@ -809,17 +817,68 @@ is_next_token(RDViewTokenType token_type) const
     return result;
 }
 
+bool RDViewParser::
+expect_keyword(RDViewKeywordType keyword_type, std::string error) const
+{
+    const bool result = (this->tokenizer->is_current_keyword(keyword_type));
+    if (result == false) throw RDViewParserErrorUC(this->tokenizer->get_current_token(), error);
+    return result;
+}
+
+bool RDViewParser::
+expect_type(RDViewTokenType token_type) const
+{
+    const bool result = (this->tokenizer->current_token_is(token_type));
+    if (result == false) throw RDViewParserErrorUT(this->tokenizer->get_current_token());
+    return result;
+}
+
+RDViewToken RDViewParser::
+fetch_type_and_consume(RDViewTokenType token_type)
+{
+    auto result = this->tokenizer->get_current_token();
+    if (!this->tokenizer->current_token_is(token_type)) throw RDViewParserErrorUT(result);
+    this->consume();
+    return result;
+}
+
+void RDViewParser::
+consume()
+{
+    this->tokenizer->shift();
+}
+
 RDViewNodeInterface* RDViewParser::
 match_root()
 {
-    SIMPLEX_NO_IMPLEMENTATION("");
-    return nullptr;
+    
+    try
+    {
+
+        // NOTE(Chris): We are enforcing that display and format commands exist in the script here.
+        //              This is a deviation from the original specification.
+        auto display_node = this->match_display();
+        auto format_node = this->match_format();
+        auto body_node = this->match_body();
+
+        RDViewNodeRoot *root_node = this->create_node<RDViewNodeRoot>();
+        root_node->display = display_node;
+        root_node->format = format_node;
+        root_node->body = body_node;
+        return root_node;
+
+    }
+    catch (RDViewParserError &e)
+    {
+        std::cout << e.what() << std::endl;
+        return NULL;
+    }
+
 }
 
 RDViewNodeInterface* RDViewParser::
 match_body()
 {
-    SIMPLEX_NO_IMPLEMENTATION("");
     return nullptr;
 }
 
@@ -840,8 +899,26 @@ match_include()
 RDViewNodeInterface* RDViewParser::
 match_display()
 {
-    SIMPLEX_NO_IMPLEMENTATION("");
-    return nullptr;
+
+    this->expect_keyword(RDViewKeywordType_Display, "script header (expected 'Display')");
+    this->consume();
+
+    auto name   = this->fetch_type_and_consume(RDViewTokenType_String);
+    auto format = this->fetch_type_and_consume(RDViewTokenType_String);
+    auto mode   = this->fetch_type_and_consume(RDViewTokenType_String);
+
+    RDViewDisplayType format_type = RDViewNodeDisplay::map_display_type(format.string.value);
+    RDViewModeType mode_type = RDViewNodeDisplay::map_mode_type(mode.string.value);
+    
+    if (format_type == RDViewDisplayType_Invalid)   throw RDViewParserErrorICF(name, "invalid display format type.");
+    if (mode_type == RDViewDisplayType_Invalid)     throw RDViewParserErrorICF(name, "invalid display mode type.");
+
+    RDViewNodeDisplay *display = this->create_node<RDViewNodeDisplay>();
+    display->name = name.string.value;
+    display->format = format_type;
+    display->mode = mode_type;
+
+    return display;
 }
 
 RDViewNodeInterface* RDViewParser::
