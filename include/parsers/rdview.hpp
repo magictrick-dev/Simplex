@@ -373,6 +373,7 @@ class RDViewTokenizer
         bool previous_token_is(RDViewTokenType type) const;
         bool current_token_is(RDViewTokenType type) const;
         bool next_token_is(RDViewTokenType type) const;
+        bool is_current_keyword(RDViewKeywordType type) const;
 
     private:
         void match(RDViewToken *token);
@@ -839,6 +840,7 @@ struct RDViewNodeInclude : public RDViewNodeInterface
 
 enum RDViewDisplayType
 {
+    RDViewDisplayType_Invalid,  // Invalid type.
     RDViewDisplayType_Screen,   // Screen via GUI.
     RDViewDisplayType_PNM,      // Output directly as PNM.
     RDViewDisplayType_BMP,      // Output directly as BMP.
@@ -847,6 +849,7 @@ enum RDViewDisplayType
 
 enum RDViewModeType
 {
+    RDViewModeType_Invalid,     // Invalid type.
     RDViewModeType_RGB,         // Double buffer, regardless.
     RDViewModeType_RGBSingle,   // Single buffer, immediate draw.
     RDViewModeType_RGBObject,   // Double buffer, render only after object is drawn.
@@ -860,9 +863,42 @@ struct RDViewNodeDisplay : public RDViewNodeInterface
         inline virtual ~RDViewNodeDisplay() { }
         inline virtual void visit(RDViewNodeVisitor *visitor) override { visitor->accept(this); }
 
-        std::string display_title;
-        RDViewDisplayType display_type;
-        RDViewModeType screen_type;
+        inline static RDViewDisplayType map_display_type(std::string_view parameter)
+        {
+            static const std::unordered_map<std::string_view, RDViewDisplayType> map =
+            {
+                { "Screen",     RDViewDisplayType_Screen    },
+                { "PBM",        RDViewDisplayType_PNM       },
+                { "BMP",        RDViewDisplayType_BMP       },
+                { "PNG",        RDViewDisplayType_PNG       },
+            };
+
+            const auto result = map.find(parameter);  
+            if (result == map.end()) return RDViewDisplayType_Invalid;
+            return result->second;
+
+        }
+
+        inline static RDViewModeType map_mode_type(std::string_view parameter)
+        {
+
+            static const std::unordered_map<std::string_view, RDViewModeType> map =
+            {
+                { "RGB",            RDViewModeType_RGB          },
+                { "RGBSingle",      RDViewModeType_RGBSingle    },
+                { "RGBObject",      RDViewModeType_RGBObject    },
+                { "RGBDouble",      RDViewModeType_RGBDouble    },
+            };
+
+            const auto result = map.find(parameter);  
+            if (result == map.end()) return RDViewModeType_Invalid;
+            return result->second;
+
+        }
+
+        std::string name;
+        RDViewDisplayType format;
+        RDViewModeType mode;
         
 };
 
@@ -1142,7 +1178,7 @@ struct RDViewNodeLineSet : public RDViewNodeInterface
         size_t vertices;
         size_t indices;
         std::vector<real32_t> vertex_values;
-        std::vector<int32_t> indices;
+        std::vector<int32_t> index_values;
 };
 
 struct RDViewNodeCircle : public RDViewNodeInterface 
@@ -1669,14 +1705,15 @@ struct RDViewNodePrimitive : public RDViewNodeInterface
 //              the parser should synchronize after catching an exception.
 class RDViewParserError : public std::exception 
 { 
-    protected:
-        inline void set_message(const std::string &message) { this->message = message; }
-        inline void set_message(std::string &&message) { this->message = message; }
-
+    public:
         inline virtual const char *what() const noexcept override
         {
             return this->message.c_str();
         }
+
+    protected:
+        inline void set_message(const std::string &message) { this->message = message; }
+        inline void set_message(std::string &&message) { this->message = message; }
 
     private:
         std::string message;
@@ -1708,14 +1745,14 @@ class RDViewParserErrorUT : public RDViewParserError
 class RDViewParserErrorUC : public RDViewParserError
 {
     public:
-        inline RDViewParserErrorUC(RDViewToken token, std::string location)
+        inline RDViewParserErrorUC(RDViewToken token, std::string place)
         {
             std::string location = token.source_file_path.string();
             std::string contents(token.source_file_contents.substr(token.offset, token.length));
 
             std::stringstream message_stream;
             message_stream  << location << "(" << token.line << ", " << token.column 
-                            << "): Unexpected command encountered in " << location << ".";
+                            << "): Unexpected command encountered in " << place << ".";
             this->set_message(message_stream.str());
         }
 };
@@ -1774,6 +1811,12 @@ class RDViewParser
         bool is_previous_token(RDViewTokenType token_type) const;
         bool is_current_token(RDViewTokenType token_type) const;
         bool is_next_token(RDViewTokenType token_type) const;
+
+        bool expect_keyword(RDViewKeywordType keyword_type, std::string error) const;
+        bool expect_type(RDViewTokenType token_type) const;
+        void consume();
+
+        RDViewToken fetch_type_and_consume(RDViewTokenType token_type);
 
         RDViewNodeInterface* match_root();
         RDViewNodeInterface* match_body();
