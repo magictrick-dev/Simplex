@@ -787,13 +787,17 @@ RDViewParser::
 void RDViewParser::
 synchronize_to(RDViewTokenType token_type)
 {
-    SIMPLEX_NO_IMPLEMENTATION("");
-}
 
-void RDViewParser::
-synchronize_up_to(RDViewTokenType token_type)
-{
-    SIMPLEX_NO_IMPLEMENTATION("");
+    while (true)
+    {
+
+        auto current_token = this->tokenizer->get_current_token();
+        if (current_token.type == RDViewTokenType_EOF || 
+            current_token.type == token_type) break;
+        this->consume();
+
+    }
+
 }
 
 bool RDViewParser:: 
@@ -818,18 +822,18 @@ is_next_token(RDViewTokenType token_type) const
 }
 
 bool RDViewParser::
-expect_keyword(RDViewKeywordType keyword_type, std::string error) const
+expect_keyword(RDViewKeywordType keyword_type, std::string error)
 {
     const bool result = (this->tokenizer->is_current_keyword(keyword_type));
-    if (result == false) throw RDViewParserErrorUC(this->tokenizer->get_current_token(), error);
+    if (result == false) this->throw_error<RDViewParserErrorUC>(this->tokenizer->get_current_token(), error);
     return result;
 }
 
 bool RDViewParser::
-expect_type(RDViewTokenType token_type) const
+expect_type(RDViewTokenType token_type)
 {
     const bool result = (this->tokenizer->current_token_is(token_type));
-    if (result == false) throw RDViewParserErrorUT(this->tokenizer->get_current_token());
+    if (result == false) this->throw_error<RDViewParserErrorUT>(this->tokenizer->get_current_token());
     return result;
 }
 
@@ -837,7 +841,7 @@ RDViewToken RDViewParser::
 fetch_type_and_consume(RDViewTokenType token_type)
 {
     auto result = this->tokenizer->get_current_token();
-    if (!this->tokenizer->current_token_is(token_type)) throw RDViewParserErrorUT(result);
+    if (!this->tokenizer->current_token_is(token_type)) this->throw_error<RDViewParserErrorUT>(result);
     this->consume();
     return result;
 }
@@ -846,6 +850,189 @@ void RDViewParser::
 consume()
 {
     this->tokenizer->shift();
+}
+
+real32_t RDViewParser::
+fetch_numerical_and_consume()
+{
+    auto token = this->tokenizer->get_current_token();
+    if (this->is_current_token(RDViewTokenType_Real))
+    {
+        this->consume();
+        return (real32_t)token.real.value;
+    }
+    else if (this->is_current_token(RDViewTokenType_Integer))
+    {
+        this->consume();
+        return (real32_t)token.integer.value;
+    }
+    this->throw_error<RDViewParserErrorUT>(token);
+    return 0.0f;
+}
+
+bool RDViewParser::
+open_include(const std::filesystem::path& path)
+{
+
+    std::string key = path.string();
+
+    for (const auto& active : this->include_chain)
+    {
+        if (active == key) return false;
+    }
+
+    // Record the dependency edge from the currently parsing file to this one.
+    if (!this->include_chain.empty())
+        this->include_graph[this->include_chain.back()].push_back(key);
+
+    // Ensure every opened file has its own entry, even if it includes nothing.
+    this->include_graph.try_emplace(key);
+
+    this->include_chain.push_back(key);
+    return true;
+
+}
+
+void RDViewParser::
+close_include(const std::filesystem::path& path)
+{
+    SIMPLEX_ASSERT(!this->include_chain.empty());
+    SIMPLEX_ASSERT(this->include_chain.back() == path.string());
+    this->include_chain.pop_back();
+}
+
+bool RDViewParser::
+includes_file(const std::filesystem::path& path) const
+{
+    return this->include_graph.count(path.string()) > 0;
+}
+
+const std::vector<std::string>* RDViewParser::
+get_direct_includes(const std::filesystem::path& path) const
+{
+    auto it = this->include_graph.find(path.string());
+    if (it == this->include_graph.end()) return nullptr;
+    return &it->second;
+}
+
+bool RDViewParser::
+has_transitive_dependency(const std::filesystem::path& from, const std::filesystem::path& to) const
+{
+
+    std::string from_key = from.string();
+    std::string to_key   = to.string();
+
+    auto start = this->include_graph.find(from_key);
+    if (start == this->include_graph.end()) return false;
+
+    std::unordered_set<std::string> visited;
+    std::vector<std::string> stack(start->second.begin(), start->second.end());
+
+    while (!stack.empty())
+    {
+        std::string current = std::move(stack.back());
+        stack.pop_back();
+
+        if (current == to_key) return true;
+        if (!visited.insert(current).second) continue;
+
+        auto it = this->include_graph.find(current);
+        if (it != this->include_graph.end())
+        {
+            for (const auto& dep : it->second)
+                stack.push_back(dep);
+        }
+    }
+
+    return false;
+
+}
+
+const std::vector<std::string>& RDViewParser::
+get_include_chain() const
+{
+    return this->include_chain;
+}
+
+static inline void
+print_include_node(
+    const std::unordered_map<std::string, std::vector<std::string>>& graph,
+    std::ostream& stream,
+    const std::string& file,
+    const std::string& prefix,
+    bool is_last,
+    std::unordered_set<std::string>& visited)
+{
+
+    stream << prefix << (is_last ? "\xe2\x94\x94\xe2\x94\x80\xe2\x94\x80 " : "\xe2\x94\x9c\xe2\x94\x80\xe2\x94\x80 ");
+    stream << std::filesystem::path(file).filename().string();
+
+    if (!visited.insert(file).second)
+    {
+        stream << "  (already shown)" << std::endl;
+        return;
+    }
+
+    stream << std::endl;
+
+    auto it = graph.find(file);
+    if (it == graph.end() || it->second.empty())
+        return;
+
+    const auto& deps = it->second;
+    std::string child_prefix = prefix + (is_last ? "    " : "\xe2\x94\x82   ");
+
+    for (size_t i = 0; i < deps.size(); ++i)
+        print_include_node(graph, stream, deps[i], child_prefix, i == deps.size() - 1, visited);
+
+}
+
+void RDViewParser::
+print_include_graph(std::ostream& stream) const
+{
+
+    if (this->include_graph.empty())
+    {
+        stream << "(include graph is empty)" << std::endl;
+        return;
+    }
+
+    std::unordered_set<std::string> non_roots;
+    for (const auto& [file, deps] : this->include_graph)
+    {
+        for (const auto& dep : deps)
+            non_roots.insert(dep);
+    }
+
+    std::vector<std::string> roots;
+    for (const auto& [file, deps] : this->include_graph)
+    {
+        if (non_roots.find(file) == non_roots.end())
+            roots.push_back(file);
+    }
+
+    std::sort(roots.begin(), roots.end());
+
+    for (size_t i = 0; i < roots.size(); ++i)
+    {
+        const auto& root = roots[i];
+        stream << std::filesystem::path(root).filename().string() << std::endl;
+
+        std::unordered_set<std::string> visited;
+        visited.insert(root);
+
+        auto it = this->include_graph.find(root);
+        if (it != this->include_graph.end())
+        {
+            const auto& deps = it->second;
+            for (size_t j = 0; j < deps.size(); ++j)
+                print_include_node(this->include_graph, stream, deps[j], "", j == deps.size() - 1, visited);
+        }
+
+        if (i + 1 < roots.size())
+            stream << std::endl;
+    }
+
 }
 
 RDViewNodeInterface* RDViewParser::
@@ -879,27 +1066,89 @@ match_root()
 RDViewNodeInterface* RDViewParser::
 match_body()
 {
-    return nullptr;
-}
 
-RDViewNodeInterface* RDViewParser::
-match_definitions()
-{
-    SIMPLEX_NO_IMPLEMENTATION("");
-    return nullptr;
+    RDViewNodeBody *body = this->create_node<RDViewNodeBody>();
+
+    while (!this->is_current_token(RDViewTokenType_EOF))
+    {
+
+        auto current_token = this->tokenizer->get_current_token();
+
+        try
+        {
+
+            this->expect_type(RDViewTokenType_Keyword);
+            RDViewKeywordType current_keyword = current_token.keyword.type;
+
+            RDViewNodeInterface *result = NULL;
+            switch (current_keyword)
+            {
+                case RDViewKeywordType_Include:         { result = this->match_include();       } break;
+                case RDViewKeywordType_ObjectBegin:     { result = this->match_object();        } break;
+                case RDViewKeywordType_OptionArray:     { result = this->match_option_array();  } break;
+                case RDViewKeywordType_OptionBool:      { result = this->match_option_bool();   } break;
+                case RDViewKeywordType_OptionList:      { result = this->match_option_list();   } break;
+                case RDViewKeywordType_OptionReal:      { result = this->match_option_real();   } break;
+                case RDViewKeywordType_OptionString:    { result = this->match_option_string(); } break;
+                case RDViewKeywordType_FrameBegin:      { result = this->match_frame();         } break;
+                default:
+                {
+                    // NOTE(Chris): Any other commands are invalid in this context.
+                    this->consume();
+                    this->throw_error<RDViewParserErrorUC>(current_token, "script body");
+                }
+            }
+
+            // NOTE(Chris): No matter what, we should get a valid token back, the try/catch
+            //              is responsible for resynchronizing correctly.
+            SIMPLEX_CHECK_PTR(result);
+            body->children.push_back(result);
+
+        }
+        catch (RDViewParserError &e)
+        {
+            std::cout << e.what() << std::endl;
+            this->synchronize_to(RDViewTokenType_Keyword);
+        }
+
+    }
+
+    return body;
+
 }
 
 RDViewNodeInterface* RDViewParser::
 match_include()
 {
-    SIMPLEX_NO_IMPLEMENTATION("");
-    return nullptr;
+    
+    auto command = this->tokenizer->get_current_token();
+    this->expect_keyword(RDViewKeywordType_Include, "script root (expected 'Include')");
+    this->consume();
+
+    auto path = this->fetch_type_and_consume(RDViewTokenType_String);
+
+    std::string user_path(path.string.value);
+    std::filesystem::path canonical_path = std::filesystem::weakly_canonical(user_path);
+
+    if (!std::filesystem::exists(canonical_path))
+    {
+        this->throw_error_and_recover<RDViewParserErrorINF>(command, user_path);
+    }
+
+    // TODO(Chris): Push a new parser, match on it, then set.
+
+    RDViewNodeInclude *include = this->create_node<RDViewNodeInclude>();
+    include->input_path = user_path;
+    include->canonical_path = canonical_path;
+
+    return include;
 }
 
 RDViewNodeInterface* RDViewParser::
 match_display()
 {
 
+    auto command = this->tokenizer->get_current_token();
     this->expect_keyword(RDViewKeywordType_Display, "script header (expected 'Display')");
     this->consume();
 
@@ -910,8 +1159,11 @@ match_display()
     RDViewDisplayType format_type = RDViewNodeDisplay::map_display_type(format.string.value);
     RDViewModeType mode_type = RDViewNodeDisplay::map_mode_type(mode.string.value);
     
-    if (format_type == RDViewDisplayType_Invalid)   throw RDViewParserErrorICF(name, "invalid display format type.");
-    if (mode_type == RDViewDisplayType_Invalid)     throw RDViewParserErrorICF(name, "invalid display mode type.");
+    if (format_type == RDViewDisplayType_Invalid)
+        this->throw_error<RDViewParserErrorICF>(format, "invalid display format type.");
+
+    if (mode_type == RDViewDisplayType_Invalid)
+        this->throw_error<RDViewParserErrorICF>(mode, "invalid display mode type.");
 
     RDViewNodeDisplay *display = this->create_node<RDViewNodeDisplay>();
     display->name = name.string.value;
@@ -919,13 +1171,25 @@ match_display()
     display->mode = mode_type;
 
     return display;
+
 }
 
 RDViewNodeInterface* RDViewParser::
 match_format()
 {
-    SIMPLEX_NO_IMPLEMENTATION("");
-    return nullptr;
+
+    this->expect_keyword(RDViewKeywordType_Format, "script header (expected 'Format')");
+    this->consume();
+
+    auto width = this->fetch_type_and_consume(RDViewTokenType_Integer);
+    auto height = this->fetch_type_and_consume(RDViewTokenType_Integer);
+
+    RDViewNodeFormat *format = this->create_node<RDViewNodeFormat>();
+    format->width = width.integer.value;
+    format->height = height.integer.value;
+
+    return format;
+
 }
 
 RDViewNodeInterface* RDViewParser::
@@ -980,99 +1244,214 @@ match_lighting()
 RDViewNodeInterface* RDViewParser::
 match_option_array()
 {
-    SIMPLEX_NO_IMPLEMENTATION("");
-    return nullptr;
+    this->expect_keyword(RDViewKeywordType_OptionArray, "option (expected 'OptionArray')");
+    this->consume();
+
+    auto name  = this->fetch_type_and_consume(RDViewTokenType_String);
+    auto count = this->fetch_type_and_consume(RDViewTokenType_Integer);
+
+    RDViewNodeOptionArray *node = this->create_node<RDViewNodeOptionArray>();
+    node->name = std::string(name.string.value);
+    node->values.reserve((size_t)count.integer.value);
+    for (int64_t i = 0; i < count.integer.value; ++i)
+        node->values.push_back(this->fetch_numerical_and_consume());
+    return node;
 }
 
 RDViewNodeInterface* RDViewParser::
 match_option_bool()
 {
-    SIMPLEX_NO_IMPLEMENTATION("");
-    return nullptr;
+    this->expect_keyword(RDViewKeywordType_OptionBool, "option (expected 'OptionBool')");
+    this->consume();
+
+    auto name = this->fetch_type_and_consume(RDViewTokenType_String);
+
+    auto token = this->tokenizer->get_current_token();
+    int32_t bool_value = 0;
+
+    if (this->is_current_token(RDViewTokenType_Integer))
+    {
+        bool_value = (int32_t)token.integer.value;
+        this->consume();
+    }
+    else if (this->is_current_token(RDViewTokenType_Identifier))
+    {
+        std::string_view id = token.identifier.value;
+        if      (id == "true"  || id == "on")  bool_value = 1;
+        else if (id == "false" || id == "off") bool_value = 0;
+        else this->throw_error<RDViewParserErrorICF>(token, "expected boolean value (true/false/on/off/integer)");
+        this->consume();
+    }
+    else
+    {
+        this->throw_error<RDViewParserErrorICF>(token, "expected boolean value");
+    }
+
+    RDViewNodeOptionBool *node = this->create_node<RDViewNodeOptionBool>();
+    node->name  = std::string(name.string.value);
+    node->value = bool_value;
+    return node;
 }
 
 RDViewNodeInterface* RDViewParser::
 match_option_list()
 {
-    SIMPLEX_NO_IMPLEMENTATION("");
-    return nullptr;
+    this->expect_keyword(RDViewKeywordType_OptionList, "option (expected 'OptionList')");
+    this->consume();
+
+    auto name  = this->fetch_type_and_consume(RDViewTokenType_String);
+    auto count = this->fetch_type_and_consume(RDViewTokenType_Integer);
+
+    RDViewNodeOptionList *node = this->create_node<RDViewNodeOptionList>();
+    node->name = std::string(name.string.value);
+    node->values.reserve((size_t)count.integer.value);
+    for (int64_t i = 0; i < count.integer.value; ++i)
+    {
+        auto str = this->fetch_type_and_consume(RDViewTokenType_String);
+        node->values.push_back(std::string(str.string.value));
+    }
+    return node;
 }
 
 RDViewNodeInterface* RDViewParser::
 match_option_real()
 {
-    SIMPLEX_NO_IMPLEMENTATION("");
-    return nullptr;
+    this->expect_keyword(RDViewKeywordType_OptionReal, "option (expected 'OptionReal')");
+    this->consume();
+
+    auto name = this->fetch_type_and_consume(RDViewTokenType_String);
+
+    RDViewNodeOptionReal *node = this->create_node<RDViewNodeOptionReal>();
+    node->name  = std::string(name.string.value);
+    node->value = this->fetch_numerical_and_consume();
+    return node;
 }
 
 RDViewNodeInterface* RDViewParser::
 match_option_string()
 {
-    SIMPLEX_NO_IMPLEMENTATION("");
-    return nullptr;
+    this->expect_keyword(RDViewKeywordType_OptionString, "option (expected 'OptionString')");
+    this->consume();
+
+    auto name  = this->fetch_type_and_consume(RDViewTokenType_String);
+    auto value = this->fetch_type_and_consume(RDViewTokenType_String);
+
+    RDViewNodeOptionString *node = this->create_node<RDViewNodeOptionString>();
+    node->name  = std::string(name.string.value);
+    node->value = std::string(value.string.value);
+    return node;
 }
 
 RDViewNodeInterface* RDViewParser::
 match_background()
 {
-    SIMPLEX_NO_IMPLEMENTATION("");
-    return nullptr;
+    this->expect_keyword(RDViewKeywordType_Background, "frame (expected 'Background')");
+    this->consume();
+
+    RDViewNodeBackground *node = this->create_node<RDViewNodeBackground>();
+    node->red   = this->fetch_numerical_and_consume();
+    node->green = this->fetch_numerical_and_consume();
+    node->blue  = this->fetch_numerical_and_consume();
+    return node;
 }
 
 RDViewNodeInterface* RDViewParser::
 match_color()
 {
-    SIMPLEX_NO_IMPLEMENTATION("");
-    return nullptr;
+    this->expect_keyword(RDViewKeywordType_Color, "expected 'Color'");
+    this->consume();
+
+    RDViewNodeColor *node = this->create_node<RDViewNodeColor>();
+    node->red   = this->fetch_numerical_and_consume();
+    node->green = this->fetch_numerical_and_consume();
+    node->blue  = this->fetch_numerical_and_consume();
+    return node;
 }
 
 RDViewNodeInterface* RDViewParser::
 match_opacity()
 {
-    SIMPLEX_NO_IMPLEMENTATION("");
-    return nullptr;
+    this->expect_keyword(RDViewKeywordType_Opacity, "expected 'Opacity'");
+    this->consume();
+
+    RDViewNodeOpacity *node = this->create_node<RDViewNodeOpacity>();
+    node->opacity = this->fetch_numerical_and_consume();
+    return node;
 }
 
 RDViewNodeInterface* RDViewParser::
 match_camera_at()
 {
-    SIMPLEX_NO_IMPLEMENTATION("");
-    return nullptr;
+    this->expect_keyword(RDViewKeywordType_CameraAt, "camera (expected 'CameraAt')");
+    this->consume();
+
+    RDViewNodeCameraAt *node = this->create_node<RDViewNodeCameraAt>();
+    node->x = this->fetch_numerical_and_consume();
+    node->y = this->fetch_numerical_and_consume();
+    node->z = this->fetch_numerical_and_consume();
+    return node;
 }
 
 RDViewNodeInterface* RDViewParser::
 match_camera_eye()
 {
-    SIMPLEX_NO_IMPLEMENTATION("");
-    return nullptr;
+    this->expect_keyword(RDViewKeywordType_CameraEye, "camera (expected 'CameraEye')");
+    this->consume();
+
+    RDViewNodeCameraEye *node = this->create_node<RDViewNodeCameraEye>();
+    node->x = this->fetch_numerical_and_consume();
+    node->y = this->fetch_numerical_and_consume();
+    node->z = this->fetch_numerical_and_consume();
+    return node;
 }
 
 RDViewNodeInterface* RDViewParser::
 match_camera_fov()
 {
-    SIMPLEX_NO_IMPLEMENTATION("");
-    return nullptr;
+    this->expect_keyword(RDViewKeywordType_CameraFOV, "camera (expected 'CameraFOV')");
+    this->consume();
+
+    RDViewNodeCameraFOV *node = this->create_node<RDViewNodeCameraFOV>();
+    node->FOV = this->fetch_numerical_and_consume();
+    return node;
 }
 
 RDViewNodeInterface* RDViewParser::
 match_camera_up()
 {
-    SIMPLEX_NO_IMPLEMENTATION("");
-    return nullptr;
+    this->expect_keyword(RDViewKeywordType_CameraUp, "camera (expected 'CameraUp')");
+    this->consume();
+
+    RDViewNodeCameraUp *node = this->create_node<RDViewNodeCameraUp>();
+    node->x = this->fetch_numerical_and_consume();
+    node->y = this->fetch_numerical_and_consume();
+    node->z = this->fetch_numerical_and_consume();
+    return node;
 }
 
 RDViewNodeInterface* RDViewParser::
 match_clipping()
 {
-    SIMPLEX_NO_IMPLEMENTATION("");
-    return nullptr;
+    this->expect_keyword(RDViewKeywordType_Clipping, "camera (expected 'Clipping')");
+    this->consume();
+
+    RDViewNodeClipping *node = this->create_node<RDViewNodeClipping>();
+    node->near = this->fetch_numerical_and_consume();
+    node->far  = this->fetch_numerical_and_consume();
+    return node;
 }
 
 RDViewNodeInterface* RDViewParser::
 match_point()
 {
-    SIMPLEX_NO_IMPLEMENTATION("");
-    return nullptr;
+    this->expect_keyword(RDViewKeywordType_Point, "geometry (expected 'Point')");
+    this->consume();
+
+    RDViewNodePoint *node = this->create_node<RDViewNodePoint>();
+    node->x = this->fetch_numerical_and_consume();
+    node->y = this->fetch_numerical_and_consume();
+    node->z = this->fetch_numerical_and_consume();
+    return node;
 }
 
 RDViewNodeInterface* RDViewParser::
@@ -1085,8 +1464,17 @@ match_point_set()
 RDViewNodeInterface* RDViewParser::
 match_line()
 {
-    SIMPLEX_NO_IMPLEMENTATION("");
-    return nullptr;
+    this->expect_keyword(RDViewKeywordType_Line, "geometry (expected 'Line')");
+    this->consume();
+
+    RDViewNodeLine *node = this->create_node<RDViewNodeLine>();
+    node->x1 = this->fetch_numerical_and_consume();
+    node->y1 = this->fetch_numerical_and_consume();
+    node->z1 = this->fetch_numerical_and_consume();
+    node->x2 = this->fetch_numerical_and_consume();
+    node->y2 = this->fetch_numerical_and_consume();
+    node->z2 = this->fetch_numerical_and_consume();
+    return node;
 }
 
 RDViewNodeInterface* RDViewParser::
@@ -1099,29 +1487,49 @@ match_line_set()
 RDViewNodeInterface* RDViewParser::
 match_circle()
 {
-    SIMPLEX_NO_IMPLEMENTATION("");
-    return nullptr;
+    this->expect_keyword(RDViewKeywordType_Circle, "geometry (expected 'Circle')");
+    this->consume();
+
+    RDViewNodeCircle *node = this->create_node<RDViewNodeCircle>();
+    node->x      = this->fetch_numerical_and_consume();
+    node->y      = this->fetch_numerical_and_consume();
+    node->z      = this->fetch_numerical_and_consume();
+    node->radius = this->fetch_numerical_and_consume();
+    return node;
 }
 
 RDViewNodeInterface* RDViewParser::
 match_fill()
 {
-    SIMPLEX_NO_IMPLEMENTATION("");
-    return nullptr;
+    this->expect_keyword(RDViewKeywordType_Fill, "geometry (expected 'Fill')");
+    this->consume();
+
+    RDViewNodeFill *node = this->create_node<RDViewNodeFill>();
+    node->x = this->fetch_numerical_and_consume();
+    node->y = this->fetch_numerical_and_consume();
+    node->z = this->fetch_numerical_and_consume();
+    return node;
 }
 
 RDViewNodeInterface* RDViewParser::
 match_cone()
 {
-    SIMPLEX_NO_IMPLEMENTATION("");
-    return nullptr;
+    this->expect_keyword(RDViewKeywordType_Cone, "geometry (expected 'Cone')");
+    this->consume();
+
+    RDViewNodeCone *node = this->create_node<RDViewNodeCone>();
+    node->height = this->fetch_numerical_and_consume();
+    node->radius = this->fetch_numerical_and_consume();
+    node->theta  = this->fetch_numerical_and_consume();
+    return node;
 }
 
 RDViewNodeInterface* RDViewParser::
 match_cube()
 {
-    SIMPLEX_NO_IMPLEMENTATION("");
-    return nullptr;
+    this->expect_keyword(RDViewKeywordType_Cube, "geometry (expected 'Cube')");
+    this->consume();
+    return this->create_node<RDViewNodeCube>();
 }
 
 RDViewNodeInterface* RDViewParser::
@@ -1134,29 +1542,59 @@ match_curve()
 RDViewNodeInterface* RDViewParser::
 match_cylinder()
 {
-    SIMPLEX_NO_IMPLEMENTATION("");
-    return nullptr;
+    this->expect_keyword(RDViewKeywordType_Cylinder, "geometry (expected 'Cylinder')");
+    this->consume();
+
+    RDViewNodeCylinder *node = this->create_node<RDViewNodeCylinder>();
+    node->radius = this->fetch_numerical_and_consume();
+    node->z_min  = this->fetch_numerical_and_consume();
+    node->z_max  = this->fetch_numerical_and_consume();
+    node->theta  = this->fetch_numerical_and_consume();
+    return node;
 }
 
 RDViewNodeInterface* RDViewParser::
 match_disk()
 {
-    SIMPLEX_NO_IMPLEMENTATION("");
-    return nullptr;
+    this->expect_keyword(RDViewKeywordType_Disk, "geometry (expected 'Disk')");
+    this->consume();
+
+    RDViewNodeDisk *node = this->create_node<RDViewNodeDisk>();
+    node->height = this->fetch_numerical_and_consume();
+    node->radius = this->fetch_numerical_and_consume();
+    node->theta  = this->fetch_numerical_and_consume();
+    return node;
 }
 
 RDViewNodeInterface* RDViewParser::
 match_hyperboloid()
 {
-    SIMPLEX_NO_IMPLEMENTATION("");
-    return nullptr;
+    this->expect_keyword(RDViewKeywordType_Hyperboloid, "geometry (expected 'Hyperboloid')");
+    this->consume();
+
+    RDViewNodeHyperboloid *node = this->create_node<RDViewNodeHyperboloid>();
+    node->x1    = this->fetch_numerical_and_consume();
+    node->y1    = this->fetch_numerical_and_consume();
+    node->z1    = this->fetch_numerical_and_consume();
+    node->x2    = this->fetch_numerical_and_consume();
+    node->y2    = this->fetch_numerical_and_consume();
+    node->z2    = this->fetch_numerical_and_consume();
+    node->theta = this->fetch_numerical_and_consume();
+    return node;
 }
 
 RDViewNodeInterface* RDViewParser::
 match_paraboloid()
 {
-    SIMPLEX_NO_IMPLEMENTATION("");
-    return nullptr;
+    this->expect_keyword(RDViewKeywordType_Paraboloid, "geometry (expected 'Paraboloid')");
+    this->consume();
+
+    RDViewNodeParaboloid *node = this->create_node<RDViewNodeParaboloid>();
+    node->radius = this->fetch_numerical_and_consume();
+    node->z_min  = this->fetch_numerical_and_consume();
+    node->z_max  = this->fetch_numerical_and_consume();
+    node->theta  = this->fetch_numerical_and_consume();
+    return node;
 }
 
 RDViewNodeInterface* RDViewParser::
@@ -1176,36 +1614,84 @@ match_poly_set()
 RDViewNodeInterface* RDViewParser::
 match_sphere()
 {
-    SIMPLEX_NO_IMPLEMENTATION("");
-    return nullptr;
+    this->expect_keyword(RDViewKeywordType_Sphere, "geometry (expected 'Sphere')");
+    this->consume();
+
+    RDViewNodeSphere *node = this->create_node<RDViewNodeSphere>();
+    node->radius = this->fetch_numerical_and_consume();
+    node->z_min  = this->fetch_numerical_and_consume();
+    node->z_max  = this->fetch_numerical_and_consume();
+    node->theta  = this->fetch_numerical_and_consume();
+    return node;
 }
 
 RDViewNodeInterface* RDViewParser::
 match_sq_sphere()
 {
-    SIMPLEX_NO_IMPLEMENTATION("");
-    return nullptr;
+    this->expect_keyword(RDViewKeywordType_SqSphere, "geometry (expected 'SqSphere')");
+    this->consume();
+
+    auto n_token = this->tokenizer->get_current_token();
+
+    RDViewNodeSqSphere *node = this->create_node<RDViewNodeSqSphere>();
+    node->radius = this->fetch_numerical_and_consume();
+    n_token      = this->fetch_type_and_consume(RDViewTokenType_Integer);
+    node->n      = (real32_t)n_token.integer.value;
+    node->e      = this->fetch_numerical_and_consume();
+    node->z_min  = this->fetch_numerical_and_consume();
+    node->z_max  = this->fetch_numerical_and_consume();
+    node->theta  = this->fetch_numerical_and_consume();
+    return node;
 }
 
 RDViewNodeInterface* RDViewParser::
 match_sq_torus()
 {
-    SIMPLEX_NO_IMPLEMENTATION("");
-    return nullptr;
+    this->expect_keyword(RDViewKeywordType_SqTorus, "geometry (expected 'SqTorus')");
+    this->consume();
+
+    RDViewNodeSqTorus *node = this->create_node<RDViewNodeSqTorus>();
+    node->radius_a  = this->fetch_numerical_and_consume();
+    node->radius_b  = this->fetch_numerical_and_consume();
+    auto n_token    = this->fetch_type_and_consume(RDViewTokenType_Integer);
+    node->n         = (real32_t)n_token.integer.value;
+    node->e         = this->fetch_numerical_and_consume();
+    node->phi_min   = this->fetch_numerical_and_consume();
+    node->phi_max   = this->fetch_numerical_and_consume();
+    node->theta_max = this->fetch_numerical_and_consume();
+    return node;
 }
 
 RDViewNodeInterface* RDViewParser::
 match_torus()
 {
-    SIMPLEX_NO_IMPLEMENTATION("");
-    return nullptr;
+    this->expect_keyword(RDViewKeywordType_Torus, "geometry (expected 'Torus')");
+    this->consume();
+
+    RDViewNodeTorus *node = this->create_node<RDViewNodeTorus>();
+    node->radius_a  = this->fetch_numerical_and_consume();
+    node->radius_b  = this->fetch_numerical_and_consume();
+    node->phi_min   = this->fetch_numerical_and_consume();
+    node->phi_max   = this->fetch_numerical_and_consume();
+    node->theta_max = this->fetch_numerical_and_consume();
+    return node;
 }
 
 RDViewNodeInterface* RDViewParser::
 match_tube()
 {
-    SIMPLEX_NO_IMPLEMENTATION("");
-    return nullptr;
+    this->expect_keyword(RDViewKeywordType_Tube, "geometry (expected 'Tube')");
+    this->consume();
+
+    RDViewNodeTube *node = this->create_node<RDViewNodeTube>();
+    node->x1     = this->fetch_numerical_and_consume();
+    node->y1     = this->fetch_numerical_and_consume();
+    node->z1     = this->fetch_numerical_and_consume();
+    node->x2     = this->fetch_numerical_and_consume();
+    node->y2     = this->fetch_numerical_and_consume();
+    node->z2     = this->fetch_numerical_and_consume();
+    node->radius = this->fetch_numerical_and_consume();
+    return node;
 }
 
 RDViewNodeInterface* RDViewParser::
@@ -1225,146 +1711,376 @@ match_object_instance()
 RDViewNodeInterface* RDViewParser::
 match_matrix()
 {
-    SIMPLEX_NO_IMPLEMENTATION("");
-    return nullptr;
+    this->expect_keyword(RDViewKeywordType_Matrix, "transform (expected 'Matrix')");
+    this->consume();
+
+    RDViewNodeMatrix *node = this->create_node<RDViewNodeMatrix>();
+    node->values.reserve(16);
+    for (int i = 0; i < 16; ++i)
+        node->values.push_back(this->fetch_numerical_and_consume());
+    return node;
 }
 
 RDViewNodeInterface* RDViewParser::
 match_rotate()
 {
-    SIMPLEX_NO_IMPLEMENTATION("");
-    return nullptr;
+    this->expect_keyword(RDViewKeywordType_Rotate, "transform (expected 'Rotate')");
+    this->consume();
+
+    static const std::unordered_map<std::string_view, RDViewRotationAxis> axis_map =
+    {
+        { "X", RDViewRotationAxis_X },
+        { "Y", RDViewRotationAxis_Y },
+        { "Z", RDViewRotationAxis_Z },
+    };
+
+    auto axis_token = this->fetch_type_and_consume(RDViewTokenType_String);
+    auto it = axis_map.find(axis_token.string.value);
+    if (it == axis_map.end())
+        this->throw_error<RDViewParserErrorICF>(axis_token, "expected rotation axis (\"X\", \"Y\", or \"Z\")");
+
+    RDViewNodeRotate *node = this->create_node<RDViewNodeRotate>();
+    node->axis  = it->second;
+    node->angle = this->fetch_numerical_and_consume();
+    return node;
 }
 
 RDViewNodeInterface* RDViewParser::
 match_scale()
 {
-    SIMPLEX_NO_IMPLEMENTATION("");
-    return nullptr;
+    this->expect_keyword(RDViewKeywordType_Scale, "transform (expected 'Scale')");
+    this->consume();
+
+    RDViewNodeScale *node = this->create_node<RDViewNodeScale>();
+    node->x = this->fetch_numerical_and_consume();
+    node->y = this->fetch_numerical_and_consume();
+    node->z = this->fetch_numerical_and_consume();
+    return node;
 }
 
 RDViewNodeInterface* RDViewParser::
 match_translate()
 {
-    SIMPLEX_NO_IMPLEMENTATION("");
-    return nullptr;
+    this->expect_keyword(RDViewKeywordType_Translate, "transform (expected 'Translate')");
+    this->consume();
+
+    RDViewNodeTranslate *node = this->create_node<RDViewNodeTranslate>();
+    node->x = this->fetch_numerical_and_consume();
+    node->y = this->fetch_numerical_and_consume();
+    node->z = this->fetch_numerical_and_consume();
+    return node;
 }
 
 RDViewNodeInterface* RDViewParser::
 match_xformpush()
 {
-    SIMPLEX_NO_IMPLEMENTATION("");
-    return nullptr;
+    this->expect_keyword(RDViewKeywordType_XformPush, "transform (expected 'XformPush')");
+    this->consume();
+    return this->create_node<RDViewNodeXformPush>();
 }
 
 RDViewNodeInterface* RDViewParser::
 match_xformpop()
 {
-    SIMPLEX_NO_IMPLEMENTATION("");
-    return nullptr;
+    this->expect_keyword(RDViewKeywordType_XformPop, "transform (expected 'XformPop')");
+    this->consume();
+    return this->create_node<RDViewNodeXformPop>();
 }
 
 RDViewNodeInterface* RDViewParser::
 match_ambient_light()
 {
-    SIMPLEX_NO_IMPLEMENTATION("");
-    return nullptr;
+    this->expect_keyword(RDViewKeywordType_AmbientLight, "lighting (expected 'AmbientLight')");
+    this->consume();
+
+    RDViewNodeAmbientLight *node = this->create_node<RDViewNodeAmbientLight>();
+    node->r         = this->fetch_numerical_and_consume();
+    node->g         = this->fetch_numerical_and_consume();
+    node->b         = this->fetch_numerical_and_consume();
+    node->intensity = this->fetch_numerical_and_consume();
+    return node;
 }
 
 RDViewNodeInterface* RDViewParser::
 match_far_light()
 {
-    SIMPLEX_NO_IMPLEMENTATION("");
-    return nullptr;
+    this->expect_keyword(RDViewKeywordType_FarLight, "lighting (expected 'FarLight')");
+    this->consume();
+
+    RDViewNodeFarLight *node = this->create_node<RDViewNodeFarLight>();
+    node->l_x       = this->fetch_numerical_and_consume();
+    node->l_y       = this->fetch_numerical_and_consume();
+    node->l_z       = this->fetch_numerical_and_consume();
+    node->r         = this->fetch_numerical_and_consume();
+    node->g         = this->fetch_numerical_and_consume();
+    node->b         = this->fetch_numerical_and_consume();
+    node->intensity = this->fetch_numerical_and_consume();
+    return node;
 }
 
 RDViewNodeInterface* RDViewParser::
 match_point_light()
 {
-    SIMPLEX_NO_IMPLEMENTATION("");
-    return nullptr;
+    this->expect_keyword(RDViewKeywordType_PointLight, "lighting (expected 'PointLight')");
+    this->consume();
+
+    RDViewNodePointLight *node = this->create_node<RDViewNodePointLight>();
+    node->p_x       = this->fetch_numerical_and_consume();
+    node->p_y       = this->fetch_numerical_and_consume();
+    node->p_z       = this->fetch_numerical_and_consume();
+    node->r         = this->fetch_numerical_and_consume();
+    node->g         = this->fetch_numerical_and_consume();
+    node->b         = this->fetch_numerical_and_consume();
+    node->intensity = this->fetch_numerical_and_consume();
+    return node;
 }
 
 RDViewNodeInterface* RDViewParser::
 match_cone_light()
 {
-    SIMPLEX_NO_IMPLEMENTATION("");
-    return nullptr;
+    this->expect_keyword(RDViewKeywordType_ConeLight, "lighting (expected 'ConeLight')");
+    this->consume();
+
+    RDViewNodeConeLight *node = this->create_node<RDViewNodeConeLight>();
+    node->p_x       = this->fetch_numerical_and_consume();
+    node->p_y       = this->fetch_numerical_and_consume();
+    node->p_z       = this->fetch_numerical_and_consume();
+    node->a_x       = this->fetch_numerical_and_consume();
+    node->a_y       = this->fetch_numerical_and_consume();
+    node->a_z       = this->fetch_numerical_and_consume();
+    node->theta_min = this->fetch_numerical_and_consume();
+    node->theta_max = this->fetch_numerical_and_consume();
+    node->r         = this->fetch_numerical_and_consume();
+    node->g         = this->fetch_numerical_and_consume();
+    node->b         = this->fetch_numerical_and_consume();
+    node->intensity = this->fetch_numerical_and_consume();
+    return node;
 }
 
 RDViewNodeInterface* RDViewParser::
 match_ka()
 {
-    SIMPLEX_NO_IMPLEMENTATION("");
-    return nullptr;
+    this->expect_keyword(RDViewKeywordType_Ka, "surface (expected 'Ka')");
+    this->consume();
+
+    RDViewNodeKa *node = this->create_node<RDViewNodeKa>();
+    node->value = this->fetch_numerical_and_consume();
+    return node;
 }
 
 RDViewNodeInterface* RDViewParser::
 match_kd()
 {
-    SIMPLEX_NO_IMPLEMENTATION("");
-    return nullptr;
+    this->expect_keyword(RDViewKeywordType_Kd, "surface (expected 'Kd')");
+    this->consume();
+
+    RDViewNodeKd *node = this->create_node<RDViewNodeKd>();
+    node->value = this->fetch_numerical_and_consume();
+    return node;
 }
 
 RDViewNodeInterface* RDViewParser::
 match_ks()
 {
-    SIMPLEX_NO_IMPLEMENTATION("");
-    return nullptr;
+    this->expect_keyword(RDViewKeywordType_Ks, "surface (expected 'Ks')");
+    this->consume();
+
+    RDViewNodeKs *node = this->create_node<RDViewNodeKs>();
+    node->value = this->fetch_numerical_and_consume();
+    return node;
 }
 
 RDViewNodeInterface* RDViewParser::
 match_specular()
 {
-    SIMPLEX_NO_IMPLEMENTATION("");
-    return nullptr;
+    this->expect_keyword(RDViewKeywordType_Specular, "surface (expected 'Specular')");
+    this->consume();
+
+    RDViewNodeSpecular *node = this->create_node<RDViewNodeSpecular>();
+    node->r = this->fetch_numerical_and_consume();
+    node->g = this->fetch_numerical_and_consume();
+    node->b = this->fetch_numerical_and_consume();
+    node->n = this->fetch_numerical_and_consume();
+    return node;
 }
 
 RDViewNodeInterface* RDViewParser::
 match_surface()
 {
-    SIMPLEX_NO_IMPLEMENTATION("");
-    return nullptr;
+    this->expect_keyword(RDViewKeywordType_Surface, "surface (expected 'Surface')");
+    this->consume();
+
+    static const std::unordered_map<std::string_view, RDViewShaderType> shader_map =
+    {
+        { "Matte",          RDViewShaderType_Matte          },
+        { "Metal",          RDViewShaderType_Metal          },
+        { "Plastic",        RDViewShaderType_Plastic        },
+        { "PaintedPlastic", RDViewShaderType_PaintedPlastic },
+    };
+
+    auto shader_token = this->fetch_type_and_consume(RDViewTokenType_String);
+    auto it = shader_map.find(shader_token.string.value);
+    if (it == shader_map.end())
+        this->throw_error<RDViewParserErrorICF>(shader_token, "invalid shader type");
+
+    RDViewNodeSurface *node = this->create_node<RDViewNodeSurface>();
+    node->shader_type = it->second;
+    return node;
 }
 
 RDViewNodeInterface* RDViewParser::
 match_map_load()
 {
-    SIMPLEX_NO_IMPLEMENTATION("");
-    return nullptr;
+    this->expect_keyword(RDViewKeywordType_MapLoad, "expected 'MapLoad'");
+    this->consume();
+
+    auto path_token  = this->fetch_type_and_consume(RDViewTokenType_String);
+    auto label_token = this->fetch_type_and_consume(RDViewTokenType_String);
+
+    std::string user_path(path_token.string.value);
+    std::filesystem::path canonical_path = std::filesystem::weakly_canonical(user_path);
+
+    RDViewNodeMapLoad *node = this->create_node<RDViewNodeMapLoad>();
+    node->input_path    = user_path;
+    node->canonical_path = canonical_path;
+    node->label         = std::string(label_token.string.value);
+    return node;
 }
 
 RDViewNodeInterface* RDViewParser::
 match_map()
 {
-    SIMPLEX_NO_IMPLEMENTATION("");
-    return nullptr;
+    this->expect_keyword(RDViewKeywordType_Map, "expected 'Map'");
+    this->consume();
+
+    static const std::unordered_map<std::string_view, RDViewMapType> map_type_map =
+    {
+        { "none",       RDViewMapType_None       },
+        { "TextureMap", RDViewMapType_TextureMap },
+        { "BumpMap",    RDViewMapType_BumpMap    },
+    };
+
+    auto type_token  = this->fetch_type_and_consume(RDViewTokenType_String);
+    auto label_token = this->fetch_type_and_consume(RDViewTokenType_String);
+
+    auto it = map_type_map.find(type_token.string.value);
+    if (it == map_type_map.end())
+        this->throw_error<RDViewParserErrorICF>(type_token, "invalid map type");
+
+    RDViewNodeMap *node = this->create_node<RDViewNodeMap>();
+    node->map_type = it->second;
+    node->label    = std::string(label_token.string.value);
+    return node;
 }
 
 RDViewNodeInterface* RDViewParser::
 match_map_sample()
 {
-    SIMPLEX_NO_IMPLEMENTATION("");
-    return nullptr;
+    this->expect_keyword(RDViewKeywordType_MapSample, "expected 'MapSample'");
+    this->consume();
+
+    static const std::unordered_map<std::string_view, RDViewMapType> map_type_map =
+    {
+        { "none",       RDViewMapType_None       },
+        { "TextureMap", RDViewMapType_TextureMap },
+        { "BumpMap",    RDViewMapType_BumpMap    },
+    };
+
+    static const std::unordered_map<std::string_view, RDViewMapLevelType> level_type_map =
+    {
+        { "Nearest", RDViewMapLevelType_Nearest },
+        { "Linear",  RDViewMapLevelType_Linear  },
+    };
+
+    auto type_token  = this->fetch_type_and_consume(RDViewTokenType_String);
+    auto intra_token = this->fetch_type_and_consume(RDViewTokenType_String);
+    auto inter_token = this->fetch_type_and_consume(RDViewTokenType_String);
+
+    auto type_it = map_type_map.find(type_token.string.value);
+    if (type_it == map_type_map.end())
+        this->throw_error<RDViewParserErrorICF>(type_token, "invalid map type");
+
+    auto intra_it = level_type_map.find(intra_token.string.value);
+    if (intra_it == level_type_map.end())
+        this->throw_error<RDViewParserErrorICF>(intra_token, "invalid sample level type");
+
+    auto inter_it = level_type_map.find(inter_token.string.value);
+    if (inter_it == level_type_map.end())
+        this->throw_error<RDViewParserErrorICF>(inter_token, "invalid sample level type");
+
+    RDViewNodeMapSample *node = this->create_node<RDViewNodeMapSample>();
+    node->map_type         = type_it->second;
+    node->intra_level_type = intra_it->second;
+    node->inter_level_type = inter_it->second;
+    return node;
 }
 
 RDViewNodeInterface* RDViewParser::
 match_map_bound()
 {
-    SIMPLEX_NO_IMPLEMENTATION("");
-    return nullptr;
+    this->expect_keyword(RDViewKeywordType_MapBound, "expected 'MapBound'");
+    this->consume();
+
+    static const std::unordered_map<std::string_view, RDViewMapType> map_type_map =
+    {
+        { "none",       RDViewMapType_None       },
+        { "TextureMap", RDViewMapType_TextureMap },
+        { "BumpMap",    RDViewMapType_BumpMap    },
+    };
+
+    auto type_token = this->fetch_type_and_consume(RDViewTokenType_String);
+    auto it = map_type_map.find(type_token.string.value);
+    if (it == map_type_map.end())
+        this->throw_error<RDViewParserErrorICF>(type_token, "invalid map type");
+
+    RDViewNodeMapBound *node = this->create_node<RDViewNodeMapBound>();
+    node->map_type = it->second;
+    node->s_min    = this->fetch_numerical_and_consume();
+    node->t_min    = this->fetch_numerical_and_consume();
+    node->s_max    = this->fetch_numerical_and_consume();
+    node->t_max    = this->fetch_numerical_and_consume();
+    return node;
 }
 
 RDViewNodeInterface* RDViewParser::
 match_map_border()
 {
-    SIMPLEX_NO_IMPLEMENTATION("");
-    return nullptr;
-}
+    this->expect_keyword(RDViewKeywordType_MapBorder, "expected 'MapBorder'");
+    this->consume();
 
-RDViewNodeInterface* RDViewParser::
-match_primitive()
-{
-    SIMPLEX_NO_IMPLEMENTATION("");
-    return nullptr;
+    static const std::unordered_map<std::string_view, RDViewMapType> map_type_map =
+    {
+        { "none",       RDViewMapType_None       },
+        { "TextureMap", RDViewMapType_TextureMap },
+        { "BumpMap",    RDViewMapType_BumpMap    },
+    };
+
+    static const std::unordered_map<std::string_view, RDViewBorderType> border_type_map =
+    {
+        { "none",   RDViewMapBorderType_None   },
+        { "Clamp",  RDViewMapBorderType_Clamp  },
+        { "Repeat", RDViewMapBorderType_Repeat },
+    };
+
+    auto type_token  = this->fetch_type_and_consume(RDViewTokenType_String);
+    auto horiz_token = this->fetch_type_and_consume(RDViewTokenType_String);
+    auto vert_token  = this->fetch_type_and_consume(RDViewTokenType_String);
+
+    auto type_it = map_type_map.find(type_token.string.value);
+    if (type_it == map_type_map.end())
+        this->throw_error<RDViewParserErrorICF>(type_token, "invalid map type");
+
+    auto horiz_it = border_type_map.find(horiz_token.string.value);
+    if (horiz_it == border_type_map.end())
+        this->throw_error<RDViewParserErrorICF>(horiz_token, "invalid border type");
+
+    auto vert_it = border_type_map.find(vert_token.string.value);
+    if (vert_it == border_type_map.end())
+        this->throw_error<RDViewParserErrorICF>(vert_token, "invalid border type");
+
+    RDViewNodeMapBorder *node = this->create_node<RDViewNodeMapBorder>();
+    node->map_type              = type_it->second;
+    node->horizontal_border_type = horiz_it->second;
+    node->vertical_border_type   = vert_it->second;
+    return node;
 }
