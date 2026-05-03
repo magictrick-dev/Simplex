@@ -8,7 +8,7 @@
 //
 // - Structural 
 //          ROOT                    :   DISPLAY FORMAT BODY
-//          BODY                    :   (INCLUDE | DEFINITIONS)* ((FRAME | WORLD) BODY | EOF)
+//          BODY                    :   (INCLUDE | DEFINITIONS)* (FRAME BODY | EOF)
 //          DEFINITIONS             :   OBJECT | OPTION_ARRAY | OPTION_BOOL | OPTION_LIST | 
 //                                      OPTION_REAL | OPTION_STRING
 // 
@@ -102,6 +102,7 @@
 #include <sstream>
 #include <iostream>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 #include <stack>
 #include <algorithm>
@@ -413,7 +414,6 @@ enum RDViewNodeType
     RDViewNodeType_NodeInterface,
     RDViewNodeType_Root,
     RDViewNodeType_Body,
-    RDViewNodeType_Definitions,
     RDViewNodeType_Include,
     RDViewNodeType_Display,
     RDViewNodeType_Format,
@@ -479,7 +479,6 @@ enum RDViewNodeType
     RDViewNodeType_MapSample,
     RDViewNodeType_MapBound,
     RDViewNodeType_MapBorder,
-    RDViewNodeType_Primitive,
 };
 
 inline const char *
@@ -490,7 +489,6 @@ to_string(RDViewNodeType type)
         case RDViewNodeType_NodeInterface:      { return "RDViewNodeType_NodeInterface";     } break;
         case RDViewNodeType_Root:               { return "RDViewNodeType_Root";              } break;
         case RDViewNodeType_Body:               { return "RDViewNodeType_Body";              } break;
-        case RDViewNodeType_Definitions:        { return "RDViewNodeType_Definitions";       } break;
         case RDViewNodeType_Include:            { return "RDViewNodeType_Include";           } break;
         case RDViewNodeType_Display:            { return "RDViewNodeType_Display";           } break;
         case RDViewNodeType_Format:             { return "RDViewNodeType_Format";            } break;
@@ -556,7 +554,6 @@ to_string(RDViewNodeType type)
         case RDViewNodeType_MapSample:          { return "RDViewNodeType_MapSample";         } break;
         case RDViewNodeType_MapBound:           { return "RDViewNodeType_MapBound";          } break;
         case RDViewNodeType_MapBorder:          { return "RDViewNodeType_MapBorder";         } break;
-        case RDViewNodeType_Primitive:          { return "RDViewNodeType_Primitive";         } break;
     }
 
     SIMPLEX_NO_REACH("");
@@ -651,7 +648,6 @@ class RDViewNodeInterface
 
 struct RDViewNodeRoot;
 struct RDViewNodeBody;
-struct RDViewNodeDefinitions;
 struct RDViewNodeInclude;
 struct RDViewNodeDisplay;
 struct RDViewNodeFormat;
@@ -717,7 +713,6 @@ struct RDViewNodeMap;
 struct RDViewNodeMapSample;
 struct RDViewNodeMapBound;
 struct RDViewNodeMapBorder;
-struct RDViewNodePrimitive;
 
 class RDViewNodeVisitor
 {
@@ -725,7 +720,6 @@ class RDViewNodeVisitor
         virtual void accept(RDViewNodeInterface *node) { SIMPLEX_NO_REACH("Base node should not be traversed!"); }
         virtual void accept(RDViewNodeRoot *node) { };
         virtual void accept(RDViewNodeBody *node) { };
-        virtual void accept(RDViewNodeDefinitions *node) { };
         virtual void accept(RDViewNodeInclude *node) { };
         virtual void accept(RDViewNodeDisplay *node) { };
         virtual void accept(RDViewNodeFormat *node) { };
@@ -791,7 +785,6 @@ class RDViewNodeVisitor
         virtual void accept(RDViewNodeMapSample *node) { };
         virtual void accept(RDViewNodeMapBound *node) { };
         virtual void accept(RDViewNodeMapBorder *node) { };
-        virtual void accept(RDViewNodePrimitive *node) { };
 };
 
 struct RDViewNodeRoot : public RDViewNodeInterface 
@@ -811,16 +804,6 @@ struct RDViewNodeBody : public RDViewNodeInterface
     public:
         inline RDViewNodeBody() { this->node_type = RDViewNodeType_Body; }
         inline virtual ~RDViewNodeBody() { }
-        inline virtual void visit(RDViewNodeVisitor *visitor) override { visitor->accept(this); }
-
-        std::vector<RDViewNodeInterface*> children;
-};
-
-struct RDViewNodeDefinitions : public RDViewNodeInterface 
-{ 
-    public:
-        inline RDViewNodeDefinitions() { this->node_type = RDViewNodeType_Definitions; }
-        inline virtual ~RDViewNodeDefinitions() { }
         inline virtual void visit(RDViewNodeVisitor *visitor) override { visitor->accept(this); }
 
         std::vector<RDViewNodeInterface*> children;
@@ -1690,17 +1673,6 @@ struct RDViewNodeMapBorder : public RDViewNodeInterface
         RDViewBorderType vertical_border_type;
 };
 
-struct RDViewNodePrimitive : public RDViewNodeInterface
-{
-    public:
-        inline RDViewNodePrimitive() { this->node_type = RDViewNodeType_Primitive; }
-        inline ~RDViewNodePrimitive() { }
-        inline virtual void visit(RDViewNodeVisitor *visitor) override { visitor->accept(this); }
-
-        RDViewPrimitiveType primitive_type;
-        std::variant<int64_t, real64_t, bool, std::string> primitive_value;
-};
-
 // NOTE(Chris): Base class exception for parsing errors. All deriving exceptions specify how
 //              the parser should synchronize after catching an exception.
 class RDViewParserError : public std::exception 
@@ -1796,6 +1768,24 @@ class RDViewParserErrorINR : public RDViewParserError
         }
 };
 
+// Include Not Found -  Pretty self explanatory.
+class RDViewParserErrorINF : public RDViewParserError
+{
+    public:
+        inline RDViewParserErrorINF(RDViewToken token, std::string path)
+        {
+
+            std::string location = token.source_file_path.string();
+            std::string contents(token.source_file_contents.substr(token.offset, token.length));
+
+            std::stringstream message_stream;
+            message_stream  << location << "(" << token.line << ", " << token.column 
+                            << "): include path '" << path << "' was not found.";
+            this->set_message(message_stream.str());
+
+        }
+};
+
 class RDViewParser
 {
     public:
@@ -1804,23 +1794,54 @@ class RDViewParser
 
         inline RDViewNodeInterface* get_root() const { return this->root; }
 
+        void print_include_graph(std::ostream& stream = std::cout) const;
+
     private:
         void synchronize_to(RDViewTokenType token_type);
-        void synchronize_up_to(RDViewTokenType token_type);
 
         bool is_previous_token(RDViewTokenType token_type) const;
         bool is_current_token(RDViewTokenType token_type) const;
         bool is_next_token(RDViewTokenType token_type) const;
 
-        bool expect_keyword(RDViewKeywordType keyword_type, std::string error) const;
-        bool expect_type(RDViewTokenType token_type) const;
+        bool expect_keyword(RDViewKeywordType keyword_type, std::string error);
+        bool expect_type(RDViewTokenType token_type);
         void consume();
 
         RDViewToken fetch_type_and_consume(RDViewTokenType token_type);
+        real32_t fetch_numerical_and_consume();
+
+        template <typename T, typename... Args> 
+        void throw_error(Args... args)
+        {
+
+            static_assert(std::is_base_of<RDViewParserError, T>::value);
+
+            this->error_count++;
+            throw T(args...);
+
+        }
+
+        template <typename T, typename... Args> 
+        void throw_error_and_recover(Args... args)
+        {
+
+            static_assert(std::is_base_of<RDViewParserError, T>::value);
+            this->error_count++;
+
+            // NOTE(Chris): Do we actually need to try/catch this?
+            try 
+            { 
+                throw T(args...); 
+            } 
+            catch (RDViewParserError &e) 
+            { 
+                std::cout << e.what() << std::endl;
+            }
+
+        }
 
         RDViewNodeInterface* match_root();
         RDViewNodeInterface* match_body();
-        RDViewNodeInterface* match_definitions();
 
         RDViewNodeInterface* match_include();
         RDViewNodeInterface* match_display();
@@ -1888,7 +1909,14 @@ class RDViewParser
         RDViewNodeInterface* match_map_sample();
         RDViewNodeInterface* match_map_bound();
         RDViewNodeInterface* match_map_border();
-        RDViewNodeInterface* match_primitive();
+
+        bool open_include(const std::filesystem::path& path);
+        void close_include(const std::filesystem::path& path);
+
+        bool includes_file(const std::filesystem::path& path) const;
+        const std::vector<std::string>* get_direct_includes(const std::filesystem::path& path) const;
+        bool has_transitive_dependency(const std::filesystem::path& from, const std::filesystem::path& to) const;
+        const std::vector<std::string>& get_include_chain() const;
 
     private:
         template <typename T, typename... Args> inline T* create_node(Args ...args)
@@ -1896,7 +1924,7 @@ class RDViewParser
 
             static_assert(std::is_base_of<RDViewNodeInterface, T>::value);
             void *memory_buffer = malloc(sizeof(T));
-            T *node = new (memory_buffer) T*(args...);
+            T *node = new (memory_buffer) T(args...);
             this->nodes.push_back(node);
             return node;
 
@@ -1909,9 +1937,19 @@ class RDViewParser
         }
 
     private:
+        size_t warning_count = 0;
+        size_t error_count = 0;
         RDViewNodeInterface* root;
         std::vector<RDViewNodeInterface*> nodes;
         std::stack<RDViewTokenizer> tokenizer_stack;
         RDViewTokenizer *tokenizer;
+
+        // Dependency graph: maps each canonical path to the list of files it directly includes,
+        // in the order they were encountered. Every file opened via open_include gains an entry.
+        std::unordered_map<std::string, std::vector<std::string>> include_graph;
+
+        // Active include chain (outermost file first, innermost last). Used for cycle detection:
+        // if open_include sees its argument already present here, the include is circular.
+        std::vector<std::string> include_chain;
 
 };
