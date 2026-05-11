@@ -71,7 +71,8 @@
 //          SQ_TORUS                :   "SqTorus" numerical.[2] integer numerical.[4]
 //          TORUS                   :   "Torus" numerical.[5]
 //          TUBE                    :   "Tube" numerical.[7]
-//          SUBDIVISION             :   "Subdivision" string string integer integer integer numerical.[n] integer.[n] integer.[n] real.[n]
+//          SUBDIVISION             :   "Subdivision" string string integer integer integer 
+//                                      numerical.[n] integer.[n] integer.[n] real.[n]
 //          OBJECT_INSTANCE         :   "ObjectInstance" string numerical.[n]
 //          MATRIX                  :   "Matrix" numerical.[16]
 //          ROTATE                  :   "Rotate" string numerical
@@ -654,10 +655,6 @@ struct RDViewNodeFormat;
 struct RDViewNodeObject;
 struct RDViewNodeFrame;
 struct RDViewNodeWorld;
-struct RDViewNodeCamera;
-struct RDViewNodeGeometry;
-struct RDViewNodeTransforms;
-struct RDViewNodeLighting;
 struct RDViewNodeOptionArray;
 struct RDViewNodeOptionBool;
 struct RDViewNodeOptionList;
@@ -726,10 +723,6 @@ class RDViewNodeVisitor
         virtual void accept(RDViewNodeObject *node) { };
         virtual void accept(RDViewNodeFrame *node) { };
         virtual void accept(RDViewNodeWorld *node) { };
-        virtual void accept(RDViewNodeCamera *node) { };
-        virtual void accept(RDViewNodeGeometry *node) { };
-        virtual void accept(RDViewNodeTransforms *node) { };
-        virtual void accept(RDViewNodeLighting *node) { };
         virtual void accept(RDViewNodeOptionArray *node) { };
         virtual void accept(RDViewNodeOptionBool *node) { };
         virtual void accept(RDViewNodeOptionList *node) { };
@@ -925,38 +918,6 @@ struct RDViewNodeWorld : public RDViewNodeInterface
         inline virtual void visit(RDViewNodeVisitor *visitor) override { visitor->accept(this); }
 
         std::vector<RDViewNodeInterface*> children;
-};
-
-struct RDViewNodeCamera : public RDViewNodeInterface
-{ 
-    public:
-        inline RDViewNodeCamera() { this->node_type = RDViewNodeType_Camera; }
-        inline virtual ~RDViewNodeCamera() { }
-        inline virtual void visit(RDViewNodeVisitor *visitor) override { visitor->accept(this); }
-};
-
-struct RDViewNodeGeometry : public RDViewNodeInterface 
-{ 
-    public:
-        inline RDViewNodeGeometry() { this->node_type = RDViewNodeType_Geometry; }
-        inline virtual ~RDViewNodeGeometry() { }
-        inline virtual void visit(RDViewNodeVisitor *visitor) override { visitor->accept(this); }
-};
-
-struct RDViewNodeTransforms : public RDViewNodeInterface 
-{ 
-    public:
-        inline RDViewNodeTransforms() { this->node_type = RDViewNodeType_Transforms; }
-        inline virtual ~RDViewNodeTransforms() { }
-        inline virtual void visit(RDViewNodeVisitor *visitor) override { visitor->accept(this); }
-};
-
-struct RDViewNodeLighting : public RDViewNodeInterface 
-{ 
-    public:
-        inline RDViewNodeLighting() { this->node_type = RDViewNodeType_Lighting; }
-        inline virtual ~RDViewNodeLighting() { }
-        inline virtual void visit(RDViewNodeVisitor *visitor) override { visitor->accept(this); }
 };
 
 struct RDViewNodeOptionArray : public RDViewNodeInterface 
@@ -1789,12 +1750,17 @@ class RDViewParserErrorINF : public RDViewParserError
 class RDViewParser
 {
     public:
-        RDViewParser();
+        RDViewParser(std::string_view source_file, std::filesystem::path source_path);
         ~RDViewParser();
 
-        inline RDViewNodeInterface* get_root() const { return this->root; }
+        // NOTE(Chris): We will need to handle the Rule-Of-5 behavior at some point.
+        //              Right now, we can just assume things are properly handled.
+        RDViewParser(RDViewParser &&other) = delete;
+        inline RDViewParser& operator=(const RDViewParser &other) = delete;
 
-        void print_include_graph(std::ostream& stream = std::cout) const;
+        bool match_everything();
+        inline bool is_valid() const { return (this->root != NULL && this->error_count == 0); }
+        inline RDViewNodeInterface* get_root() const { return this->root; }
 
     private:
         void synchronize_to(RDViewTokenType token_type);
@@ -1849,10 +1815,6 @@ class RDViewParser
         RDViewNodeInterface* match_object();
         RDViewNodeInterface* match_frame();
         RDViewNodeInterface* match_world();
-        RDViewNodeInterface* match_camera();
-        RDViewNodeInterface* match_geometry();
-        RDViewNodeInterface* match_transforms();
-        RDViewNodeInterface* match_lighting();
 
         RDViewNodeInterface* match_option_array();
         RDViewNodeInterface* match_option_bool();
@@ -1910,14 +1872,6 @@ class RDViewParser
         RDViewNodeInterface* match_map_bound();
         RDViewNodeInterface* match_map_border();
 
-        bool open_include(const std::filesystem::path& path);
-        void close_include(const std::filesystem::path& path);
-
-        bool includes_file(const std::filesystem::path& path) const;
-        const std::vector<std::string>* get_direct_includes(const std::filesystem::path& path) const;
-        bool has_transitive_dependency(const std::filesystem::path& from, const std::filesystem::path& to) const;
-        const std::vector<std::string>& get_include_chain() const;
-
     private:
         template <typename T, typename... Args> inline T* create_node(Args ...args)
         {
@@ -1943,13 +1897,5 @@ class RDViewParser
         std::vector<RDViewNodeInterface*> nodes;
         std::stack<RDViewTokenizer> tokenizer_stack;
         RDViewTokenizer *tokenizer;
-
-        // Dependency graph: maps each canonical path to the list of files it directly includes,
-        // in the order they were encountered. Every file opened via open_include gains an entry.
-        std::unordered_map<std::string, std::vector<std::string>> include_graph;
-
-        // Active include chain (outermost file first, innermost last). Used for cycle detection:
-        // if open_include sees its argument already present here, the include is circular.
-        std::vector<std::string> include_chain;
 
 };

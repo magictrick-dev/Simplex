@@ -10,6 +10,7 @@
 #include <GLM/ext/matrix_transform.hpp>
 #include <GLM/ext/matrix_clip_space.hpp>
 #include <utils/linear.hpp>
+#include <utils/test_registry.hpp>
 
 #ifndef SIMPLEX_PLATFORM_INFORMATION
 #   define SIMPLEX_PLATFORM_INFORMATION
@@ -1121,7 +1122,23 @@ entry(int argc, char **argv)
         return 1;
     }
 
-    //std::filesystem::path file_path = std::filesystem::weakly_canonical(cli.get_arg(1));
+    std::filesystem::path file_path = std::filesystem::weakly_canonical(cli.get_arg(1));
+    if (!std::filesystem::exists(file_path)) return false;
+    size_t file_size = std::filesystem::file_size(file_path);
+    std::string file_source(file_size, '\0');
+    std::ifstream file_stream(file_path);
+    if (!file_stream.is_open()) return false;
+    file_stream.read(&file_source[0], file_size);
+    file_stream.close();
+
+    /*
+    RDViewParser parser(file_source, file_path);
+    if (!parser.match_everything())
+    {
+        std::cout << "Failed to fully parser: " << file_path << std::endl;
+    }
+    */
+    /*
     std::string base_path = "./tests/rdview/";
     for (size_t i = 0; i < 50; ++i)
     {
@@ -1136,6 +1153,28 @@ entry(int argc, char **argv)
     }
 
     test_linear_algebra_library();
+    */
+
+    TestRegistry &registry = TestRegistry::GetInstance();
+    const auto& test_groups = registry.get_all();
+    
+    size_t tests_completed = 0;
+    size_t tests_failed = 0;
+    for (const auto& [group_name, tests] : test_groups)
+    {
+        std::cout << "--- " << group_name << " ----------------------------------------------------" << std::endl;
+        for (const auto& [name, test] : tests)
+        {
+            test->run();
+            tests_completed++;
+            if (test->pass == false) tests_failed++;
+            std::cout << "    " << test->formatted_result(name) << std::endl;
+        }
+        std::cout << std::endl;
+    }
+
+    std::cout << "Successfully passed " << tests_completed - tests_failed << "/" << tests_completed << std::endl;
+    std::cout << "      Number of tests failed: " << tests_failed << std::endl;
 
     return 0;
 
@@ -1232,5 +1271,30 @@ entry(int argc, char **argv)
         return result;
 
     }
+
+#endif
+
+#if defined(SIMPLEX_ENABLE_TESTS) && SIMPLEX_ENABLE_TESTS == 1
+
+struct AdditionParameter
+{
+    int a, b, e;
+};
+
+bool addition_test(const AdditionParameter& parameter)
+{
+    bool result = (parameter.a + parameter.b == parameter.e);
+    return result;
+}
+
+SIMPLEX_REGISTER_GROUPED_TEST(Arithmetic Test, addition_1, addition_test, AdditionParameter, 2, 2, 4);
+SIMPLEX_REGISTER_GROUPED_TEST(Arithmetic Test, addition_2, addition_test, AdditionParameter, 0, 5, 5);
+SIMPLEX_REGISTER_GROUPED_TEST(Arithmetic Test, addition_3, addition_test, AdditionParameter, -3, 3, 0);
+
+struct RegistryParameters { int placeholder; };
+bool registry_test(const RegistryParameters &parameters) { return true; }
+SIMPLEX_REGISTER_GROUPED_TEST(Test Registry, registry_0, registry_test, RegistryParameters, 0);
+SIMPLEX_REGISTER_GROUPED_TEST(Test Registry, registry_1, registry_test, RegistryParameters, 1);
+SIMPLEX_REGISTER_GROUPED_TEST(Test Registry, registry_2, registry_test, RegistryParameters, 2);
 
 #endif
