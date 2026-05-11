@@ -765,9 +765,12 @@ is_eof() const
 // -------------------------------------------------------------------------------------------------
 
 RDViewParser::
-RDViewParser()
+RDViewParser(std::string_view source_file, std::filesystem::path source_path)
 {
-
+    this->tokenizer_stack.emplace(source_file, source_path);
+    this->tokenizer = &this->tokenizer_stack.top();
+    this->root = NULL;
+    this->error_count = 0;
 }
 
 RDViewParser::
@@ -782,6 +785,26 @@ RDViewParser::
 
     this->nodes.clear();
 
+}
+
+bool RDViewParser::
+match_everything()
+{
+    
+    try
+    {
+        RDViewNodeInterface *node = this->match_root();
+        this->root = node;
+        return (this->error_count == 0);
+    }
+    catch (RDViewParserError &e)
+    {
+        std::cout << e.what() << std::endl;
+        this->root = NULL;
+    }
+
+    return (this->root != NULL && this->error_count != 0);
+    
 }
 
 void RDViewParser::
@@ -868,171 +891,6 @@ fetch_numerical_and_consume()
     }
     this->throw_error<RDViewParserErrorUT>(token);
     return 0.0f;
-}
-
-bool RDViewParser::
-open_include(const std::filesystem::path& path)
-{
-
-    std::string key = path.string();
-
-    for (const auto& active : this->include_chain)
-    {
-        if (active == key) return false;
-    }
-
-    // Record the dependency edge from the currently parsing file to this one.
-    if (!this->include_chain.empty())
-        this->include_graph[this->include_chain.back()].push_back(key);
-
-    // Ensure every opened file has its own entry, even if it includes nothing.
-    this->include_graph.try_emplace(key);
-
-    this->include_chain.push_back(key);
-    return true;
-
-}
-
-void RDViewParser::
-close_include(const std::filesystem::path& path)
-{
-    SIMPLEX_ASSERT(!this->include_chain.empty());
-    SIMPLEX_ASSERT(this->include_chain.back() == path.string());
-    this->include_chain.pop_back();
-}
-
-bool RDViewParser::
-includes_file(const std::filesystem::path& path) const
-{
-    return this->include_graph.count(path.string()) > 0;
-}
-
-const std::vector<std::string>* RDViewParser::
-get_direct_includes(const std::filesystem::path& path) const
-{
-    auto it = this->include_graph.find(path.string());
-    if (it == this->include_graph.end()) return nullptr;
-    return &it->second;
-}
-
-bool RDViewParser::
-has_transitive_dependency(const std::filesystem::path& from, const std::filesystem::path& to) const
-{
-
-    std::string from_key = from.string();
-    std::string to_key   = to.string();
-
-    auto start = this->include_graph.find(from_key);
-    if (start == this->include_graph.end()) return false;
-
-    std::unordered_set<std::string> visited;
-    std::vector<std::string> stack(start->second.begin(), start->second.end());
-
-    while (!stack.empty())
-    {
-        std::string current = std::move(stack.back());
-        stack.pop_back();
-
-        if (current == to_key) return true;
-        if (!visited.insert(current).second) continue;
-
-        auto it = this->include_graph.find(current);
-        if (it != this->include_graph.end())
-        {
-            for (const auto& dep : it->second)
-                stack.push_back(dep);
-        }
-    }
-
-    return false;
-
-}
-
-const std::vector<std::string>& RDViewParser::
-get_include_chain() const
-{
-    return this->include_chain;
-}
-
-static inline void
-print_include_node(
-    const std::unordered_map<std::string, std::vector<std::string>>& graph,
-    std::ostream& stream,
-    const std::string& file,
-    const std::string& prefix,
-    bool is_last,
-    std::unordered_set<std::string>& visited)
-{
-
-    stream << prefix << (is_last ? "\xe2\x94\x94\xe2\x94\x80\xe2\x94\x80 " : "\xe2\x94\x9c\xe2\x94\x80\xe2\x94\x80 ");
-    stream << std::filesystem::path(file).filename().string();
-
-    if (!visited.insert(file).second)
-    {
-        stream << "  (already shown)" << std::endl;
-        return;
-    }
-
-    stream << std::endl;
-
-    auto it = graph.find(file);
-    if (it == graph.end() || it->second.empty())
-        return;
-
-    const auto& deps = it->second;
-    std::string child_prefix = prefix + (is_last ? "    " : "\xe2\x94\x82   ");
-
-    for (size_t i = 0; i < deps.size(); ++i)
-        print_include_node(graph, stream, deps[i], child_prefix, i == deps.size() - 1, visited);
-
-}
-
-void RDViewParser::
-print_include_graph(std::ostream& stream) const
-{
-
-    if (this->include_graph.empty())
-    {
-        stream << "(include graph is empty)" << std::endl;
-        return;
-    }
-
-    std::unordered_set<std::string> non_roots;
-    for (const auto& [file, deps] : this->include_graph)
-    {
-        for (const auto& dep : deps)
-            non_roots.insert(dep);
-    }
-
-    std::vector<std::string> roots;
-    for (const auto& [file, deps] : this->include_graph)
-    {
-        if (non_roots.find(file) == non_roots.end())
-            roots.push_back(file);
-    }
-
-    std::sort(roots.begin(), roots.end());
-
-    for (size_t i = 0; i < roots.size(); ++i)
-    {
-        const auto& root = roots[i];
-        stream << std::filesystem::path(root).filename().string() << std::endl;
-
-        std::unordered_set<std::string> visited;
-        visited.insert(root);
-
-        auto it = this->include_graph.find(root);
-        if (it != this->include_graph.end())
-        {
-            const auto& deps = it->second;
-            for (size_t j = 0; j < deps.size(); ++j)
-                print_include_node(this->include_graph, stream, deps[j], "", j == deps.size() - 1, visited);
-        }
-
-        if (i + 1 < roots.size())
-            stream << std::endl;
-    }
-
 }
 
 RDViewNodeInterface* RDViewParser::
@@ -1162,7 +1020,7 @@ match_display()
     if (format_type == RDViewDisplayType_Invalid)
         this->throw_error<RDViewParserErrorICF>(format, "invalid display format type.");
 
-    if (mode_type == RDViewDisplayType_Invalid)
+    if (mode_type == RDViewModeType_Invalid)
         this->throw_error<RDViewParserErrorICF>(mode, "invalid display mode type.");
 
     RDViewNodeDisplay *display = this->create_node<RDViewNodeDisplay>();
@@ -1202,43 +1060,211 @@ match_object()
 RDViewNodeInterface* RDViewParser::
 match_frame()
 {
-    SIMPLEX_NO_IMPLEMENTATION("");
-    return nullptr;
+
+    this->expect_keyword(RDViewKeywordType_FrameBegin, "script body (expected 'FrameBegin')");
+    this->consume();
+
+    this->expect_type(RDViewTokenType_Integer);
+    auto frame_number_token = this->tokenizer->get_current_token();
+
+    int32_t frame_number = frame_number_token.integer.value;
+
+    std::vector<RDViewNodeInterface*> nodes;
+    RDViewNodeInterface *world_node = NULL;
+
+    while (!this->is_current_token(RDViewTokenType_EOF))
+    {
+
+        auto current_token = this->tokenizer->get_current_token();
+
+        try
+        {
+
+            this->expect_type(RDViewTokenType_Keyword);
+            RDViewKeywordType current_keyword = current_token.keyword.type;
+            if (current_keyword == RDViewKeywordType_FrameEnd) break;
+
+            // NOTE(Chris): Encountering "WorldBegin" will immediately cause us to
+            //              to break out of the parsing loop so that any additional
+            //              commands are considered improperly placed.
+            if (current_keyword == RDViewKeywordType_WorldBegin)
+            {
+                world_node = this->match_world();           
+                break;
+            }
+
+            RDViewNodeInterface *result = NULL;
+            switch (current_keyword)
+            {
+
+                case RDViewKeywordType_Background:      { result = this->match_background();    } break;
+                case RDViewKeywordType_Color:           { result = this->match_color();         } break;
+                case RDViewKeywordType_Opacity:         { result = this->match_opacity();       } break;
+                case RDViewKeywordType_CameraAt:        { result = this->match_camera_at();     } break;
+                case RDViewKeywordType_CameraEye:       { result = this->match_camera_eye();    } break;
+                case RDViewKeywordType_CameraUp:        { result = this->match_camera_up();     } break;
+                case RDViewKeywordType_CameraFOV:       { result = this->match_camera_fov();    } break;
+                case RDViewKeywordType_Clipping:        { result = this->match_clipping();      } break;
+
+                case RDViewKeywordType_AmbientLight:    { result = this->match_ambient_light(); } break;
+                case RDViewKeywordType_FarLight:        { result = this->match_far_light();     } break;
+                case RDViewKeywordType_PointLight:      { result = this->match_point_light();   } break;
+                case RDViewKeywordType_ConeLight:       { result = this->match_cone_light();    } break;
+
+                case RDViewKeywordType_Ka:              { result = this->match_ka();            } break;
+                case RDViewKeywordType_Kd:              { result = this->match_kd();            } break;
+                case RDViewKeywordType_Ks:              { result = this->match_ks();            } break;
+                case RDViewKeywordType_Specular:        { result = this->match_specular();      } break;
+                case RDViewKeywordType_Surface:         { result = this->match_surface();       } break;
+
+                case RDViewKeywordType_MapLoad:         { result = this->match_map_load();      } break;
+                case RDViewKeywordType_MapSample:       { result = this->match_map_sample();    } break;
+                case RDViewKeywordType_MapBound:        { result = this->match_map_bound();     } break;
+                case RDViewKeywordType_MapBorder:       { result = this->match_map_border();    } break;
+                case RDViewKeywordType_Map:             { result = this->match_map();           } break;
+
+                default:
+                {
+                    // NOTE(Chris): Any other commands are invalid in this context.
+                    this->consume();
+                    this->throw_error<RDViewParserErrorUC>(current_token, "frame body");
+                }
+            }
+
+            // NOTE(Chris): No matter what, we should get a valid token back, the try/catch
+            //              is responsible for resynchronizing correctly.
+            SIMPLEX_CHECK_PTR(result);
+            nodes.push_back(result);
+
+        }
+        catch (RDViewParserError &e)
+        {
+            std::cout << e.what() << std::endl;
+            this->synchronize_to(RDViewTokenType_Keyword);
+        }
+
+    }
+
+    this->expect_keyword(RDViewKeywordType_FrameEnd, "script body (expected 'FrameEnd')");
+    this->consume();
+
+    // NOTE(Chris): We generate afterwards since we need to ensure there is a ending token,
+    //              otherwise we need to handle memory cleanup on exception (gross).
+    RDViewNodeFrame *frame = this->create_node<RDViewNodeFrame>();
+    frame->children = nodes;
+    frame->world = world_node;
+    frame->frame_number = frame_number;
+
+    return frame;
+
 }
 
 RDViewNodeInterface* RDViewParser::
 match_world()
 {
-    SIMPLEX_NO_IMPLEMENTATION("");
-    return nullptr;
-}
 
-RDViewNodeInterface* RDViewParser::
-match_camera()
-{
-    SIMPLEX_NO_IMPLEMENTATION("");
-    return nullptr;
-}
+    this->expect_keyword(RDViewKeywordType_WorldBegin, "script body (expected 'WorldBegin')");
+    this->consume();
 
-RDViewNodeInterface* RDViewParser::
-match_geometry()
-{
-    SIMPLEX_NO_IMPLEMENTATION("");
-    return nullptr;
-}
+    std::vector<RDViewNodeInterface*> nodes;
 
-RDViewNodeInterface* RDViewParser::
-match_transforms()
-{
-    SIMPLEX_NO_IMPLEMENTATION("");
-    return nullptr;
-}
+    while (!this->is_current_token(RDViewTokenType_EOF))
+    {
 
-RDViewNodeInterface* RDViewParser::
-match_lighting()
-{
-    SIMPLEX_NO_IMPLEMENTATION("");
-    return nullptr;
+        auto current_token = this->tokenizer->get_current_token();
+
+        try
+        {
+
+            this->expect_type(RDViewTokenType_Keyword);
+            RDViewKeywordType current_keyword = current_token.keyword.type;
+            if (current_keyword == RDViewKeywordType_WorldEnd) break;
+
+            RDViewNodeInterface *result = NULL;
+            switch (current_keyword)
+            {
+
+                case RDViewKeywordType_Color:           { result = this->match_color();             } break;
+                case RDViewKeywordType_Opacity:         { result = this->match_opacity();           } break;
+
+                case RDViewKeywordType_AmbientLight:    { result = this->match_ambient_light();     } break;
+                case RDViewKeywordType_FarLight:        { result = this->match_far_light();         } break;
+                case RDViewKeywordType_PointLight:      { result = this->match_point_light();       } break;
+                case RDViewKeywordType_ConeLight:       { result = this->match_cone_light();        } break;
+
+                case RDViewKeywordType_Point:           { result = this->match_point();             } break;
+                case RDViewKeywordType_PointSet:        { result = this->match_point_set();         } break;
+                case RDViewKeywordType_Line:            { result = this->match_line();              } break;
+                case RDViewKeywordType_LineSet:         { result = this->match_line_set();          } break;
+                case RDViewKeywordType_Circle:          { result = this->match_circle();            } break;
+                case RDViewKeywordType_Fill:            { result = this->match_fill();              } break;
+                case RDViewKeywordType_Cone:            { result = this->match_cone();              } break;
+                case RDViewKeywordType_Cube:            { result = this->match_cube();              } break;
+                case RDViewKeywordType_Curve:           { result = this->match_curve();             } break;
+                case RDViewKeywordType_Cylinder:        { result = this->match_cylinder();          } break;
+                case RDViewKeywordType_Disk:            { result = this->match_disk();              } break;
+                case RDViewKeywordType_Hyperboloid:     { result = this->match_hyperboloid();       } break;
+                case RDViewKeywordType_Paraboloid:      { result = this->match_paraboloid();        } break;
+                case RDViewKeywordType_Patch:           { result = this->match_patch();             } break;
+                case RDViewKeywordType_PolySet:         { result = this->match_poly_set();          } break;
+                case RDViewKeywordType_Sphere:          { result = this->match_sphere();            } break;
+                case RDViewKeywordType_SqSphere:        { result = this->match_sq_sphere();         } break;
+                case RDViewKeywordType_SqTorus:         { result = this->match_sq_torus();          } break;
+                case RDViewKeywordType_Torus:           { result = this->match_torus();             } break;
+                case RDViewKeywordType_Tube:            { result = this->match_tube();              } break;
+                case RDViewKeywordType_Subdivision:     { result = this->match_subdivision();       } break;
+                case RDViewKeywordType_ObjectInstance:  { result = this->match_object_instance();   } break;
+
+                case RDViewKeywordType_Matrix:          { result = this->match_matrix();            } break;
+                case RDViewKeywordType_Rotate:          { result = this->match_rotate();            } break;
+                case RDViewKeywordType_Scale:           { result = this->match_scale();             } break;
+                case RDViewKeywordType_Translate:       { result = this->match_translate();         } break;
+                case RDViewKeywordType_XformPush:       { result = this->match_xformpush();         } break;
+                case RDViewKeywordType_XformPop:        { result = this->match_xformpop();          } break;
+
+                case RDViewKeywordType_Ka:              { result = this->match_ka();                } break;
+                case RDViewKeywordType_Kd:              { result = this->match_kd();                } break;
+                case RDViewKeywordType_Ks:              { result = this->match_ks();                } break;
+                case RDViewKeywordType_Specular:        { result = this->match_specular();          } break;
+                case RDViewKeywordType_Surface:         { result = this->match_surface();           } break;
+
+                case RDViewKeywordType_MapSample:       { result = this->match_map_sample();        } break;
+                case RDViewKeywordType_MapBound:        { result = this->match_map_bound();         } break;
+                case RDViewKeywordType_MapBorder:       { result = this->match_map_border();        } break;
+                case RDViewKeywordType_Map:             { result = this->match_map();               } break;
+
+                default:
+                {
+                    // NOTE(Chris): Any other commands are invalid in this context.
+                    this->consume();
+                    this->throw_error<RDViewParserErrorUC>(current_token, "world body");
+                }
+            }
+
+            // NOTE(Chris): No matter what, we should get a valid token back, the try/catch
+            //              is responsible for resynchronizing correctly.
+            SIMPLEX_CHECK_PTR(result);
+            nodes.push_back(result);
+
+        }
+        catch (RDViewParserError &e)
+        {
+            std::cout << e.what() << std::endl;
+            this->synchronize_to(RDViewTokenType_Keyword);
+        }
+
+    }
+
+    this->expect_keyword(RDViewKeywordType_WorldEnd, "script body (expected 'FrameEnd')");
+    this->consume();
+
+    // NOTE(Chris): We generate afterwards since we need to ensure there is a ending token,
+    //              otherwise we need to handle memory cleanup on exception (gross).
+    RDViewNodeWorld *world = this->create_node<RDViewNodeWorld>();
+    world->children = nodes;
+
+    return world;
+
 }
 
 RDViewNodeInterface* RDViewParser::
