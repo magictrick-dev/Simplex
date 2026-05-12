@@ -33,10 +33,13 @@ IF (WIN32)
         "vendor/IMGUI/imgui/implot_internal.h"
         "vendor/IMGUI/imgui/implot_items.cpp"
 
-        "source/cli.cpp"
         "source/entry.cpp"
-        "source/rdview.cpp"
-        "source/linear.cpp"
+        "source/utils/cli.cpp"
+        "source/utils/linear/vec2.cpp"
+        "source/utils/linear/vec3.cpp"
+        "source/utils/linear/vec4.cpp"
+        "source/utils/linear/mat4.cpp"
+        "source/parsers/rdview.cpp"
     )
 
     SET_PROPERTY(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT Simplex)
@@ -59,10 +62,13 @@ IF (APPLE)
         "vendor/IMGUI/imgui/implot_internal.h"
         "vendor/IMGUI/imgui/implot_items.cpp"
 
-        "source/cli.cpp"
         "source/entry.cpp"
-        "source/rdview.cpp"
-        "source/linear.cpp"
+        "source/utils/cli.cpp"
+        "source/utils/linear/vec2.cpp"
+        "source/utils/linear/vec3.cpp"
+        "source/utils/linear/vec4.cpp"
+        "source/utils/linear/mat4.cpp"
+        "source/parsers/rdview.cpp"
     )
 ENDIF (APPLE)
 

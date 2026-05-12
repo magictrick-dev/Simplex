@@ -38,39 +38,14 @@ print_engine_information()
     printf("    - Backend Renderer      : %s\n", SIMPLEX_BACKEND_RENDERER);
 }
 
-
-static inline std::string 
-format_path_name(int number) 
-{
-    if (number >= 0 && number <= 9) {
-        return "0" + std::to_string(number);
-    }
-    return std::to_string(number);
-}
-
 static int
 entry(int argc, char **argv)
 {
 
     print_engine_information();
+
     CLIParser cli(argc, argv);
-
-    // Flags.
-    cli.add_flag_rule('r', "Re-run the previous session.");
-    cli.add_flag_rule('M', "Enable memory diagnostics.");
-
-    // Arguments.
-    cli.add_argument_rule("--no-hardware",          {},                                              "Disable hardware acceleration.");
-    cli.add_argument_rule("--memory-limit",         { CLIValueType::Integer },                       "Cap the resident memory footprint.");
-    cli.add_argument_rule("--image-format",         { CLIValueType::String },                        "Override the emitted image format (PPM, BMP, ...).");
-    cli.add_argument_rule("--image-size",           { CLIValueType::Integer, CLIValueType::Integer },"Force the output image dimensions.");
-    cli.add_argument_rule("--run-all-tests",        {},                                              "Run the full test suite.");
-    cli.add_argument_rule("--run-rdview-tests",     {},                                              "Run the rdview test suite.");
-    cli.add_argument_rule("--run-memory-tests",     {},                                              "Run the memory test suite.");
-    cli.add_argument_rule("--force-renderer",       { CLIValueType::String },                        "Force a specific renderer backend.");
-    cli.add_argument_rule("--compare-to",           { CLIValueType::String, CLIValueType::String },  "Compare against the given renderer backends.");
-
-    // Positionals.
+    cli.add_argument_rule("--run-tests", {}, "Runs the full test suite.");
     cli.add_positional_rule(1, CLIValueType::Path, "Input scene description file (.rd).");
 
     try
@@ -84,6 +59,7 @@ entry(int argc, char **argv)
         return 1;
     }
 
+    /*
     std::filesystem::path file_path = std::filesystem::weakly_canonical(cli.get_arg(1));
     if (!std::filesystem::exists(file_path)) return false;
     size_t file_size = std::filesystem::file_size(file_path);
@@ -93,7 +69,6 @@ entry(int argc, char **argv)
     file_stream.read(&file_source[0], file_size);
     file_stream.close();
 
-    /*
     RDViewParser parser(file_source, file_path);
     if (!parser.match_everything())
     {
@@ -101,27 +76,10 @@ entry(int argc, char **argv)
     }
     */
 
-    TestRegistry &registry = TestRegistry::GetInstance();
-    const auto& test_groups = registry.get_all();
-    
-    size_t tests_completed = 0;
-    size_t tests_failed = 0;
-    for (const auto& [group_name, tests] : test_groups)
+    if (cli.has_argument("--run-tests")) 
     {
-        std::cout << "--- " << group_name << " ----------------------------------------------------" << std::endl;
-        for (const auto& [name, test] : tests)
-        {
-            test->run();
-            tests_completed++;
-            if (test->pass == false) tests_failed++;
-            std::cout << "    " << test->formatted_result(name) << std::endl;
-        }
-        std::cout << std::endl;
+        TestRegistry::RunEverything();
     }
-
-    std::cout << "Successfully passed " << tests_completed - tests_failed << "/" << tests_completed << " tests." << std::endl;
-    std::cout << "      Number of tests passed: " << tests_completed -  tests_failed << std::endl;
-    std::cout << "      Number of tests failed: " << tests_failed << std::endl;
 
     return 0;
 

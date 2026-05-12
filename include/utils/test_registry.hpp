@@ -1,5 +1,6 @@
 #pragma once
 #include <utils/defs.hpp>
+#include <iostream>
 #include <functional>
 #include <chrono>
 #include <vector>
@@ -95,6 +96,37 @@ class TestRegistry
         inline const auto& get_all() const { return this->test_groups; }
         inline const auto& get_from(const char* group) { return this->test_groups[group]; }
 
+        inline static bool RunEverything()
+        {
+
+            // TODO(Chris): We can use a thread pool for each group to speed this up.
+            // NOTE(Chris): Some of these tests will take awhile since they are I/O bound.
+            //              The big ones is the RDView Tokenizer / Parsing validation.
+
+            auto &instance = GetInstance();
+
+            const auto& test_groups = instance.get_all();
+            
+            size_t tests_completed = 0;
+            size_t tests_failed = 0;
+            for (const auto& [group_name, tests] : test_groups)
+            {
+                std::cout << group_name << std::endl;
+                for (const auto& [name, test] : tests)
+                {
+                    test->run();
+                    tests_completed++;
+                    if (test->pass == false) tests_failed++;
+                    std::cout << "    " << test->formatted_result(name) << std::endl;
+                }
+                std::cout << std::endl;
+            }
+
+            std::cout << "Successfully passed " << tests_completed - tests_failed << "/" << tests_completed << " tests." << std::endl;
+            return (tests_failed == 0);
+
+        }
+
     private:
         using TestGroupVector_t = std::vector<std::pair<std::string, TestInterface*>>;
         std::vector<TestInterface*> tests;
@@ -102,12 +134,14 @@ class TestRegistry
 
 };
 
+// TODO(Chris): We will need to move this macro define stuff off to the build system.
 #define SIMPLEX_ENABLE_TESTS 1
 #if defined(SIMPLEX_ENABLE_TESTS) && SIMPLEX_ENABLE_TESTS == 1
 
 #   define SIMPLEX_TEST_NAME_CONCAT_IMPL(a, b) a##b
 #   define SIMPLEX_TEST_NAME_CONCAT(a, b) SIMPLEX_TEST_NAME_CONCAT_IMPL(a, b)
 #   define SIMPLEX_TEST_NAME(base) SIMPLEX_TEST_NAME_CONCAT(base, __COUNTER__)
+
 #   define SIMPLEX_REGISTER_GENERIC_TEST(name, fn, ptype, ...) \
         static bool SIMPLEX_TEST_NAME(_simplex_reg_) = (TestRegistry::GetInstance()\
             .register_test<ptype>(name, fn, {__VA_ARGS__}), true)
