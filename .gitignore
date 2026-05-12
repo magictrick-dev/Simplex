@@ -1,7 +1,7 @@
 build/
 resources/
 temporary/
-.cache
+.cache/
 .claude
 CLAUDE.md
 **/.DS_Store
