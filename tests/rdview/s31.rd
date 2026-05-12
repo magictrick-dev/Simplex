@@ -1,4 +1,5 @@
 Display "ZBuffer Test" "Screen" "rgbsingle"
+Format 640 480
 
 CameraEye  0 0 10
 CameraAt    0 0 0 

@@ -1,6 +1,7 @@
 # This is a test/example rd file
 
 Display "Point Test"  "Screen" "rgbsingle"
+Format 640 480
 
 # Testing color
 

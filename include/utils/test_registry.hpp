@@ -1,5 +1,6 @@
 #pragma once
 #include <utils/defs.hpp>
+#include <iostream>
 #include <functional>
 #include <chrono>
 #include <vector>
@@ -14,8 +15,6 @@ class TestInterface
         virtual void run() = 0;
 
         bool pass               = false;
-        real32_t time_start     = 0.0f;
-        real32_t time_end       = 0.0f;
         real32_t time_elapsed   = 0.0f;
 
         inline std::string formatted_result(const std::string &test_name, bool show_memory = false) const
@@ -38,7 +37,11 @@ class TestHarness : public TestInterface
 
         inline virtual void run() override 
         { 
+
+            auto start = std::chrono::high_resolution_clock::now();
             const bool result = this->test_function(this->test_parameter); 
+            auto end = std::chrono::high_resolution_clock::now();
+            this->time_elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end-start).count();
             this->pass = result;
         }
 
@@ -95,6 +98,44 @@ class TestRegistry
         inline const auto& get_all() const { return this->test_groups; }
         inline const auto& get_from(const char* group) { return this->test_groups[group]; }
 
+        inline static bool RunEverything()
+        {
+
+            // TODO(Chris): We can use a thread pool for each group to speed this up.
+            // NOTE(Chris): Some of these tests will take awhile since they are I/O bound.
+            //              The big ones is the RDView Tokenizer / Parsing validation.
+
+            auto &instance = GetInstance();
+
+            const auto& test_groups = instance.get_all();
+            
+            size_t tests_completed = 0;
+            size_t tests_failed = 0;
+            for (const auto& [group_name, tests] : test_groups)
+            {
+                std::cout << group_name << std::endl;
+                for (const auto& [name, test] : tests)
+                {
+                    test->run();
+                    tests_completed++;
+                    if (test->pass == false) 
+                    {
+                        tests_failed++;
+                        std::cout << "--->" << test->formatted_result(name) << std::endl;
+                    }
+                    else
+                    {
+                        std::cout << "    " << test->formatted_result(name) << std::endl;
+                    }
+                }
+                std::cout << std::endl;
+            }
+
+            std::cout << "Test Results: " << tests_completed - tests_failed << "/" << tests_completed << std::endl;
+            return (tests_failed == 0);
+
+        }
+
     private:
         using TestGroupVector_t = std::vector<std::pair<std::string, TestInterface*>>;
         std::vector<TestInterface*> tests;
@@ -102,16 +143,21 @@ class TestRegistry
 
 };
 
+// TODO(Chris): We will need to move this macro define stuff off to the build system.
 #define SIMPLEX_ENABLE_TESTS 1
 #if defined(SIMPLEX_ENABLE_TESTS) && SIMPLEX_ENABLE_TESTS == 1
 
+#   define SIMPLEX_TEST_NAME_CONCAT_IMPL(a, b) a##b
+#   define SIMPLEX_TEST_NAME_CONCAT(a, b) SIMPLEX_TEST_NAME_CONCAT_IMPL(a, b)
+#   define SIMPLEX_TEST_NAME(base) SIMPLEX_TEST_NAME_CONCAT(base, __COUNTER__)
+
 #   define SIMPLEX_REGISTER_GENERIC_TEST(name, fn, ptype, ...) \
-        static bool _simplex_reg_##name = (TestRegistry::GetInstance()\
-            .register_test<ptype>(#name, fn, {__VA_ARGS__}), true)
+        static bool SIMPLEX_TEST_NAME(_simplex_reg_) = (TestRegistry::GetInstance()\
+            .register_test<ptype>(name, fn, {__VA_ARGS__}), true)
 
 #   define SIMPLEX_REGISTER_GROUPED_TEST(group, name, fn, ptype, ...) \
-        static bool _simplex_reg_##name = (TestRegistry::GetInstance()\
-            .register_test<ptype>(#group, #name, fn, {__VA_ARGS__}), true)
+        static bool SIMPLEX_TEST_NAME(_simplex_reg_) = (TestRegistry::GetInstance()\
+            .register_test<ptype>(group, name, fn, {__VA_ARGS__}), true)
 
 #else
 #   define SIMPLEX_REGISTER_GENERIC_TEST(name, fn, ptype, ...)

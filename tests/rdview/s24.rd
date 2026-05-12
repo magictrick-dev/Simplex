@@ -1,4 +1,5 @@
 Display "Point Test" "Screen" "rgbsingle"
+Format 640 480
 
 CameraAt 0 1 0
 CameraUp 0 0 1

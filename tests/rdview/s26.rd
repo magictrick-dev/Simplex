@@ -1,4 +1,5 @@
 Display "Point Cloud" "Screen" "rgbdouble"
+Format 640 480
 
 ObjectBegin "Cloud"
 PointSet "P"
