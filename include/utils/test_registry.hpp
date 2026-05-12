@@ -105,13 +105,16 @@ class TestRegistry
 #define SIMPLEX_ENABLE_TESTS 1
 #if defined(SIMPLEX_ENABLE_TESTS) && SIMPLEX_ENABLE_TESTS == 1
 
+#   define SIMPLEX_TEST_NAME_CONCAT_IMPL(a, b) a##b
+#   define SIMPLEX_TEST_NAME_CONCAT(a, b) SIMPLEX_TEST_NAME_CONCAT_IMPL(a, b)
+#   define SIMPLEX_TEST_NAME(base) SIMPLEX_TEST_NAME_CONCAT(base, __COUNTER__)
 #   define SIMPLEX_REGISTER_GENERIC_TEST(name, fn, ptype, ...) \
-        static bool _simplex_reg_##name = (TestRegistry::GetInstance()\
-            .register_test<ptype>(#name, fn, {__VA_ARGS__}), true)
+        static bool SIMPLEX_TEST_NAME(_simplex_reg_) = (TestRegistry::GetInstance()\
+            .register_test<ptype>(name, fn, {__VA_ARGS__}), true)
 
 #   define SIMPLEX_REGISTER_GROUPED_TEST(group, name, fn, ptype, ...) \
-        static bool _simplex_reg_##name = (TestRegistry::GetInstance()\
-            .register_test<ptype>(#group, #name, fn, {__VA_ARGS__}), true)
+        static bool SIMPLEX_TEST_NAME(_simplex_reg_) = (TestRegistry::GetInstance()\
+            .register_test<ptype>(group, name, fn, {__VA_ARGS__}), true)
 
 #else
 #   define SIMPLEX_REGISTER_GENERIC_TEST(name, fn, ptype, ...)

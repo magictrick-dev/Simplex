@@ -36,6 +36,7 @@ IF (WIN32)
         "source/cli.cpp"
         "source/entry.cpp"
         "source/rdview.cpp"
+        "source/linear.cpp"
     )
 
     SET_PROPERTY(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT Simplex)
@@ -61,6 +62,7 @@ IF (APPLE)
         "source/cli.cpp"
         "source/entry.cpp"
         "source/rdview.cpp"
+        "source/linear.cpp"
     )
 ENDIF (APPLE)
 

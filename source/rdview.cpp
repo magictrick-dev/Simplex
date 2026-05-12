@@ -1,4 +1,5 @@
 #include <parsers/rdview.hpp>
+#include <utils/test_registry.hpp>
 
 // -------------------------------------------------------------------------------------------------
 // RDViewTokenizer
@@ -2110,3 +2111,93 @@ match_map_border()
     node->vertical_border_type   = vert_it->second;
     return node;
 }
+
+#if defined(SIMPLEX_ENABLE_TESTS) && SIMPLEX_ENABLE_TESTS == 1
+#include <fstream>
+#include <string>
+
+struct RDVTTP
+{
+    const char *path;
+};
+
+static inline bool _rdvtt(const RDVTTP& parameter)
+{
+
+    const char *path = parameter.path;
+    std::filesystem::path canon_path = std::filesystem::weakly_canonical(path);
+
+    if (!std::filesystem::exists(path)) return false;
+    size_t file_size = std::filesystem::file_size(path);
+    std::string file_source(file_size, '\0');
+    std::ifstream file_stream(path);
+    if (!file_stream.is_open()) return false;
+    file_stream.read(&file_source[0], file_size);
+    file_stream.close();
+
+    int32_t errors = 0;
+    std::string_view file_source_view(file_source);
+    RDViewTokenizer tokenizer(file_source, canon_path);
+    while (!tokenizer.current_token_is(RDViewTokenType_EOF))
+    {
+        RDViewToken current = tokenizer.get_current_token();
+        if (current.type == RDViewTokenType_Invalid) errors++;
+        tokenizer.shift();
+    }
+
+    return (errors == 0);
+
+}
+
+SIMPLEX_REGISTER_GROUPED_TEST("RDView Parser", "RDView Tokenizer s01.rd", _rdvtt, RDVTTP, "./tests/rdview/s01.rd");
+SIMPLEX_REGISTER_GROUPED_TEST("RDView Parser", "RDView Tokenizer s02.rd", _rdvtt, RDVTTP, "./tests/rdview/s02.rd");
+SIMPLEX_REGISTER_GROUPED_TEST("RDView Parser", "RDView Tokenizer s03.rd", _rdvtt, RDVTTP, "./tests/rdview/s03.rd");
+SIMPLEX_REGISTER_GROUPED_TEST("RDView Parser", "RDView Tokenizer s04.rd", _rdvtt, RDVTTP, "./tests/rdview/s04.rd");
+SIMPLEX_REGISTER_GROUPED_TEST("RDView Parser", "RDView Tokenizer s05.rd", _rdvtt, RDVTTP, "./tests/rdview/s05.rd");
+SIMPLEX_REGISTER_GROUPED_TEST("RDView Parser", "RDView Tokenizer s06.rd", _rdvtt, RDVTTP, "./tests/rdview/s06.rd");
+SIMPLEX_REGISTER_GROUPED_TEST("RDView Parser", "RDView Tokenizer s07.rd", _rdvtt, RDVTTP, "./tests/rdview/s07.rd");
+SIMPLEX_REGISTER_GROUPED_TEST("RDView Parser", "RDView Tokenizer s08.rd", _rdvtt, RDVTTP, "./tests/rdview/s08.rd");
+SIMPLEX_REGISTER_GROUPED_TEST("RDView Parser", "RDView Tokenizer s09.rd", _rdvtt, RDVTTP, "./tests/rdview/s09.rd");
+SIMPLEX_REGISTER_GROUPED_TEST("RDView Parser", "RDView Tokenizer s10.rd", _rdvtt, RDVTTP, "./tests/rdview/s10.rd");
+SIMPLEX_REGISTER_GROUPED_TEST("RDView Parser", "RDView Tokenizer s11.rd", _rdvtt, RDVTTP, "./tests/rdview/s11.rd");
+SIMPLEX_REGISTER_GROUPED_TEST("RDView Parser", "RDView Tokenizer s12.rd", _rdvtt, RDVTTP, "./tests/rdview/s12.rd");
+SIMPLEX_REGISTER_GROUPED_TEST("RDView Parser", "RDView Tokenizer s13.rd", _rdvtt, RDVTTP, "./tests/rdview/s13.rd");
+SIMPLEX_REGISTER_GROUPED_TEST("RDView Parser", "RDView Tokenizer s14.rd", _rdvtt, RDVTTP, "./tests/rdview/s14.rd");
+SIMPLEX_REGISTER_GROUPED_TEST("RDView Parser", "RDView Tokenizer s15.rd", _rdvtt, RDVTTP, "./tests/rdview/s15.rd");
+SIMPLEX_REGISTER_GROUPED_TEST("RDView Parser", "RDView Tokenizer s16.rd", _rdvtt, RDVTTP, "./tests/rdview/s16.rd");
+SIMPLEX_REGISTER_GROUPED_TEST("RDView Parser", "RDView Tokenizer s17.rd", _rdvtt, RDVTTP, "./tests/rdview/s17.rd");
+SIMPLEX_REGISTER_GROUPED_TEST("RDView Parser", "RDView Tokenizer s18.rd", _rdvtt, RDVTTP, "./tests/rdview/s18.rd");
+SIMPLEX_REGISTER_GROUPED_TEST("RDView Parser", "RDView Tokenizer s19.rd", _rdvtt, RDVTTP, "./tests/rdview/s19.rd");
+SIMPLEX_REGISTER_GROUPED_TEST("RDView Parser", "RDView Tokenizer s20.rd", _rdvtt, RDVTTP, "./tests/rdview/s20.rd");
+SIMPLEX_REGISTER_GROUPED_TEST("RDView Parser", "RDView Tokenizer s21.rd", _rdvtt, RDVTTP, "./tests/rdview/s21.rd");
+SIMPLEX_REGISTER_GROUPED_TEST("RDView Parser", "RDView Tokenizer s22.rd", _rdvtt, RDVTTP, "./tests/rdview/s22.rd");
+SIMPLEX_REGISTER_GROUPED_TEST("RDView Parser", "RDView Tokenizer s23.rd", _rdvtt, RDVTTP, "./tests/rdview/s23.rd");
+SIMPLEX_REGISTER_GROUPED_TEST("RDView Parser", "RDView Tokenizer s24.rd", _rdvtt, RDVTTP, "./tests/rdview/s24.rd");
+SIMPLEX_REGISTER_GROUPED_TEST("RDView Parser", "RDView Tokenizer s25.rd", _rdvtt, RDVTTP, "./tests/rdview/s25.rd");
+SIMPLEX_REGISTER_GROUPED_TEST("RDView Parser", "RDView Tokenizer s26.rd", _rdvtt, RDVTTP, "./tests/rdview/s26.rd");
+SIMPLEX_REGISTER_GROUPED_TEST("RDView Parser", "RDView Tokenizer s27.rd", _rdvtt, RDVTTP, "./tests/rdview/s27.rd");
+SIMPLEX_REGISTER_GROUPED_TEST("RDView Parser", "RDView Tokenizer s28.rd", _rdvtt, RDVTTP, "./tests/rdview/s28.rd");
+SIMPLEX_REGISTER_GROUPED_TEST("RDView Parser", "RDView Tokenizer s29.rd", _rdvtt, RDVTTP, "./tests/rdview/s29.rd");
+SIMPLEX_REGISTER_GROUPED_TEST("RDView Parser", "RDView Tokenizer s30.rd", _rdvtt, RDVTTP, "./tests/rdview/s30.rd");
+SIMPLEX_REGISTER_GROUPED_TEST("RDView Parser", "RDView Tokenizer s31.rd", _rdvtt, RDVTTP, "./tests/rdview/s31.rd");
+SIMPLEX_REGISTER_GROUPED_TEST("RDView Parser", "RDView Tokenizer s32.rd", _rdvtt, RDVTTP, "./tests/rdview/s32.rd");
+SIMPLEX_REGISTER_GROUPED_TEST("RDView Parser", "RDView Tokenizer s33.rd", _rdvtt, RDVTTP, "./tests/rdview/s33.rd");
+SIMPLEX_REGISTER_GROUPED_TEST("RDView Parser", "RDView Tokenizer s34.rd", _rdvtt, RDVTTP, "./tests/rdview/s34.rd");
+SIMPLEX_REGISTER_GROUPED_TEST("RDView Parser", "RDView Tokenizer s35.rd", _rdvtt, RDVTTP, "./tests/rdview/s35.rd");
+SIMPLEX_REGISTER_GROUPED_TEST("RDView Parser", "RDView Tokenizer s36.rd", _rdvtt, RDVTTP, "./tests/rdview/s36.rd");
+SIMPLEX_REGISTER_GROUPED_TEST("RDView Parser", "RDView Tokenizer s37.rd", _rdvtt, RDVTTP, "./tests/rdview/s37.rd");
+SIMPLEX_REGISTER_GROUPED_TEST("RDView Parser", "RDView Tokenizer s38.rd", _rdvtt, RDVTTP, "./tests/rdview/s38.rd");
+SIMPLEX_REGISTER_GROUPED_TEST("RDView Parser", "RDView Tokenizer s39.rd", _rdvtt, RDVTTP, "./tests/rdview/s39.rd");
+SIMPLEX_REGISTER_GROUPED_TEST("RDView Parser", "RDView Tokenizer s40.rd", _rdvtt, RDVTTP, "./tests/rdview/s40.rd");
+SIMPLEX_REGISTER_GROUPED_TEST("RDView Parser", "RDView Tokenizer s41.rd", _rdvtt, RDVTTP, "./tests/rdview/s41.rd");
+SIMPLEX_REGISTER_GROUPED_TEST("RDView Parser", "RDView Tokenizer s42.rd", _rdvtt, RDVTTP, "./tests/rdview/s42.rd");
+SIMPLEX_REGISTER_GROUPED_TEST("RDView Parser", "RDView Tokenizer s43.rd", _rdvtt, RDVTTP, "./tests/rdview/s43.rd");
+SIMPLEX_REGISTER_GROUPED_TEST("RDView Parser", "RDView Tokenizer s44.rd", _rdvtt, RDVTTP, "./tests/rdview/s44.rd");
+SIMPLEX_REGISTER_GROUPED_TEST("RDView Parser", "RDView Tokenizer s45.rd", _rdvtt, RDVTTP, "./tests/rdview/s45.rd");
+SIMPLEX_REGISTER_GROUPED_TEST("RDView Parser", "RDView Tokenizer s46.rd", _rdvtt, RDVTTP, "./tests/rdview/s46.rd");
+SIMPLEX_REGISTER_GROUPED_TEST("RDView Parser", "RDView Tokenizer s47.rd", _rdvtt, RDVTTP, "./tests/rdview/s47.rd");
+SIMPLEX_REGISTER_GROUPED_TEST("RDView Parser", "RDView Tokenizer s48.rd", _rdvtt, RDVTTP, "./tests/rdview/s48.rd");
+SIMPLEX_REGISTER_GROUPED_TEST("RDView Parser", "RDView Tokenizer s49.rd", _rdvtt, RDVTTP, "./tests/rdview/s49.rd");
+SIMPLEX_REGISTER_GROUPED_TEST("RDView Parser", "RDView Tokenizer s50.rd", _rdvtt, RDVTTP, "./tests/rdview/s50.rd");
+
+#endif
