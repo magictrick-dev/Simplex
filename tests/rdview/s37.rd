@@ -1,6 +1,7 @@
 # This is a test/example rd file
 
 Display "Cylinder Test"  "Screen" "rgbsingle"
+Format 640 480
 
 Background 0.7 0.7 0.7
 

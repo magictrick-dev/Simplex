@@ -1,12 +1,13 @@
-#include <utils/defs.hpp>
-#include <utils/resources.hpp>
-#include <cli/cli.hpp>
-#include <parsers/rdview.hpp>
 #include <iostream>
 #include <fstream>
 #include <sstream>
 #include <iomanip>
+
+#include <utils/defs.hpp>
+#include <utils/resources.hpp>
+#include <cli/cli.hpp>
 #include <utils/test_registry.hpp>
+#include <parsers/rdview/rdview_parser.hpp>
 
 #ifndef SIMPLEX_PLATFORM_INFORMATION
 #   define SIMPLEX_PLATFORM_INFORMATION
@@ -59,7 +60,6 @@ entry(int argc, char **argv)
         return 1;
     }
 
-    /*
     std::filesystem::path file_path = std::filesystem::weakly_canonical(cli.get_arg(1));
     if (!std::filesystem::exists(file_path)) return false;
     size_t file_size = std::filesystem::file_size(file_path);
@@ -74,7 +74,10 @@ entry(int argc, char **argv)
     {
         std::cout << "Failed to fully parser: " << file_path << std::endl;
     }
-    */
+    else
+    {
+        std::cout << "Parse completed for: " << file_path << std::endl;
+    }
 
     if (cli.has_argument("--run-tests")) 
     {

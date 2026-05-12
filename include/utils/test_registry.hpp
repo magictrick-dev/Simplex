@@ -15,8 +15,6 @@ class TestInterface
         virtual void run() = 0;
 
         bool pass               = false;
-        real32_t time_start     = 0.0f;
-        real32_t time_end       = 0.0f;
         real32_t time_elapsed   = 0.0f;
 
         inline std::string formatted_result(const std::string &test_name, bool show_memory = false) const
@@ -39,7 +37,11 @@ class TestHarness : public TestInterface
 
         inline virtual void run() override 
         { 
+
+            auto start = std::chrono::high_resolution_clock::now();
             const bool result = this->test_function(this->test_parameter); 
+            auto end = std::chrono::high_resolution_clock::now();
+            this->time_elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end-start).count();
             this->pass = result;
         }
 
@@ -116,13 +118,20 @@ class TestRegistry
                 {
                     test->run();
                     tests_completed++;
-                    if (test->pass == false) tests_failed++;
-                    std::cout << "    " << test->formatted_result(name) << std::endl;
+                    if (test->pass == false) 
+                    {
+                        tests_failed++;
+                        std::cout << "--->" << test->formatted_result(name) << std::endl;
+                    }
+                    else
+                    {
+                        std::cout << "    " << test->formatted_result(name) << std::endl;
+                    }
                 }
                 std::cout << std::endl;
             }
 
-            std::cout << "Successfully passed " << tests_completed - tests_failed << "/" << tests_completed << " tests." << std::endl;
+            std::cout << "Test Results: " << tests_completed - tests_failed << "/" << tests_completed << std::endl;
             return (tests_failed == 0);
 
         }

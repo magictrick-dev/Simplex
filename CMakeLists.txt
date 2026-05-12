@@ -39,7 +39,10 @@ IF (WIN32)
         "source/utils/linear/vec3.cpp"
         "source/utils/linear/vec4.cpp"
         "source/utils/linear/mat4.cpp"
-        "source/parsers/rdview.cpp"
+        "source/parsers/rdview/rdview_token.cpp"
+        "source/parsers/rdview/rdview_lexer.cpp"
+        "source/parsers/rdview/rdview_node_types.cpp"
+        "source/parsers/rdview/rdview_parser.cpp"
     )
 
     SET_PROPERTY(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT Simplex)
@@ -68,7 +71,10 @@ IF (APPLE)
         "source/utils/linear/vec3.cpp"
         "source/utils/linear/vec4.cpp"
         "source/utils/linear/mat4.cpp"
-        "source/parsers/rdview.cpp"
+        "source/parsers/rdview/rdview_token.cpp"
+        "source/parsers/rdview/rdview_lexer.cpp"
+        "source/parsers/rdview/rdview_node_types.cpp"
+        "source/parsers/rdview/rdview_parser.cpp"
     )
 ENDIF (APPLE)
 
