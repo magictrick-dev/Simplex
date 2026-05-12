@@ -31,7 +31,7 @@ match_everything()
     
     try
     {
-        RDViewNodeInterface *node = this->match_root();
+        RDViewNodeRoot *node = this->match_root();
         this->root = node;
         return (this->error_count == 0);
     }
@@ -131,7 +131,7 @@ fetch_numerical_and_consume()
     return 0.0f;
 }
 
-RDViewNodeInterface* RDViewParser::
+RDViewNodeRoot* RDViewParser::
 match_root()
 {
     

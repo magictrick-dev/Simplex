@@ -8,6 +8,7 @@
 #include <cli/cli.hpp>
 #include <utils/test_registry.hpp>
 #include <parsers/rdview/rdview_parser.hpp>
+#include <parsers/rdview/rdview_ref_visitor.hpp>
 
 #ifndef SIMPLEX_PLATFORM_INFORMATION
 #   define SIMPLEX_PLATFORM_INFORMATION
@@ -77,6 +78,10 @@ entry(int argc, char **argv)
     else
     {
         std::cout << "Parse completed for: " << file_path << std::endl;
+        RDViewReferenceVisitor reference_output;
+        reference_output.accept(parser.get_root());
+        std::cout << "REFERENCE:" << std::endl;
+        std::cout << reference_output.get_output() << std::endl;
     }
 
     if (cli.has_argument("--run-tests")) 
