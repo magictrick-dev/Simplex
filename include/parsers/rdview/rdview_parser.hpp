@@ -390,6 +390,25 @@ class RDViewParser
         }
 
     private:
+        std::unordered_map<std::string, RDViewNodeObject*> object_table;
+
+        inline bool object_exists(std::string_view object_name)
+        {
+            std::string name(object_name);
+            return object_table.find(name) != object_table.end();
+        }
+
+        inline RDViewNodeObject* get_object(std::string_view object_name)
+        {
+
+            std::string name(object_name);
+            auto result = object_table.find(name);
+            if (result == object_table.end()) return NULL;
+            return result->second;
+
+        }
+
+    private:
         size_t warning_count = 0;
         size_t error_count = 0;
         RDViewNodeRoot* root;

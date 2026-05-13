@@ -42,7 +42,8 @@ class RDViewReferenceVisitor : public RDViewNodeVisitor
         inline virtual void 
         accept(RDViewNodeRoot *node) override 
         { 
-            output << "# This was generated using a reference-generated from an existing script.\n";
+            output << "# This was reference-generated using from an existing script.\n";
+            output << "# The output may not reflect the original script's format.\n\n";
             node->display->visit(this);
             node->format->visit(this);
 
@@ -103,7 +104,15 @@ class RDViewReferenceVisitor : public RDViewNodeVisitor
         inline virtual void 
         accept(RDViewNodeObject *node) override 
         { 
-            SIMPLEX_NO_IMPLEMENTATION("");
+            this->print_tabs();
+            output << "ObjectBegin " << "\"" << node->name << "\"\n";
+
+            this->push_tabs();
+                for (auto child : node->children) child->visit(this);
+            this->pop_tabs();
+
+            this->print_tabs();
+            output << "ObjectEnd # " << node->name << "\n";
         };
 
         inline virtual void 
@@ -245,8 +254,8 @@ class RDViewReferenceVisitor : public RDViewNodeVisitor
         accept(RDViewNodePointSet *node) override
         {
             this->print_tabs();
-            output << "PointSet \"" << node->format << "\" " << node->vertices;
-            for (auto v : node->values) output << " " << v;
+            output << "PointSet \"" << node->format << "\" " << node->vertices.size();
+            for (auto v : node->vertices) output << " " << v;
             output << "\n";
         };
 
@@ -262,9 +271,11 @@ class RDViewReferenceVisitor : public RDViewNodeVisitor
         accept(RDViewNodeLineSet *node) override
         {
             this->print_tabs();
-            output << "LineSet \"" << node->format << "\" " << node->vertices << " " << node->indices;
+            output << "LineSet \"" << node->format << "\" " 
+                << node->vertex_values.size() << " " << node->index_values.size();
             for (auto v : node->vertex_values) output << " " << v;
-            for (auto i : node->index_values) output << " " << i;
+            for (auto iv : node->index_values) 
+                for (auto i : iv) output << " " << i;
             output << "\n";
         };
 
@@ -300,7 +311,9 @@ class RDViewReferenceVisitor : public RDViewNodeVisitor
         accept(RDViewNodeCurve *node) override
         {
             this->print_tabs();
-            output << "Curve\n";
+            output << "Curve \"Bezier\" \"" << node->format << "\" " << node->degree;
+            for (auto v : node->vertices) output << " " << v;
+            output << "\n";
         };
 
         inline virtual void
@@ -340,11 +353,12 @@ class RDViewReferenceVisitor : public RDViewNodeVisitor
             output << "Patch ";
             switch (node->patch_type)
             {
-                case RDViewPatchType_Bezier: { output << "\"bezier\""; } break;
+                case RDViewPatchType_Invalid: { SIMPLEX_NO_REACH("Invalid patch type encountered!");  } break;
+                case RDViewPatchType_Bezier:  { output << "\"Bezier\"";                               } break;
                 default: SIMPLEX_NO_REACH("Oops, not implemented!");
             }
-            output << " \"" << node->format << "\"";
-            for (auto v : node->values) output << " " << v;
+            output << " \"" << node->format << "\" " << node->degree_m << " " << node->degree_n;
+            for (auto v : node->vertices) output << " " << v;
             output << "\n";
         };
 
@@ -352,9 +366,11 @@ class RDViewReferenceVisitor : public RDViewNodeVisitor
         accept(RDViewNodePolySet *node) override
         {
             this->print_tabs();
-            output << "PolySet \"" << node->format << "\" " << node->vertices << " " << node->indices;
+            output << "PolySet \"" << node->format << "\" " 
+                << node->vertex_values.size() << " " << node->index_values.size();
             for (auto v : node->vertex_values) output << " " << v;
-            for (auto i : node->index_values) output << " " << i;
+            for (auto iv : node->index_values) 
+                for (auto i : iv) output << " " << i;
             output << "\n";
         };
 

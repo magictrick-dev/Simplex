@@ -4,6 +4,7 @@
 #include <string>
 #include <string_view>
 #include <vector>
+#include <unordered_map>
 
 enum RDViewNodeType
 {
@@ -100,6 +101,18 @@ enum RDViewVertexAttributeType
     RDViewVertexAttributeType_Opacity,
 };
 
+enum RDViewCurveType
+{
+    RDViewCurveType_Invalid,
+    RDViewCurveType_Bezier,
+};
+
+enum RDViewPatchType
+{
+    RDViewPatchType_Invalid,
+    RDViewPatchType_Bezier,
+};
+
 class RDViewNodeVisitor;
 class RDViewNodeInterface
 {
@@ -116,6 +129,74 @@ class RDViewNodeInterface
         {
             SIMPLEX_ASSERT(this->node_type != RDViewNodeType_NodeInterface);
             return this->node_type;
+        }
+
+    public:
+        inline static int32_t
+        VertexAttributeLength(char c)
+        {
+            switch (c)
+            {
+                case 'P': { return 3; } break;
+                case 'D': { return 3; } break;
+                case 'N': { return 3; } break;
+                case 'C': { return 3; } break;
+                case 'w': { return 1; } break;
+                case 'T': { return 2; } break;
+                case 'O': { return 1; } break;
+                default: return -1;
+            }
+
+            return -1;
+        }
+
+        inline static bool
+        VerifyVertexAttributeList(std::string_view description)
+        {
+            for (char c : description)
+            {
+                if (VertexAttributeLength(c) == -1) return false;
+            }
+            return true;
+        }
+
+        inline static size_t
+        VertexAttributeSize(std::string_view description)
+        {
+            size_t size = 0;
+            for (char c : description) size += VertexAttributeLength(c);
+            return size;
+        }
+
+        inline static RDViewCurveType
+        ClassifyCurveType(std::string_view input)
+        {
+
+            // NOTE(Chris): Do we actually care about proper capitalization?
+            static const std::unordered_map<std::string_view, RDViewCurveType> map =
+            {
+                { "Bezier", RDViewCurveType_Bezier },
+            };
+
+            auto result = map.find(input);
+            if (result == map.end()) return RDViewCurveType_Invalid;
+            return result->second;
+            
+        }
+
+        inline static RDViewPatchType
+        ClassifyPatchType(std::string_view input)
+        {
+
+            static const std::unordered_map<std::string_view, RDViewPatchType> map =
+            {
+                { "Bezier", RDViewPatchType_Bezier },
+            };
+
+            auto result = map.find(input);
+            if (result == map.end()) return RDViewPatchType_Invalid;
+            return result->second;
+            
         }
 
     protected:
@@ -342,6 +423,10 @@ struct RDViewNodeObject : public RDViewNodeInterface
         inline RDViewNodeObject() { this->node_type = RDViewNodeType_Object; }
         inline virtual ~RDViewNodeObject() { }
         inline virtual void visit(RDViewNodeVisitor *visitor) override { visitor->accept(this); }
+
+        std::string name;
+        std::vector<RDViewNodeInterface*> children;
+
 };
 
 struct RDViewNodeFrame : public RDViewNodeInterface
@@ -537,8 +622,7 @@ struct RDViewNodePointSet : public RDViewNodeInterface
         inline virtual void visit(RDViewNodeVisitor *visitor) override { visitor->accept(this); }
 
         std::string format;
-        size_t vertices;
-        std::vector<real32_t> values;
+        std::vector<real32_t> vertices;
 };
 
 struct RDViewNodeLine : public RDViewNodeInterface
@@ -565,10 +649,8 @@ struct RDViewNodeLineSet : public RDViewNodeInterface
         inline virtual void visit(RDViewNodeVisitor *visitor) override { visitor->accept(this); }
 
         std::string format;
-        size_t vertices;
-        size_t indices;
         std::vector<real32_t> vertex_values;
-        std::vector<int32_t> index_values;
+        std::vector<std::vector<int32_t>> index_values;
 };
 
 struct RDViewNodeCircle : public RDViewNodeInterface
@@ -622,6 +704,10 @@ struct RDViewNodeCurve : public RDViewNodeInterface
         inline RDViewNodeCurve() { this->node_type = RDViewNodeType_Curve; }
         inline virtual ~RDViewNodeCurve() { }
         inline virtual void visit(RDViewNodeVisitor *visitor) override { visitor->accept(this); }
+
+        size_t degree;
+        std::string format;
+        std::vector<real32_t> vertices;
 };
 
 struct RDViewNodeCylinder : public RDViewNodeInterface
@@ -678,11 +764,6 @@ struct RDViewNodeParaboloid : public RDViewNodeInterface
         real32_t theta;
 };
 
-enum RDViewPatchType
-{
-    RDViewPatchType_Bezier,
-};
-
 struct RDViewNodePatch : public RDViewNodeInterface
 {
     public:
@@ -692,7 +773,9 @@ struct RDViewNodePatch : public RDViewNodeInterface
 
         RDViewPatchType patch_type;
         std::string format;
-        std::vector<real32_t> values;
+        size_t degree_m;
+        size_t degree_n;
+        std::vector<real32_t> vertices;
 };
 
 struct RDViewNodePolySet : public RDViewNodeInterface
@@ -703,10 +786,8 @@ struct RDViewNodePolySet : public RDViewNodeInterface
         inline virtual void visit(RDViewNodeVisitor *visitor) override { visitor->accept(this); }
 
         std::string format;
-        size_t vertices;
-        size_t indices;
         std::vector<real32_t> vertex_values;
-        std::vector<int32_t> index_values;
+        std::vector<std::vector<int32_t>> index_values;
 };
 
 struct RDViewNodeSphere : public RDViewNodeInterface
@@ -800,6 +881,8 @@ struct RDViewNodeObjectInstance : public RDViewNodeInterface
 
         std::string name;
         std::vector<real32_t> parameters;
+        RDViewNodeObject *object;
+
 };
 
 struct RDViewNodeMatrix : public RDViewNodeInterface

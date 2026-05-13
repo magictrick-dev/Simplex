@@ -28,11 +28,11 @@ AllocationDescriptor simplex_internal_memory_description(void *pointer);
 #endif
 
 template <typename T, typename... Args> inline T*
-simplex_memory_new(Args&&... args)
+simplex_memory_new(Args... args)
 {
 
     void* raw_buffer = simplex_memory_alloc(sizeof(T));
-    T* result = new (raw_buffer) T(std::forward<Args>(args)...);
+    T* result = new (raw_buffer) T(args...);
     return result;
 
 }

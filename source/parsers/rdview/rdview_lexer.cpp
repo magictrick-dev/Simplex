@@ -14,6 +14,8 @@ enum RDViewDFAState
     RDViewDFAState_NumberIntegerBody,
     RDViewDFAState_NumberRealBody,
     RDViewDFAState_NumberHexBody,
+    RDViewDFAState_NumberExponentSign,
+    RDViewDFAState_NumberExponentBody,
     RDViewDFAState_NumberExit,
 
     RDViewDFAState_StringEntry,
@@ -368,6 +370,17 @@ handle_numbers(RDViewToken *token)
                     token_type = RDViewTokenType_Real;
                     state = RDViewDFAState_NumberRealBody;
                 }
+                // Exponent marker: 'e' or 'E' followed by an optional sign and at
+                // least one digit. An exponent always promotes to a Real token.
+                else if ((c == 'e' || c == 'E')
+                    && (isdigit((unsigned char)this->peak_at(1))
+                        || (((this->peak_at(1) == '+') || (this->peak_at(1) == '-'))
+                            && isdigit((unsigned char)this->peak_at(2)))))
+                {
+                    this->consume();
+                    token_type = RDViewTokenType_Real;
+                    state = RDViewDFAState_NumberExponentSign;
+                }
                 else
                 {
                     state = RDViewDFAState_NumberExit;
@@ -376,6 +389,44 @@ handle_numbers(RDViewToken *token)
 
             // Real fractional digits. Same separator rules as integers; no second dot.
             case RDViewDFAState_NumberRealBody:
+            {
+                if (isdigit((unsigned char)c))
+                {
+                    this->consume();
+                }
+                else if (c == '\'' && isdigit((unsigned char)this->peak_at(1)))
+                {
+                    this->consume();
+                }
+                // Exponent marker on a real: same lookahead rules as above.
+                else if ((c == 'e' || c == 'E')
+                    && (isdigit((unsigned char)this->peak_at(1))
+                        || (((this->peak_at(1) == '+') || (this->peak_at(1) == '-'))
+                            && isdigit((unsigned char)this->peak_at(2)))))
+                {
+                    this->consume();
+                    state = RDViewDFAState_NumberExponentSign;
+                }
+                else
+                {
+                    state = RDViewDFAState_NumberExit;
+                }
+            } break;
+
+            // Optional sign after the 'e'/'E'. Lookahead in IntegerBody/RealBody
+            // already guaranteed a digit will follow, so we never reject here.
+            case RDViewDFAState_NumberExponentSign:
+            {
+                if (c == '+' || c == '-')
+                {
+                    this->consume();
+                }
+                state = RDViewDFAState_NumberExponentBody;
+            } break;
+
+            // Exponent digits. Digit-separator single-quotes follow the same rule
+            // as the other numeric bodies.
+            case RDViewDFAState_NumberExponentBody:
             {
                 if (isdigit((unsigned char)c))
                 {
