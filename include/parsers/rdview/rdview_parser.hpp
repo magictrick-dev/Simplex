@@ -8,7 +8,7 @@
 //
 // - Structural 
 //          ROOT                    :   DISPLAY FORMAT BODY
-//          BODY                    :   (INCLUDE | DEFINITIONS)* (FRAME BODY | EOF)
+//          BODY                    :   (INCLUDE | DEFINITIONS)* (FRAME BODY | (WORLD EOF) | EOF)
 //          DEFINITIONS             :   OBJECT | OPTION_ARRAY | OPTION_BOOL | OPTION_LIST | 
 //                                      OPTION_REAL | OPTION_STRING
 // 
@@ -257,7 +257,7 @@ class RDViewParser
 
         bool match_everything();
         inline bool is_valid() const { return (this->root != NULL && this->error_count == 0); }
-        inline RDViewNodeInterface* get_root() const { return this->root; }
+        inline RDViewNodeRoot * get_root() const { return this->root; }
 
         std::ostream &output_stream;
 
@@ -305,7 +305,7 @@ class RDViewParser
 
         }
 
-        RDViewNodeInterface* match_root();
+        RDViewNodeRoot* match_root();
         RDViewNodeInterface* match_body();
 
         RDViewNodeInterface* match_include();
@@ -390,9 +390,28 @@ class RDViewParser
         }
 
     private:
+        std::unordered_map<std::string, RDViewNodeObject*> object_table;
+
+        inline bool object_exists(std::string_view object_name)
+        {
+            std::string name(object_name);
+            return object_table.find(name) != object_table.end();
+        }
+
+        inline RDViewNodeObject* get_object(std::string_view object_name)
+        {
+
+            std::string name(object_name);
+            auto result = object_table.find(name);
+            if (result == object_table.end()) return NULL;
+            return result->second;
+
+        }
+
+    private:
         size_t warning_count = 0;
         size_t error_count = 0;
-        RDViewNodeInterface* root;
+        RDViewNodeRoot* root;
         std::vector<RDViewNodeInterface*> nodes;
         std::stack<RDViewTokenizer> tokenizer_stack;
         RDViewTokenizer *tokenizer;

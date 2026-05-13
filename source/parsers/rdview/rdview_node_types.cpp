@@ -139,6 +139,7 @@ map_display_type(std::string_view parameter)
     {
         { "Screen",     RDViewDisplayType_Screen    },
         { "PBM",        RDViewDisplayType_PNM       },
+        { "PNM",        RDViewDisplayType_PNM       },
         { "BMP",        RDViewDisplayType_BMP       },
         { "PNG",        RDViewDisplayType_PNG       },
     };

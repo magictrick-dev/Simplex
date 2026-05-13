@@ -31,7 +31,7 @@ match_everything()
     
     try
     {
-        RDViewNodeInterface *node = this->match_root();
+        RDViewNodeRoot *node = this->match_root();
         this->root = node;
         return (this->error_count == 0);
     }
@@ -131,7 +131,7 @@ fetch_numerical_and_consume()
     return 0.0f;
 }
 
-RDViewNodeInterface* RDViewParser::
+RDViewNodeRoot* RDViewParser::
 match_root()
 {
     
@@ -194,6 +194,7 @@ match_body()
             {
 
                 case RDViewKeywordType_Include:         { result = this->match_include();       } break;
+
                 case RDViewKeywordType_ObjectBegin:     { result = this->match_object();        } break;
                 case RDViewKeywordType_OptionArray:     { result = this->match_option_array();  } break;
                 case RDViewKeywordType_OptionBool:      { result = this->match_option_bool();   } break;
@@ -207,6 +208,8 @@ match_body()
                 case RDViewKeywordType_CameraUp:        { result = this->match_camera_up();     } break;
                 case RDViewKeywordType_CameraFOV:       { result = this->match_camera_fov();    } break;
                 case RDViewKeywordType_Clipping:        { result = this->match_clipping();      } break;
+
+                case RDViewKeywordType_Background:      { result = this->match_background();    } break;
 
                 case RDViewKeywordType_FrameBegin:      { result = this->match_frame();         } break;
 
@@ -314,11 +317,112 @@ match_format()
 RDViewNodeInterface* RDViewParser::
 match_object()
 {
-    auto current_token = this->tokenizer->get_current_token();
+    
+    this->expect_keyword(RDViewKeywordType_ObjectBegin, "script body (expected 'ObjectBegin')");
     this->consume();
-    throw RDViewParserErrorNI(current_token);
-    SIMPLEX_NO_IMPLEMENTATION("");
-    return nullptr;
+
+    // TODO(Chris): Add support for parameter arguments.
+    auto object_name = this->fetch_type_and_consume(RDViewTokenType_String);
+    if (this->object_exists(object_name.string.value))
+    {
+        this->throw_error<RDViewParserErrorICF>(object_name, "object of this name already exists!");
+    }
+
+    std::vector<RDViewNodeInterface*> children;
+    while (!this->is_current_token(RDViewTokenType_EOF))
+    {
+
+        auto current_token = this->tokenizer->get_current_token();
+
+        try
+        {
+
+            this->expect_type(RDViewTokenType_Keyword);
+            RDViewKeywordType current_keyword = current_token.keyword.type;
+            if (current_keyword == RDViewKeywordType_ObjectEnd) break;
+
+            RDViewNodeInterface *result = NULL;
+
+            switch (current_keyword)
+            {
+
+                case RDViewKeywordType_Color:           { result = this->match_color();             } break;
+                case RDViewKeywordType_Opacity:         { result = this->match_opacity();           } break;
+
+                case RDViewKeywordType_Point:           { result = this->match_point();             } break;
+                case RDViewKeywordType_PointSet:        { result = this->match_point_set();         } break;
+                case RDViewKeywordType_Line:            { result = this->match_line();              } break;
+                case RDViewKeywordType_LineSet:         { result = this->match_line_set();          } break;
+                case RDViewKeywordType_Circle:          { result = this->match_circle();            } break;
+                case RDViewKeywordType_Fill:            { result = this->match_fill();              } break;
+                case RDViewKeywordType_Cone:            { result = this->match_cone();              } break;
+                case RDViewKeywordType_Cube:            { result = this->match_cube();              } break;
+                case RDViewKeywordType_Curve:           { result = this->match_curve();             } break;
+                case RDViewKeywordType_Cylinder:        { result = this->match_cylinder();          } break;
+                case RDViewKeywordType_Disk:            { result = this->match_disk();              } break;
+                case RDViewKeywordType_Hyperboloid:     { result = this->match_hyperboloid();       } break;
+                case RDViewKeywordType_Paraboloid:      { result = this->match_paraboloid();        } break;
+                case RDViewKeywordType_Patch:           { result = this->match_patch();             } break;
+                case RDViewKeywordType_PolySet:         { result = this->match_poly_set();          } break;
+                case RDViewKeywordType_Sphere:          { result = this->match_sphere();            } break;
+                case RDViewKeywordType_SqSphere:        { result = this->match_sq_sphere();         } break;
+                case RDViewKeywordType_SqTorus:         { result = this->match_sq_torus();          } break;
+                case RDViewKeywordType_Torus:           { result = this->match_torus();             } break;
+                case RDViewKeywordType_Tube:            { result = this->match_tube();              } break;
+                case RDViewKeywordType_Subdivision:     { result = this->match_subdivision();       } break;
+                case RDViewKeywordType_ObjectInstance:  { result = this->match_object_instance();   } break;
+
+                case RDViewKeywordType_Matrix:          { result = this->match_matrix();            } break;
+                case RDViewKeywordType_Rotate:          { result = this->match_rotate();            } break;
+                case RDViewKeywordType_Scale:           { result = this->match_scale();             } break;
+                case RDViewKeywordType_Translate:       { result = this->match_translate();         } break;
+                case RDViewKeywordType_XformPush:       { result = this->match_xformpush();         } break;
+                case RDViewKeywordType_XformPop:        { result = this->match_xformpop();          } break;
+
+                case RDViewKeywordType_Ka:              { result = this->match_ka();                } break;
+                case RDViewKeywordType_Kd:              { result = this->match_kd();                } break;
+                case RDViewKeywordType_Ks:              { result = this->match_ks();                } break;
+                case RDViewKeywordType_Specular:        { result = this->match_specular();          } break;
+                case RDViewKeywordType_Surface:         { result = this->match_surface();           } break;
+
+                case RDViewKeywordType_MapSample:       { result = this->match_map_sample();        } break;
+                case RDViewKeywordType_MapBound:        { result = this->match_map_bound();         } break;
+                case RDViewKeywordType_MapBorder:       { result = this->match_map_border();        } break;
+                case RDViewKeywordType_Map:             { result = this->match_map();               } break;
+
+                default:
+                {
+                    // NOTE(Chris): Any other commands are invalid in this context.
+                    this->consume();
+                    this->throw_error<RDViewParserErrorUC>(current_token, "object body");
+                }
+            }
+
+            // NOTE(Chris): No matter what, we should get a valid token back, the try/catch
+            //              is responsible for resynchronizing correctly.
+            SIMPLEX_CHECK_PTR(result);
+            children.push_back(result);
+
+        }
+        catch (RDViewParserError &e)
+        {
+            output_stream << e.what() << std::endl;
+            this->synchronize_to(RDViewTokenType_Keyword);
+        }
+
+    }
+
+    this->expect_keyword(RDViewKeywordType_ObjectEnd, "script body (expected 'ObjectEnd')");
+    this->consume();
+
+    RDViewNodeObject *node = this->create_node<RDViewNodeObject>();
+    node->children = children;
+    node->name = object_name.string.value;
+
+    // Add to the object table.
+    this->object_table[node->name] = node;
+
+    return node;
 }
 
 RDViewNodeInterface* RDViewParser::
@@ -362,6 +466,12 @@ match_frame()
                 case RDViewKeywordType_Background:      { result = this->match_background();    } break;
                 case RDViewKeywordType_Color:           { result = this->match_color();         } break;
                 case RDViewKeywordType_Opacity:         { result = this->match_opacity();       } break;
+
+                case RDViewKeywordType_OptionArray:     { result = this->match_option_array();  } break;
+                case RDViewKeywordType_OptionBool:      { result = this->match_option_bool();   } break;
+                case RDViewKeywordType_OptionList:      { result = this->match_option_list();   } break;
+                case RDViewKeywordType_OptionReal:      { result = this->match_option_real();   } break;
+                case RDViewKeywordType_OptionString:    { result = this->match_option_string(); } break;
 
                 case RDViewKeywordType_CameraAt:        { result = this->match_camera_at();     } break;
                 case RDViewKeywordType_CameraEye:       { result = this->match_camera_eye();    } break;
@@ -454,6 +564,12 @@ match_world()
                 case RDViewKeywordType_FarLight:        { result = this->match_far_light();         } break;
                 case RDViewKeywordType_PointLight:      { result = this->match_point_light();       } break;
                 case RDViewKeywordType_ConeLight:       { result = this->match_cone_light();        } break;
+
+                case RDViewKeywordType_OptionArray:     { result = this->match_option_array();  } break;
+                case RDViewKeywordType_OptionBool:      { result = this->match_option_bool();   } break;
+                case RDViewKeywordType_OptionList:      { result = this->match_option_list();   } break;
+                case RDViewKeywordType_OptionReal:      { result = this->match_option_real();   } break;
+                case RDViewKeywordType_OptionString:    { result = this->match_option_string(); } break;
 
                 case RDViewKeywordType_Point:           { result = this->match_point();             } break;
                 case RDViewKeywordType_PointSet:        { result = this->match_point_set();         } break;
@@ -746,11 +862,33 @@ match_point()
 RDViewNodeInterface* RDViewParser::
 match_point_set()
 {
-    auto current_token = this->tokenizer->get_current_token();
+
+    this->expect_keyword(RDViewKeywordType_PointSet, "geometry (expected 'PointSet')");
     this->consume();
-    throw RDViewParserErrorNI(current_token);
-    SIMPLEX_NO_IMPLEMENTATION("");
-    return nullptr;
+
+    auto description = this->fetch_type_and_consume(RDViewTokenType_String);
+    if (!RDViewNodeInterface::VerifyVertexAttributeList(description.string.value))
+    {
+        this->throw_error<RDViewParserErrorICF>(description, "invalid vertex format type.");
+    }
+
+    auto count = this->fetch_type_and_consume(RDViewTokenType_Integer);
+    size_t vertex_size = RDViewNodeInterface::VertexAttributeSize(description.string.value);
+    size_t vertex_count = count.integer.value;
+    size_t parse_length = vertex_count * vertex_size;
+
+    std::vector<real32_t> vertices;
+    for (size_t i = 0; i < parse_length; ++i)
+    {
+        real32_t vertex_element = this->fetch_numerical_and_consume();
+        vertices.emplace_back(vertex_element);
+    }
+
+    RDViewNodePointSet *node = this->create_node<RDViewNodePointSet>();
+    node->format = description.string.value;
+    node->vertices = vertices;
+    return node;
+
 }
 
 RDViewNodeInterface* RDViewParser::
@@ -772,11 +910,55 @@ match_line()
 RDViewNodeInterface* RDViewParser::
 match_line_set()
 {
-    auto current_token = this->tokenizer->get_current_token();
+
+    this->expect_keyword(RDViewKeywordType_LineSet, "geometry (expected 'LineSet')");
     this->consume();
-    throw RDViewParserErrorNI(current_token);
-    SIMPLEX_NO_IMPLEMENTATION("");
-    return nullptr;
+
+    auto description = this->fetch_type_and_consume(RDViewTokenType_String);
+    if (!RDViewNodeInterface::VerifyVertexAttributeList(description.string.value))
+    {
+        this->throw_error<RDViewParserErrorICF>(description, "invalid vertex format type.");
+    }
+
+    auto vertex_count = this->fetch_type_and_consume(RDViewTokenType_Integer);
+    auto face_count = this->fetch_type_and_consume(RDViewTokenType_Integer);
+    size_t size = RDViewNodeInterface::VertexAttributeSize(description.string.value);
+    size_t count = vertex_count.integer.value;
+    size_t parse_length = count * size;
+    size_t faces_expected = face_count.integer.value;
+
+    std::vector<real32_t> vertices;
+    for (size_t i = 0; i < parse_length; ++i)
+    {
+        real32_t vertex_element = this->fetch_numerical_and_consume();
+        vertices.emplace_back(vertex_element);
+    }
+
+    size_t current_faces = 0;
+    std::vector<std::vector<int32_t>> faces;
+    std::vector<int32_t> indices;
+    while (current_faces < faces_expected)
+    {
+        auto current_face = this->fetch_type_and_consume(RDViewTokenType_Integer);
+        int32_t value = current_face.integer.value;
+        if (value == -1) 
+        {
+            current_faces++;
+            faces.emplace_back(indices);
+            indices.clear();
+        }
+        else
+        {
+            indices.emplace_back(value);
+        }
+    }
+
+    RDViewNodeLineSet *node = this->create_node<RDViewNodeLineSet>();
+    node->format = description.string.value;
+    node->vertex_values = vertices;
+    node->index_values = faces;
+    return node;
+
 }
 
 RDViewNodeInterface* RDViewParser::
@@ -830,11 +1012,44 @@ match_cube()
 RDViewNodeInterface* RDViewParser::
 match_curve()
 {
-    auto current_token = this->tokenizer->get_current_token();
+
+    this->expect_keyword(RDViewKeywordType_Curve, "geometry (expected 'Curve')");
     this->consume();
-    throw RDViewParserErrorNI(current_token);
-    SIMPLEX_NO_IMPLEMENTATION("");
-    return nullptr;
+
+    auto curve_type = this->fetch_type_and_consume(RDViewTokenType_String);
+
+    RDViewCurveType type = RDViewNodeInterface::ClassifyCurveType(curve_type.string.value);
+    if (type == RDViewPatchType_Invalid)
+    {
+        this->throw_error<RDViewParserErrorICF>(curve_type, 
+            "expected a valid curve type, expected: 'Bezier'.");
+    }
+
+    auto format = this->fetch_type_and_consume(RDViewTokenType_String);
+    if (!RDViewNodeInterface::VerifyVertexAttributeList(format.string.value))
+    {
+        this->throw_error<RDViewParserErrorICF>(format, "invalid vertex format type.");
+    }
+
+    auto degree = this->fetch_type_and_consume(RDViewTokenType_Integer);
+
+    size_t control_points = degree.integer.value + 1;
+    size_t vertex_count = RDViewNodeInterface::VertexAttributeSize(format.string.value);
+    size_t expected_vertices = control_points * vertex_count;
+
+    std::vector<real32_t> vertices;
+    for (size_t i = 0; i < expected_vertices; ++i)
+    {
+        real32_t vertex_element = this->fetch_numerical_and_consume();
+        vertices.emplace_back(vertex_element);
+    }
+
+    RDViewNodeCurve *node = this->create_node<RDViewNodeCurve>();
+    node->degree = degree.integer.value;
+    node->format = format.string.value;
+    node->vertices = vertices;
+    return node;
+
 }
 
 RDViewNodeInterface* RDViewParser::
@@ -898,21 +1113,98 @@ match_paraboloid()
 RDViewNodeInterface* RDViewParser::
 match_patch()
 {
-    auto current_token = this->tokenizer->get_current_token();
+
+    this->expect_keyword(RDViewKeywordType_Patch, "geometry (expected 'Patch')");
     this->consume();
-    throw RDViewParserErrorNI(current_token);
-    SIMPLEX_NO_IMPLEMENTATION("");
-    return nullptr;
+
+    auto patch_type = this->fetch_type_and_consume(RDViewTokenType_String);
+    RDViewPatchType type = RDViewNodeInterface::ClassifyPatchType(patch_type.string.value);
+    if (type == RDViewPatchType_Invalid)
+    {
+        this->throw_error<RDViewParserErrorICF>(patch_type, 
+            "expected a valid patch curve type, expected: 'Bezier'");
+    }
+
+    auto format = this->fetch_type_and_consume(RDViewTokenType_String);
+    if (!RDViewNodeInterface::VerifyVertexAttributeList(format.string.value))
+    {
+        this->throw_error<RDViewParserErrorICF>(format, "invalid vertex format type.");
+    }
+
+    auto degree_m = this->fetch_type_and_consume(RDViewTokenType_Integer);
+    auto degree_n = this->fetch_type_and_consume(RDViewTokenType_Integer);
+
+    size_t control_points = (degree_m.integer.value + 1) * (degree_n.integer.value + 1);
+    size_t vertex_count = RDViewNodeInterface::VertexAttributeSize(format.string.value);
+    size_t expected_vertices = control_points * vertex_count;
+
+    std::vector<real32_t> vertices;
+    for (size_t i = 0; i < expected_vertices; ++i)
+    {
+        real32_t vertex_element = this->fetch_numerical_and_consume();
+        vertices.emplace_back(vertex_element);
+    }
+
+    RDViewNodePatch *node = this->create_node<RDViewNodePatch>();
+    node->degree_m = degree_m.integer.value;
+    node->degree_n = degree_n.integer.value;
+    node->format = format.string.value;
+    node->vertices = vertices;
+    return node;
 }
 
 RDViewNodeInterface* RDViewParser::
 match_poly_set()
 {
-    auto current_token = this->tokenizer->get_current_token();
+
+    this->expect_keyword(RDViewKeywordType_PolySet, "geometry (expected 'PolySet')");
     this->consume();
-    throw RDViewParserErrorNI(current_token);
-    SIMPLEX_NO_IMPLEMENTATION("");
-    return nullptr;
+
+    auto description = this->fetch_type_and_consume(RDViewTokenType_String);
+    if (!RDViewNodeInterface::VerifyVertexAttributeList(description.string.value))
+    {
+        this->throw_error<RDViewParserErrorICF>(description, "invalid vertex format type.");
+    }
+
+    auto vertex_count = this->fetch_type_and_consume(RDViewTokenType_Integer);
+    auto face_count = this->fetch_type_and_consume(RDViewTokenType_Integer);
+    size_t size = RDViewNodeInterface::VertexAttributeSize(description.string.value);
+    size_t count = vertex_count.integer.value;
+    size_t parse_length = count * size;
+    size_t faces_expected = face_count.integer.value;
+
+    std::vector<real32_t> vertices;
+    for (size_t i = 0; i < parse_length; ++i)
+    {
+        real32_t vertex_element = this->fetch_numerical_and_consume();
+        vertices.emplace_back(vertex_element);
+    }
+
+    size_t current_faces = 0;
+    std::vector<std::vector<int32_t>> faces;
+    std::vector<int32_t> indices;
+    while (current_faces < faces_expected)
+    {
+        auto current_face = this->fetch_type_and_consume(RDViewTokenType_Integer);
+        int32_t value = current_face.integer.value;
+        if (value == -1) 
+        {
+            current_faces++;
+            faces.emplace_back(indices);
+            indices.clear();
+        }
+        else
+        {
+            indices.emplace_back(value);
+        }
+    }
+
+    RDViewNodePolySet *node = this->create_node<RDViewNodePolySet>();
+    node->format = description.string.value;
+    node->vertex_values = vertices;
+    node->index_values = faces;
+    return node;
+
 }
 
 RDViewNodeInterface* RDViewParser::
@@ -1003,7 +1295,7 @@ match_subdivision()
 {
     auto current_token = this->tokenizer->get_current_token();
     this->consume();
-    throw RDViewParserErrorNI(current_token);
+    this->throw_error<RDViewParserErrorNI>(current_token);
     SIMPLEX_NO_IMPLEMENTATION("");
     return nullptr;
 }
@@ -1011,11 +1303,23 @@ match_subdivision()
 RDViewNodeInterface* RDViewParser::
 match_object_instance()
 {
-    auto current_token = this->tokenizer->get_current_token();
+
+    this->expect_keyword(RDViewKeywordType_ObjectInstance, "geometry (expected 'ObjectInstance')");
     this->consume();
-    throw RDViewParserErrorNI(current_token);
-    SIMPLEX_NO_IMPLEMENTATION("");
-    return nullptr;
+
+    auto object_name = this->fetch_type_and_consume(RDViewTokenType_String);
+    if (!this->object_exists(object_name.string.value))
+    {
+        this->throw_error<RDViewParserErrorICF>(object_name, "object name not defined in current scope.");
+    }
+
+    RDViewNodeObjectInstance *node = this->create_node<RDViewNodeObjectInstance>();
+    node->name = object_name.string.value;
+    node->object = this->get_object(object_name.string.value);
+    SIMPLEX_CHECK_PTR(node->object);
+
+    return node;
+
 }
 
 RDViewNodeInterface* RDViewParser::
@@ -1222,10 +1526,10 @@ match_surface()
 
     static const std::unordered_map<std::string_view, RDViewShaderType> shader_map =
     {
-        { "Matte",          RDViewShaderType_Matte          },
-        { "Metal",          RDViewShaderType_Metal          },
-        { "Plastic",        RDViewShaderType_Plastic        },
-        { "PaintedPlastic", RDViewShaderType_PaintedPlastic },
+        { "matte",          RDViewShaderType_Matte          },
+        { "metal",          RDViewShaderType_Metal          },
+        { "plastic",        RDViewShaderType_Plastic        },
+        { "paintedplastic", RDViewShaderType_PaintedPlastic },
     };
 
     auto shader_token = this->fetch_type_and_consume(RDViewTokenType_String);

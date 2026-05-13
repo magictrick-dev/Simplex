@@ -1,4 +1,5 @@
 Display  "Object Test"  "Screen" "rgbdouble"
+Format 320 240
 
 ObjectBegin "Row5"
 XformPush
@@ -31,8 +32,6 @@ Rotate "Z" 90.0
 ObjectInstance "Row20"
 XformPop
 ObjectEnd
-
-Format 320 240
 
 CameraEye 100 100 50
 CameraUp 0 0 1
