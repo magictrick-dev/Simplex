@@ -4,9 +4,9 @@
 #include <iomanip>
 
 #include <utils/defs.hpp>
-#include <utils/resources.hpp>
 #include <cli/cli.hpp>
 #include <utils/test_registry.hpp>
+#include <utils/system/resource_manager.hpp>
 #include <parsers/rdview/rdview_parser.hpp>
 #include <parsers/rdview/rdview_ref_visitor.hpp>
 
