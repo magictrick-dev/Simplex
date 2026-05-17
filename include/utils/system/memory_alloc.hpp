@@ -50,4 +50,6 @@ simplex_memory_delete(T *buffer)
 size_t simplex_memory_get_allocations_total();
 size_t simplex_memory_get_releases_total();
 size_t simplex_memory_get_live();
+size_t simplex_memory_get_peak();
+void simplex_memory_reset_peak();
 bool simplex_memory_is_balanced();
