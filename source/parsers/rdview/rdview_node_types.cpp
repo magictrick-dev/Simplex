@@ -98,6 +98,7 @@ to_string(RDViewPrimitiveType type)
     return "";
 }
 
+// TODO(Chris): Oops, this was already implemented? Remove this dead code.
 size_t RDViewNodeInterface::
 get_attribute_size(RDViewVertexAttributeType attribute_type)
 {
@@ -115,6 +116,7 @@ get_attribute_size(RDViewVertexAttributeType attribute_type)
     return 0;
 }
 
+// TODO(Chris): Move this to the RDViewNodeInterface as a static method.
 RDViewVertexAttributeType RDViewNodeInterface::
 classify_attribute_type(char c)
 {
@@ -132,6 +134,7 @@ classify_attribute_type(char c)
     return RDViewVertexAttributeType_Invalid;
 }
 
+// TODO(Chris): Move this to the RDViewNodeInterface as a static method.
 RDViewDisplayType RDViewNodeDisplay::
 map_display_type(std::string_view parameter)
 {
@@ -149,6 +152,7 @@ map_display_type(std::string_view parameter)
     return result->second;
 }
 
+// TODO(Chris): Move this to the RDViewNodeInterface as a static method.
 RDViewModeType RDViewNodeDisplay::
 map_mode_type(std::string_view parameter)
 {

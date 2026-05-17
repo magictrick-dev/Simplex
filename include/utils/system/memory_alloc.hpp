@@ -1,4 +1,5 @@
 #pragma once
+#include <utility>
 
 struct AllocationDescriptor 
 {
@@ -28,11 +29,11 @@ AllocationDescriptor simplex_internal_memory_description(void *pointer);
 #endif
 
 template <typename T, typename... Args> inline T*
-simplex_memory_new(Args... args)
+simplex_memory_new(Args&&... args)
 {
 
     void* raw_buffer = simplex_memory_alloc(sizeof(T));
-    T* result = new (raw_buffer) T(args...);
+    T* result = new (raw_buffer) T(std::forward<Args>(args)...);
     return result;
 
 }
@@ -49,4 +50,6 @@ simplex_memory_delete(T *buffer)
 size_t simplex_memory_get_allocations_total();
 size_t simplex_memory_get_releases_total();
 size_t simplex_memory_get_live();
+size_t simplex_memory_get_peak();
+void simplex_memory_reset_peak();
 bool simplex_memory_is_balanced();

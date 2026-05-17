@@ -4,9 +4,9 @@
 #include <iomanip>
 
 #include <utils/defs.hpp>
-#include <utils/resources.hpp>
 #include <cli/cli.hpp>
 #include <utils/test_registry.hpp>
+#include <utils/system/resource_manager.hpp>
 #include <parsers/rdview/rdview_parser.hpp>
 #include <parsers/rdview/rdview_ref_visitor.hpp>
 
@@ -61,7 +61,24 @@ entry(int argc, char **argv)
         return 1;
     }
 
+    // NOTE(Chris): Running tests will bypass the runtime.
+    if (cli.has_argument("--run-tests")) 
+    {
+        TestRegistry::RunEverything();
+        return 0;
+    }
+
     std::filesystem::path file_path = std::filesystem::weakly_canonical(cli.get_arg(1));
+
+    ResourceHandle handle = NULL;
+    ResourceManagerResult result = ResourceManager::RegisterTextFile(file_path, &handle);
+    if (result != ResourceManagerResult_OK)
+    {
+        std::cout << "File not found: " << file_path << std::endl;
+        return -1;
+    }
+
+    /*
     if (!std::filesystem::exists(file_path)) return false;
     size_t file_size = std::filesystem::file_size(file_path);
     std::string file_source(file_size, '\0');
@@ -83,11 +100,7 @@ entry(int argc, char **argv)
         std::cout << "REFERENCE:" << std::endl;
         std::cout << reference_output.get_output() << std::endl;
     }
-
-    if (cli.has_argument("--run-tests")) 
-    {
-        TestRegistry::RunEverything();
-    }
+    */
 
     return 0;
 

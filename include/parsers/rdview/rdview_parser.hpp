@@ -372,12 +372,11 @@ class RDViewParser
         RDViewNodeInterface* match_map_border();
 
     private:
-        template <typename T, typename... Args> inline T* create_node(Args ...args)
+        template <typename T, typename... Args> inline T* create_node(Args&&... args)
         {
 
             static_assert(std::is_base_of<RDViewNodeInterface, T>::value);
-            void *memory_buffer = malloc(sizeof(T));
-            T *node = new (memory_buffer) T(args...);
+            T* node = simplex_memory_new<T>(std::forward<Args>(args)...);
             this->nodes.push_back(node);
             return node;
 
@@ -385,8 +384,7 @@ class RDViewParser
 
         inline void destroy_node(RDViewNodeInterface *node)
         {
-            node->~RDViewNodeInterface();
-            free(node);
+            simplex_memory_delete(node);
         }
 
     private:
