@@ -1,284 +1,145 @@
-#include <unordered_map>
-#include <mutex>
-#include <shared_mutex>
-#include <atomic>
-#include <utility>
-
 #include <utils/defs.hpp>
 #include <utils/system/resource_manager.hpp>
 #include <utils/system/memory_alloc.hpp>
 
-enum ResourceType
+ResourceManager::
+ResourceManager()
 {
-    ResourceType_Invalid,
-    ResourceType_BinaryFile,
-    ResourceType_TextFile,
-};
+    this->thread_pool_start();
+}
 
-class ResourceInterface
+ResourceManager::
+~ResourceManager()
 {
-    public:
-        inline ResourceInterface(ResourceType resource_type) : type(resource_type) { }
-        virtual inline ~ResourceInterface() = default;
+    this->thread_pool_stop();
+}
 
-        virtual bool is_ready() = 0;
-        virtual bool is_available() = 0;
-        virtual void load() = 0;
-        virtual void discard() = 0;
-
-        inline ResourceType get_resource_type() const { return this->type; }
-
-    private:
-        ResourceType type;
-
-};
-
-class FileResourceInterface : public ResourceInterface
-{
-    public:
-        inline FileResourceInterface(ResourceType resource_type) : ResourceInterface(resource_type) { }
-        inline virtual ~FileResourceInterface() = default;
-
-        inline std::string get_resource_path() const { return this->canonical_path.string(); }
-        inline size_t get_resource_size() const { return std::filesystem::file_size(this->canonical_path); }
-
-    protected:
-        std::filesystem::path canonical_path;
-
-};
-
-class BinaryFileResource : public FileResourceInterface
-{
-    public:
-        inline BinaryFileResource() : FileResourceInterface(ResourceType_BinaryFile) { }
-        inline BinaryFileResource(std::filesystem::path input) 
-            : FileResourceInterface(ResourceType_BinaryFile)
-        { 
-            this->canonical_path = std::filesystem::weakly_canonical(input);
-        }
-
-        virtual inline bool is_ready() override 
-        { 
-            const char *file_path = this->get_resource_path().c_str();
-            FILE *file_handle = fopen(file_path, "rb");
-            if (file_handle == NULL) return false;
-            fclose(file_handle);
-            return true;
-        }
-
-        virtual inline bool is_available() override 
-        { 
-            const bool result = (this->buffer != NULL);
-            return result;
-        }
-
-        virtual inline void load() override 
-        { 
-
-            size_t file_size = this->get_resource_size();
-
-            const char *file_path = this->get_resource_path().c_str();
-            FILE *file_handle = fopen(file_path, "rb");
-            if (file_handle == NULL) return;
-
-            void *file_buffer = simplex_memory_alloc(file_size);
-            size_t read_size = fread(file_buffer, 1, file_size, file_handle);
-            if (read_size != file_size)
-            {
-                simplex_memory_free(file_buffer);
-            }
-            else
-            {
-                buffer = file_buffer;
-                size = file_size;
-            }
-
-            fclose(file_handle);
-
-        }
-
-        virtual inline void discard() override 
-        { 
-            simplex_memory_free(this->buffer);
-            this->size = 0;
-        }
-
-        inline size_t binary_file_size() const { return this->size; }
-        inline void* binary_file_buffer() const { return this->buffer; }
-
-    private:
-        void *buffer    = NULL;
-        size_t size     = 0;
-
-};
-
-class TextFileResource : public FileResourceInterface
-{
-    public:
-        inline TextFileResource() : FileResourceInterface(ResourceType_BinaryFile) { }
-        inline TextFileResource(std::filesystem::path input) 
-            : FileResourceInterface(ResourceType_TextFile)
-        { 
-            this->canonical_path = std::filesystem::weakly_canonical(input);
-        }
-
-        virtual inline bool is_ready() override 
-        { 
-            const char *file_path = this->get_resource_path().c_str();
-            FILE *file_handle = fopen(file_path, "rb");
-            if (file_handle == NULL) return false;
-            fclose(file_handle);
-            return true;
-        }
-
-        virtual inline bool is_available() override 
-        { 
-            const bool result = (this->buffer != NULL);
-            return result;
-        }
-
-        virtual inline void load() override 
-        { 
-
-            size_t file_size = this->get_resource_size();
-
-            const char *file_path = this->get_resource_path().c_str();
-            FILE *file_handle = fopen(file_path, "rb");
-            if (file_handle == NULL) return;
-
-            void *file_buffer = simplex_memory_alloc(file_size+1);
-            size_t read_size = fread(file_buffer, 1, file_size, file_handle);
-            if (read_size != file_size)
-            {
-                simplex_memory_free(file_buffer);
-            }
-            else
-            {
-                ((char*)buffer)[file_size] = '\0';
-                buffer = file_buffer;
-                size = file_size;
-            }
-
-            fclose(file_handle);
-
-        }
-
-        virtual inline void discard() override 
-        { 
-            simplex_memory_free(this->buffer);
-            this->size = 0;
-        }
-
-        inline size_t text_file_size() const { return this->size; }
-        inline const char* c_str() const { return (char*)this->buffer; }
-
-    private:
-        void *buffer    = NULL;
-        size_t size     = 0;
-
-};
-
-enum ResourceState : uint32_t
-{
-    ResourceState_Unloaded      = 0,
-    ResourceState_Loading       = 1,
-    ResourceState_Ready         = 2,
-    ResourceState_Unloading     = 3,
-};
-
-struct ResourceManagerState
+void ResourceManager::
+thread_pool_start()
 {
 
-    static inline std::shared_mutex mtx;
-
-    static inline std::vector<ResourceInterface*> resources;
-    static inline std::vector<ResourceHandle> handles;
-    static inline std::vector<std::atomic<ResourceState>> states;
+    // NOTE(Chris): If someone is using a fossil to run this software, we enforce a
+    //              minimum of 4 threads and let the operating system schedule out the
+    //              work. For the most part, the threads are just doing I/O work.
+    uint32_t thread_count = std::thread::hardware_concurrency();
+    if (thread_count == 0 || thread_count < 4) thread_count = 4;
     
-};
-
-static std::shared_mutex resource_mtx;
-
-static std::vector<ResourceInterface*> resources;
-static std::vector<ResourceHandle> handles;
-
-using FileResourceDescription = std::pair<ResourceHandle, FileResourceInterface*>;
-static std::unordered_map<std::filesystem::path, FileResourceDescription> registered_files;
-
-template <typename T, typename... Args> inline static T*
-CreateResource(ResourceHandle &handle, Args&&... args)
-{
-
-    // NOTE(Chris): Thread synchronization must occur externally, no sense over-generating
-    //              locking code in a template if we don't need to.
-    T* resource = simplex_memory_new<T>(std::forward<Args>(args)...);
-
-    uint32_t current_identifier = static_cast<uint32_t>(resources.size());
-
-    handle = {
-        .identifier = current_identifier,
-        .generation = 0,
-    };
-
-    resources.emplace_back(resource);
-    handles.emplace_back(handle);
-
-    return resource;
-
-}
-
-ResourceManagerResult ResourceManager::
-IsFileResourceRegistered(std::filesystem::path input)
-{
-
-    std::filesystem::path canonical_path = std::filesystem::weakly_canonical(input);
-
-    std::shared_lock lock(resource_mtx);
-    const bool result = (registered_files.find(input) != registered_files.end());
-    return (result ? ResourceManagerResult_ResourceExists : ResourceManagerResult_ResourceNotFound);
-
-}
-
-ResourceManagerResult ResourceManager::
-RegisterBinaryFile(std::filesystem::path input, ResourceHandle *handle)
-{
-
-    std::filesystem::path canonical_path = std::filesystem::weakly_canonical(input);
-    if (!std::filesystem::exists(canonical_path)) return ResourceManagerResult_FileNotFound;
-    if (IsFileResourceRegistered(canonical_path)) return ResourceManagerResult_OK;
-
-    FileResourceInterface *resource_interface = NULL;
-    ResourceHandle resource_handle = {};
-
+    for (uint32_t i = 0; i < thread_count; ++i)
     {
-        std::unique_lock lock(resource_mtx);
-        resource_interface = CreateResource<BinaryFileResource>(resource_handle, canonical_path);
-        registered_files[canonical_path] = { resource_handle, resource_interface };
+        this->thread_pool.threads.emplace_back(std::thread(
+            &ResourceManager::thread_pool_runtime, this));
     }
 
-    if (handle != NULL) *handle = resource_handle;
-    return ResourceManagerResult_OK;
+}
+
+void ResourceManager::
+thread_pool_stop()
+{
+
+}
+
+void ResourceManager::
+thread_pool_runtime()
+{
+
+    while (true)
+    {
+
+        ResourceHandle handle = {};
+        if (!thread_pool_fetch_job(handle)) return;
+
+        // TODO(Chris): We have the job, now we load it.
+
+    }
+
+}
+
+bool ResourceManager::
+thread_pool_fetch_job(ResourceHandle &handle)
+{
+
+    std::unique_lock lock(this->thread_pool.queue_mutex);
+    this->thread_pool.queue_condition.wait(lock, [this] {
+        return (this->thread_pool.jobs.empty() || this->thread_pool.should_exit);
+    });
+
+    if (this->thread_pool.should_exit == true) return false;
+
+    handle = this->thread_pool.jobs.front();
+    this->thread_pool.jobs.pop();
+
+    return true;
+
+}
+
+void ResourceManager::
+thread_pool_enqueue(const ResourceHandle& handle)
+{
 
 }
 
 ResourceManagerResult ResourceManager::
-RegisterTextFile(std::filesystem::path input, ResourceHandle *handle)
+register_binary_file_resource(const std::filesystem::path &path)
 {
 
-    std::filesystem::path canonical_path = std::filesystem::weakly_canonical(input);
-    if (!std::filesystem::exists(canonical_path)) return ResourceManagerResult_FileNotFound;
-    if (IsFileResourceRegistered(canonical_path)) return ResourceManagerResult_OK;
+}
 
-    FileResourceInterface *resource_interface = NULL;
-    ResourceHandle resource_handle = {};
+ResourceManagerResult ResourceManager::
+register_text_file_resource(const std::filesystem::path &path)
+{
 
-    {
-        std::unique_lock lock(resource_mtx);
-        resource_interface = CreateResource<TextFileResource>(resource_handle, canonical_path);
-        registered_files[canonical_path] = { resource_handle, resource_interface };
-    }
+}
 
-    if (handle != NULL) *handle = resource_handle;
-    return ResourceManagerResult_OK;
+ResourceManagerResult ResourceManager::
+register_image_file_resource(const std::filesystem::path &path)
+{
+
+}
+
+ResourceManagerResult ResourceManager::
+is_file_resource_registered(const std::filesystem::path &path) const
+{
+
+}
+
+ResourceManagerResult ResourceManager::
+get_file_resource_handle(const std::filesystem::path &path) const
+{
+
+}
+
+ResourceManagerResult ResourceManager::
+get_resource_state(const ResourceHandle &handle) const
+{
+
+}
+
+ResourceManagerResult ResourceManager::
+wait(const ResourceHandle &handle)
+{
+
+}
+
+ResourceManagerResult ResourceManager::
+prepare(const ResourceHandle &handle)
+{
+
+}
+
+ResourceManagerResult ResourceManager::
+load(const ResourceHandle &handle)
+{
+
+}
+
+ResourceManagerResult ResourceManager::
+unload(const ResourceHandle &handle)
+{
+
+}
+
+ResourceManagerResult ResourceManager::
+remove(const ResourceHandle &handle)
+{
 
 }
