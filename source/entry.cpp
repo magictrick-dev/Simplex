@@ -80,6 +80,10 @@ entry(int argc, char **argv)
     }
 
     resource_manager.load(rdview_resource_handle);
+
+    // NOTE(Chris): This is the point where we load the window, prepare the graphics front-end,
+    //              and handle another compute-bound shenanigans.
+    
     resource_manager.wait(rdview_resource_handle);
     
     ResourceView rdview_resource_view = {};
@@ -92,6 +96,12 @@ entry(int argc, char **argv)
 
     const char *file_source = rdview_resource_view.text_view.text;
 
+    // Parse the file.
+    // NOTE(Chris): The parser itself keeps a stale reference to the input source, which
+    //              gets unloaded after we finish parsing. Nothings stopping me from hitting
+    //              the "go" button again despite it being already loaded. Should we decouple
+    //              our tree from the parser and/or let the parser defer to the resource manager?
+    // TODO(Chris): See above notes, we should probably fix this awkward dependency.
     RDViewParser parser(file_source, file_path);
     if (!parser.match_everything())
     {
@@ -106,6 +116,7 @@ entry(int argc, char **argv)
         std::cout << reference_output.get_output() << std::endl;
     }
 
+    // Parse is complete, we no longer need to keep the source resident.
     resource_manager.unload(rdview_resource_handle);
     resource_manager.wait(rdview_resource_handle);
     resource_manager.remove(rdview_resource_handle);
