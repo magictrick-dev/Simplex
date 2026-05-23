@@ -368,9 +368,39 @@ class RDViewReferenceVisitor : public RDViewNodeVisitor
             this->print_tabs();
             output << "PolySet \"" << node->format << "\" " 
                 << node->vertex_values.size() << " " << node->index_values.size();
-            for (auto v : node->vertex_values) output << " " << v;
+            output << "\n";
+            this->print_tabs();
+            
+            int32_t count = 0;
+            for (auto v : node->vertex_values) 
+            {
+                output << " " << std::left << std::setw(12) <<  v;
+                count++;
+                if (count == (node->vertex_size))
+                {
+                    output << "\n";
+                    this->print_tabs();
+                    count = 0;
+                }
+            }
+
+            output << "\n";
+            this->print_tabs();
+
             for (auto iv : node->index_values) 
-                for (auto i : iv) output << " " << i;
+            {
+                for (auto i : iv) 
+                {
+                    output << " " << std::left << std::setw(4) << i;
+                    if (i == -1) 
+                    {
+                        output << "\n";
+                        this->print_tabs();
+                    }
+                }
+                output << " " << std::left << std::setw(4) << -1 << "\n";
+                this->print_tabs();
+            }
             output << "\n";
         };
 

@@ -887,6 +887,7 @@ match_point_set()
     RDViewNodePointSet *node = this->create_node<RDViewNodePointSet>();
     node->format = description.string.value;
     node->vertices = vertices;
+    node->vertex_size = vertex_size;
     return node;
 
 }
@@ -957,6 +958,7 @@ match_line_set()
     node->format = description.string.value;
     node->vertex_values = vertices;
     node->index_values = faces;
+    node->vertex_size = size;
     return node;
 
 }
@@ -1048,6 +1050,7 @@ match_curve()
     node->degree = degree.integer.value;
     node->format = format.string.value;
     node->vertices = vertices;
+    node->vertex_size = vertex_count;
     return node;
 
 }
@@ -1150,6 +1153,7 @@ match_patch()
     node->degree_n = degree_n.integer.value;
     node->format = format.string.value;
     node->vertices = vertices;
+    node->vertex_size = vertex_count;
     return node;
 }
 
@@ -1203,6 +1207,7 @@ match_poly_set()
     node->format = description.string.value;
     node->vertex_values = vertices;
     node->index_values = faces;
+    node->vertex_size = size;
     return node;
 
 }

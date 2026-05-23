@@ -68,25 +68,40 @@ entry(int argc, char **argv)
         return 0;
     }
 
+    // Prepare the RDView file and load it in memory.
     std::filesystem::path file_path = std::filesystem::weakly_canonical(cli.get_arg(1));
-
-    ResourceHandle handle = NULL;
-    ResourceManagerResult result = ResourceManager::RegisterTextFile(file_path, &handle);
-    if (result != ResourceManagerResult_OK)
+    ResourceManager &resource_manager = ResourceManager::Get();
+    
+    ResourceHandle rdview_resource_handle = {};
+    if (resource_manager.register_text_file_resource(file_path, &rdview_resource_handle) != ResourceManagerResult_OK)
     {
-        std::cout << "File not found: " << file_path << std::endl;
+        std::cout << "Failed to find RDView script file: " << file_path << std::endl;
         return -1;
     }
 
-    /*
-    if (!std::filesystem::exists(file_path)) return false;
-    size_t file_size = std::filesystem::file_size(file_path);
-    std::string file_source(file_size, '\0');
-    std::ifstream file_stream(file_path);
-    if (!file_stream.is_open()) return false;
-    file_stream.read(&file_source[0], file_size);
-    file_stream.close();
+    resource_manager.load(rdview_resource_handle);
 
+    // NOTE(Chris): This is the point where we load the window, prepare the graphics front-end,
+    //              and handle another compute-bound shenanigans.
+    
+    resource_manager.wait(rdview_resource_handle);
+    
+    ResourceView rdview_resource_view = {};
+    auto result = resource_manager.fetch_resource_view(rdview_resource_handle, &rdview_resource_view);
+    if (result != ResourceManagerResult_OK || rdview_resource_view.type != ResourceViewType_Text)
+    {
+        std::cout << "Resource type doesn't match expected resource view." << std::endl;
+        return -1;
+    }
+
+    const char *file_source = rdview_resource_view.text_view.text;
+
+    // Parse the file.
+    // NOTE(Chris): The parser itself keeps a stale reference to the input source, which
+    //              gets unloaded after we finish parsing. Nothings stopping me from hitting
+    //              the "go" button again despite it being already loaded. Should we decouple
+    //              our tree from the parser and/or let the parser defer to the resource manager?
+    // TODO(Chris): See above notes, we should probably fix this awkward dependency.
     RDViewParser parser(file_source, file_path);
     if (!parser.match_everything())
     {
@@ -100,7 +115,11 @@ entry(int argc, char **argv)
         std::cout << "REFERENCE:" << std::endl;
         std::cout << reference_output.get_output() << std::endl;
     }
-    */
+
+    // Parse is complete, we no longer need to keep the source resident.
+    resource_manager.unload(rdview_resource_handle);
+    resource_manager.wait(rdview_resource_handle);
+    resource_manager.remove(rdview_resource_handle);
 
     return 0;
 
