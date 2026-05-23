@@ -6,13 +6,9 @@
 #include <cstring>
 #include <system_error>
 
-// ---------------------------------------------------------------------------
-// stb_image allocator routing
-// ---------------------------------------------------------------------------
 // Route stb_image through our tracked allocator so image payloads show up in
 // the memory subsystem. realloc is emulated (alloc + copy + free) because
 // simplex_memory_alloc has no realloc primitive.
-
 static inline void*
 simplex_stbi_malloc(size_t size)
 {
@@ -52,10 +48,6 @@ simplex_stbi_realloc(void *pointer, size_t new_size)
 #define STBI_FREE(p)            simplex_stbi_free(p)
 #define STB_IMAGE_IMPLEMENTATION
 #include <STB/stb_image.h>
-
-// ---------------------------------------------------------------------------
-// BinaryFileResource
-// ---------------------------------------------------------------------------
 
 BinaryFileResource::
 BinaryFileResource(const std::filesystem::path &path, size_t size)
@@ -121,10 +113,6 @@ unload()
     }
 
 }
-
-// ---------------------------------------------------------------------------
-// TextFileResource
-// ---------------------------------------------------------------------------
 
 TextFileResource::
 TextFileResource(const std::filesystem::path &path, size_t length)
@@ -196,10 +184,6 @@ unload()
 
 }
 
-// ---------------------------------------------------------------------------
-// ImageRGBAResource
-// ---------------------------------------------------------------------------
-
 ImageRGBAResource::
 ImageRGBAResource(const std::filesystem::path &path, int32_t width, int32_t height)
     : ResourceInterface(ResourceType_ImageFile),
@@ -261,10 +245,6 @@ unload()
 
 }
 
-// ---------------------------------------------------------------------------
-// ResourceManager - construction / destruction
-// ---------------------------------------------------------------------------
-
 ResourceManager::
 ResourceManager()
     : slot_count(0)
@@ -307,10 +287,6 @@ ResourceManager::
     }
 
 }
-
-// ---------------------------------------------------------------------------
-// ResourceManager - thread pool
-// ---------------------------------------------------------------------------
 
 void ResourceManager::
 thread_pool_start()
@@ -421,10 +397,6 @@ thread_pool_runtime()
 
 }
 
-// ---------------------------------------------------------------------------
-// ResourceManager - slot lookup
-// ---------------------------------------------------------------------------
-
 ResourceSlot* ResourceManager::
 find_slot(const ResourceHandle &handle) const
 {
@@ -434,13 +406,6 @@ find_slot(const ResourceHandle &handle) const
 
 }
 
-// ---------------------------------------------------------------------------
-// ResourceManager - registration
-// ---------------------------------------------------------------------------
-
-// NOTE(Chris): Shared registration tail. Assumes registration_mutex is held
-//              and file_mapping does not already contain `canonical`. Takes
-//              ownership of `impl` - on failure paths impl is deleted.
 static ResourceManagerResult
 publish_resource_locked(std::atomic<ResourceSlot*> *slot_table,
                         std::atomic<uint32_t> *slot_count_counter,
@@ -637,10 +602,6 @@ get_file_resource_handle(const std::filesystem::path &path, ResourceHandle *hand
     return ResourceManagerResult_OK;
 
 }
-
-// ---------------------------------------------------------------------------
-// ResourceManager - lifecycle
-// ---------------------------------------------------------------------------
 
 ResourceManagerResult ResourceManager::
 load(const ResourceHandle &handle)
@@ -859,10 +820,6 @@ remove(const ResourceHandle &handle)
 
 }
 
-// ---------------------------------------------------------------------------
-// ResourceManager - lock-free queries
-// ---------------------------------------------------------------------------
-
 bool ResourceManager::
 is_registered(const ResourceHandle &handle) const
 {
@@ -902,10 +859,6 @@ is_unloading(const ResourceHandle &handle) const
     return slot->state.load(std::memory_order_acquire) == ResourceState_Unloading;
 
 }
-
-// ---------------------------------------------------------------------------
-// ResourceManager - fetch
-// ---------------------------------------------------------------------------
 
 ResourceManagerResult ResourceManager::
 fetch_resource_view(const ResourceHandle &handle, ResourceView *view) const
@@ -963,9 +916,9 @@ fetch_resource_view(const ResourceHandle &handle, ResourceView *view) const
 
 }
 
-// ---------------------------------------------------------------------------
-// Tests
-// ---------------------------------------------------------------------------
+// ------------------------------------------------------------------------------------------------- //
+// Tests                                                                                             //
+// ------------------------------------------------------------------------------------------------- //
 
 #include <utils/test_registry.hpp>
 #if defined(SIMPLEX_ENABLE_TESTS) && SIMPLEX_ENABLE_TESTS == 1
@@ -1031,10 +984,6 @@ buffer_matches_seed(const uint8_t *data, size_t size, uint8_t seed)
 
 }
 
-// ---------------------------------------------------------------------------
-// Registration
-// ---------------------------------------------------------------------------
-
 static bool
 rm_register_missing_file_fails(const EmptyCase &)
 {
@@ -1090,10 +1039,6 @@ rm_register_duplicate_returns_existing(const BinaryFileCase &test_case)
     return ok;
 
 }
-
-// ---------------------------------------------------------------------------
-// Async load / wait / fetch
-// ---------------------------------------------------------------------------
 
 static bool
 rm_load_wait_fetch(const BinaryFileCase &test_case)
@@ -1213,10 +1158,6 @@ rm_wait_after_ready_short_circuits(const BinaryFileCase &test_case)
 
 }
 
-// ---------------------------------------------------------------------------
-// Handle validation
-// ---------------------------------------------------------------------------
-
 static bool
 rm_invalid_handle_rejected(const EmptyCase &)
 {
@@ -1267,10 +1208,6 @@ rm_stale_handle_rejected(const BinaryFileCase &test_case)
     return ok;
 
 }
-
-// ---------------------------------------------------------------------------
-// Synchronous load
-// ---------------------------------------------------------------------------
 
 // Basic sync path - load_synchronous must transition Registered -> Ready
 // before returning, with no wait() needed by the caller.
@@ -1362,10 +1299,6 @@ rm_sync_load_races_with_async(const BinaryFileCase &test_case)
 
 }
 
-// ---------------------------------------------------------------------------
-// Synchronous unload
-// ---------------------------------------------------------------------------
-
 // Sync unload after sync load - both phases must complete inline, with the
 // final state Registered before either call returns.
 static bool
@@ -1447,10 +1380,6 @@ rm_sync_unload_waits_for_async_load(const BinaryFileCase &test_case)
 
 }
 
-// ---------------------------------------------------------------------------
-// Text resources
-// ---------------------------------------------------------------------------
-
 struct TextFileCase
 {
     const char *payload;
@@ -1513,10 +1442,6 @@ rm_text_load_wait_fetch(const TextFileCase &test_case)
     return ok;
 
 }
-
-// ---------------------------------------------------------------------------
-// Image resources
-// ---------------------------------------------------------------------------
 
 struct ImageCase
 {

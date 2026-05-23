@@ -623,6 +623,7 @@ struct RDViewNodePointSet : public RDViewNodeInterface
 
         std::string format;
         std::vector<real32_t> vertices;
+        size_t vertex_size;
 };
 
 struct RDViewNodeLine : public RDViewNodeInterface
@@ -651,6 +652,7 @@ struct RDViewNodeLineSet : public RDViewNodeInterface
         std::string format;
         std::vector<real32_t> vertex_values;
         std::vector<std::vector<int32_t>> index_values;
+        size_t vertex_size;
 };
 
 struct RDViewNodeCircle : public RDViewNodeInterface
@@ -708,6 +710,7 @@ struct RDViewNodeCurve : public RDViewNodeInterface
         size_t degree;
         std::string format;
         std::vector<real32_t> vertices;
+        size_t vertex_size;
 };
 
 struct RDViewNodeCylinder : public RDViewNodeInterface
@@ -776,6 +779,7 @@ struct RDViewNodePatch : public RDViewNodeInterface
         size_t degree_m;
         size_t degree_n;
         std::vector<real32_t> vertices;
+        size_t vertex_size;
 };
 
 struct RDViewNodePolySet : public RDViewNodeInterface
@@ -788,6 +792,7 @@ struct RDViewNodePolySet : public RDViewNodeInterface
         std::string format;
         std::vector<real32_t> vertex_values;
         std::vector<std::vector<int32_t>> index_values;
+        size_t vertex_size;
 };
 
 struct RDViewNodeSphere : public RDViewNodeInterface
