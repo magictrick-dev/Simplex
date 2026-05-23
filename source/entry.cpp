@@ -69,14 +69,7 @@ entry(int argc, char **argv)
     }
 
     std::filesystem::path file_path = std::filesystem::weakly_canonical(cli.get_arg(1));
-
-    ResourceHandle handle = NULL;
-    ResourceManagerResult result = ResourceManager::RegisterTextFile(file_path, &handle);
-    if (result != ResourceManagerResult_OK)
-    {
-        std::cout << "File not found: " << file_path << std::endl;
-        return -1;
-    }
+    ResourceManager &resource_manager = ResourceManager::Get();
 
     /*
     if (!std::filesystem::exists(file_path)) return false;
