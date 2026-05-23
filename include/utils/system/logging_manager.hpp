@@ -6,6 +6,7 @@
 #include <shared_mutex>
 #include <deque>
 #include <array>
+#include <algorithm>
 
 struct LoggingMessage
 {
@@ -37,6 +38,14 @@ enum class LoggingClassification : size_t
     _Count,
 };
 
+enum LoggingManagerSwitch
+{
+    LoggingManagerSwitch_Disable,
+    LoggingManagerSwitch_EnableProduction,
+    LoggingManagerSwitch_EnableMinimal,
+    LoggingManagerSwitch_EnableFull,
+};
+
 class LoggingManager
 {
 
@@ -47,8 +56,8 @@ class LoggingManager
             return manager;
         }
 
-        template <LoggingLevel l, LoggingClassification c>
-        static inline void DispatchMessage(std::string_view message)
+        template <LoggingLevel l, LoggingClassification c, typename... Args>
+        static inline void DispatchMessage(std::string_view message, Args&&... args)
         {
             
         }
@@ -112,6 +121,30 @@ class LoggingManager
             auto levels_array = GetLoggingClassificationsArray();
             size_t index = static_cast<size_t>(classification);
             return levels_array[index];
+        }
+
+        static constexpr inline size_t
+        GetLoggingHeaderLength()
+        {
+
+            constexpr std::array<std::string_view, static_cast<size_t>(LoggingLevel::_Count)> levels_array = GetLoggingLevelsArray();
+            constexpr size_t max_levels_length = std::max_element(levels_array.begin(), levels_array.end(),
+                [](std::string_view a, std::string_view b) -> bool
+                { 
+                    return a.length() < b.length(); 
+                })->length();
+
+            constexpr std::array<std::string_view, static_cast<size_t>(LoggingClassification::_Count)> classifications_array = GetLoggingClassificationsArray();
+            constexpr size_t max_classifications_length = std::max_element(classifications_array.begin(), classifications_array.end(),
+                [](std::string_view a, std::string_view b) -> bool
+                { 
+                    return a.length() < b.length(); 
+                })->length();
+
+            // NOTE(Chris): Reserve 4 more for the brackets.
+            constexpr size_t final_length = max_levels_length + max_classifications_length + 4;
+            return final_length;
+
         }
 
     private:

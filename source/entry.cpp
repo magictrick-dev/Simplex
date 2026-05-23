@@ -7,6 +7,7 @@
 #include <cli/cli.hpp>
 #include <utils/test_registry.hpp>
 #include <utils/system/resource_manager.hpp>
+#include <utils/system/logging_manager.hpp>
 #include <parsers/rdview/rdview_parser.hpp>
 #include <parsers/rdview/rdview_ref_visitor.hpp>
 
@@ -49,6 +50,8 @@ print_engine_information()
 static int
 entry(int argc, char **argv)
 {
+
+    auto &logger = LoggingManager::Get();
 
     print_engine_information();
 
