@@ -10,6 +10,12 @@
 #include <parsers/rdview/rdview_parser.hpp>
 #include <parsers/rdview/rdview_ref_visitor.hpp>
 
+#if defined(_WIN32)
+#   include <windows.h>
+#endif
+#include <GLAD/glad.h>
+#include <GLFW/glfw3.h>
+
 #ifndef SIMPLEX_PLATFORM_INFORMATION
 #   define SIMPLEX_PLATFORM_INFORMATION
 #   if defined(__APPLE__)
@@ -68,6 +74,13 @@ entry(int argc, char **argv)
         return 0;
     }
 
+    // Initialize GLFW.
+    if (!glfwInit())
+    {
+        std::cout << "Failed to initialize GLFW." << std::endl;
+        return -1;
+    }
+
     // Prepare the RDView file and load it in memory.
     std::filesystem::path file_path = std::filesystem::weakly_canonical(cli.get_arg(1));
     ResourceManager &resource_manager = ResourceManager::Get();
@@ -83,7 +96,34 @@ entry(int argc, char **argv)
 
     // NOTE(Chris): This is the point where we load the window, prepare the graphics front-end,
     //              and handle another compute-bound shenanigans.
-    
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+
+    GLFWwindow *window = glfwCreateWindow(1280, 960, "Simplex Render Viewer", NULL, NULL);
+    if (window == NULL)
+    {
+        const char* description;
+        int code = glfwGetError(&description);
+
+        if (code != GLFW_NO_ERROR) 
+        {
+            printf("GLFW Error (%d): %s\n", code, description);
+        }
+
+        std::cout << "Failed to create GLFW window." << std::endl;
+        glfwTerminate();
+        return -1;
+    }
+
+    glfwMakeContextCurrent(window);
+
+    if (!gladLoadGL())
+    {
+        std::cout << "Failed to initialzie GLAD" << std::endl;
+        return -1;
+    }
+
     resource_manager.wait(rdview_resource_handle);
     
     ResourceView rdview_resource_view = {};
@@ -120,6 +160,25 @@ entry(int argc, char **argv)
     resource_manager.unload(rdview_resource_handle);
     resource_manager.wait(rdview_resource_handle);
     resource_manager.remove(rdview_resource_handle);
+
+    static bool runtime_flag = true;
+    while (runtime_flag == true)
+    {
+
+        glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT);
+
+        glfwSwapBuffers(window);
+        glfwPollEvents();
+
+        if (glfwWindowShouldClose(window)) runtime_flag = false;
+
+    }
+
+    glfwDestroyWindow(window);
+    glfwTerminate();
+
+    std::cout << "Application successfully closed." << std::endl;
 
     return 0;
 
