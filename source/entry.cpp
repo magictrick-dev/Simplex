@@ -78,6 +78,7 @@ entry(int argc, char **argv)
     if (cli.has_argument("--run-tests")) 
     {
         TestRegistry::RunEverything();
+        LoggingManager::ProcessMessageQueue();
         return 0;
     }
 

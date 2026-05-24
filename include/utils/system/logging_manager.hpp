@@ -56,7 +56,7 @@ class LoggingManager
         }
 
         template <LoggingLevel l, LoggingClassification c, typename... Args> static inline void 
-        DispatchLog(std::format_string<Args...> mformat, Args&&... args)
+        DispatchLog(std::string_view mformat, Args&&... args)
         {
             
             LoggingManager &manager = Get();
@@ -77,7 +77,7 @@ class LoggingManager
             LoggingMessage message_log  = {};
             message_log.classification  = c;
             message_log.level           = l;
-            message_log.message         = std::format(mformat, std::forward<Args>(args)...);
+            message_log.message         = std::vformat(mformat, std::make_format_args(std::forward<Args>(args)...));
             message_log.thread          = thread;
             message_log.issued          = elapsed;
 
@@ -95,39 +95,39 @@ class LoggingManager
         }
 
         template <typename... Args> static inline void
-        DispatchDebug(std::format_string<Args...> mformat, Args&&... args)
+        DispatchDebug(std::string_view mformat, Args&&... args)
         {
-            DispatchLog<LoggingLevel::Debug, LoggingClassification::Engine>(mformat, std::format<Args>(args)...);
+            DispatchLog<LoggingLevel::Debug, LoggingClassification::Engine>(mformat, args...);
         }
 
         template <typename... Args> static inline void
-        DispatchDiagnostic(std::format_string<Args...> mformat, Args&&... args)
+        DispatchDiagnostic(std::string_view mformat, Args&&... args)
         {
-            DispatchLog<LoggingLevel::Diagnostic, LoggingClassification::Engine>(mformat, std::format<Args>(args)...);
+            DispatchLog<LoggingLevel::Diagnostic, LoggingClassification::Engine>(mformat, args...);
         }
 
         template <typename... Args> static inline void
-        DispatchInformation(std::format_string<Args...> mformat, Args&&... args)
+        DispatchInformation(std::string_view mformat, Args&&... args)
         {
-            DispatchLog<LoggingLevel::Information, LoggingClassification::Engine>(mformat, std::format<Args>(args)...);
+            DispatchLog<LoggingLevel::Information, LoggingClassification::Engine>(mformat, args...);
         }
 
         template <typename... Args> static inline void
-        DispatchWarning(std::format_string<Args...> mformat, Args&&... args)
+        DispatchWarning(std::string_view mformat, Args&&... args)
         {
-            DispatchLog<LoggingLevel::Warning, LoggingClassification::Engine>(mformat, std::format<Args>(args)...);
+            DispatchLog<LoggingLevel::Warning, LoggingClassification::Engine>(mformat, args...);
         }
 
         template <typename... Args> static inline void
-        DispatchCritical(std::format_string<Args...> mformat, Args&&... args)
+        DispatchCritical(std::string_view mformat, Args&&... args)
         {
-            DispatchLog<LoggingLevel::Critical, LoggingClassification::Engine>(mformat, std::format<Args>(args)...);
+            DispatchLog<LoggingLevel::Critical, LoggingClassification::Engine>(mformat, args...);
         }
 
         template <typename... Args> static inline void
-        DispatchError(std::format_string<Args...> mformat, Args&&... args)
+        DispatchError(std::string_view mformat, Args&&... args)
         {
-            DispatchLog<LoggingLevel::Error, LoggingClassification::Engine>(mformat, std::format<Args>(args)...);
+            DispatchLog<LoggingLevel::Error, LoggingClassification::Engine>(mformat, args...);
         }
 
         static inline void 
