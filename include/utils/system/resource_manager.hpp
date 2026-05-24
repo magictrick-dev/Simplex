@@ -321,7 +321,7 @@ class ResourceManager
         void            thread_pool_start();
         void            thread_pool_stop();
         void            thread_pool_enqueue(ResourceJobType type, const ResourceHandle &handle);
-        void            thread_pool_runtime();
+        void            thread_pool_runtime(size_t index);
         bool            thread_pool_fetch_job(ResourceJob &job);
 
 };

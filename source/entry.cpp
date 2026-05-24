@@ -7,8 +7,15 @@
 #include <cli/cli.hpp>
 #include <utils/test_registry.hpp>
 #include <utils/system/resource_manager.hpp>
+#include <utils/system/logging_manager.hpp>
 #include <parsers/rdview/rdview_parser.hpp>
 #include <parsers/rdview/rdview_ref_visitor.hpp>
+
+#if defined(_WIN32)
+#   include <windows.h>
+#endif
+#include <GLAD/glad.h>
+#include <GLFW/glfw3.h>
 
 #ifndef SIMPLEX_PLATFORM_INFORMATION
 #   define SIMPLEX_PLATFORM_INFORMATION
@@ -44,7 +51,13 @@ static int
 entry(int argc, char **argv)
 {
 
-    print_engine_information();
+    auto &logger = LoggingManager::Get();
+    LoggingManager::ClassifyThreadname("Main");
+    LoggingManager::DispatchLog<LoggingLevel::Diagnostic, LoggingClassification::Internal>(
+        "Simplex Version    : {}\n"
+        "Simplex Platform   : {}\n"
+        "Simplex Frontend   : {}\n", 
+        "0.0.1A", SIMPLEX_PLATFORM_TYPE, SIMPLEX_FRONTEND_RENDERER);
 
     CLIParser cli(argc, argv);
     cli.add_argument_rule("--run-tests", {}, "Runs the full test suite.");
@@ -65,7 +78,15 @@ entry(int argc, char **argv)
     if (cli.has_argument("--run-tests")) 
     {
         TestRegistry::RunEverything();
+        LoggingManager::ProcessMessageQueue();
         return 0;
+    }
+
+    // Initialize GLFW.
+    if (!glfwInit())
+    {
+        std::cout << "Failed to initialize GLFW." << std::endl;
+        return -1;
     }
 
     // Prepare the RDView file and load it in memory.
@@ -83,7 +104,34 @@ entry(int argc, char **argv)
 
     // NOTE(Chris): This is the point where we load the window, prepare the graphics front-end,
     //              and handle another compute-bound shenanigans.
-    
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+
+    GLFWwindow *window = glfwCreateWindow(1280, 960, "Simplex Render Viewer", NULL, NULL);
+    if (window == NULL)
+    {
+        const char* description;
+        int code = glfwGetError(&description);
+
+        if (code != GLFW_NO_ERROR) 
+        {
+            printf("GLFW Error (%d): %s\n", code, description);
+        }
+
+        std::cout << "Failed to create GLFW window." << std::endl;
+        glfwTerminate();
+        return -1;
+    }
+
+    glfwMakeContextCurrent(window);
+
+    if (!gladLoadGL())
+    {
+        std::cout << "Failed to initialzie GLAD" << std::endl;
+        return -1;
+    }
+
     resource_manager.wait(rdview_resource_handle);
     
     ResourceView rdview_resource_view = {};
@@ -120,6 +168,26 @@ entry(int argc, char **argv)
     resource_manager.unload(rdview_resource_handle);
     resource_manager.wait(rdview_resource_handle);
     resource_manager.remove(rdview_resource_handle);
+
+    static bool runtime_flag = true;
+    while (runtime_flag == true)
+    {
+
+        glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT);
+
+        glfwSwapBuffers(window);
+        glfwPollEvents();
+
+        LoggingManager::ProcessMessageQueue(); // Spit logs to console.
+        if (glfwWindowShouldClose(window)) runtime_flag = false;
+
+    }
+
+    glfwDestroyWindow(window);
+    glfwTerminate();
+
+    std::cout << "Application successfully closed." << std::endl;
 
     return 0;
 

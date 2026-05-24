@@ -1,6 +1,7 @@
 #include <utils/defs.hpp>
 #include <utils/system/resource_manager.hpp>
 #include <utils/system/memory_alloc.hpp>
+#include <utils/system/logging_manager.hpp>
 
 #include <cstdio>
 #include <cstring>
@@ -99,6 +100,7 @@ load()
     (void)read;
 
     std::fclose(file);
+    LoggingManager::DispatchInformation("Successfully loaded: {}", this->path.string());
 
 }
 
@@ -110,6 +112,7 @@ unload()
     {
         simplex_memory_free(this->data);
         this->data = NULL;
+        LoggingManager::DispatchInformation("Successfully unloaded: {}", this->path.string());
     }
 
 }
@@ -169,6 +172,7 @@ load()
     this->text[this->length] = '\0';
 
     std::fclose(file);
+    LoggingManager::DispatchInformation("Successfully loaded: {}", this->path.string());
 
 }
 
@@ -180,6 +184,7 @@ unload()
     {
         simplex_memory_free(this->text);
         this->text = NULL;
+    LoggingManager::DispatchInformation("Successfully unloaded: {}", this->path.string());
     }
 
 }
@@ -229,6 +234,7 @@ load()
     SIMPLEX_ASSERT(decoded_height == this->height);
 
     this->pixels = reinterpret_cast<uint32_t*>(decoded);
+    LoggingManager::DispatchInformation("Successfully loaded: {}", this->path.string());
 
 }
 
@@ -241,6 +247,7 @@ unload()
         // stbi_image_free routes through STBI_FREE -> simplex_memory_free.
         stbi_image_free(this->pixels);
         this->pixels = NULL;
+        LoggingManager::DispatchInformation("Successfully unloaded: {}", this->path.string());
     }
 
 }
@@ -297,11 +304,12 @@ thread_pool_start()
     //              out the work. For the most part the threads are doing I/O.
     uint32_t thread_count = std::thread::hardware_concurrency();
     if (thread_count == 0 || thread_count < 4) thread_count = 4;
+    if (thread_count > 8) thread_count = 8; // Don't really that many threads for resource management...
 
     for (uint32_t i = 0; i < thread_count; ++i)
     {
         this->thread_pool.threads.emplace_back(std::thread(
-            &ResourceManager::thread_pool_runtime, this));
+            &ResourceManager::thread_pool_runtime, this, i+1));
     }
 
 }
@@ -353,8 +361,12 @@ thread_pool_fetch_job(ResourceJob &job)
 }
 
 void ResourceManager::
-thread_pool_runtime()
+thread_pool_runtime(size_t index)
 {
+
+    std::string worker_name = "RMW" + std::to_string(index);
+    LoggingManager::ClassifyThreadname(worker_name);
+    LoggingManager::DispatchLog<LoggingLevel::Information, LoggingClassification::Engine>("Resource worker has deployed.");
 
     while (true)
     {
@@ -394,6 +406,8 @@ thread_pool_runtime()
         }
 
     }
+
+    LoggingManager::DispatchLog<LoggingLevel::Information, LoggingClassification::Engine>("Resource worker has shutdown.");
 
 }
 
@@ -482,6 +496,8 @@ register_binary_file_resource(const std::filesystem::path &path, ResourceHandle 
     BinaryFileResource *impl = simplex_memory_new<BinaryFileResource>(
         canonical, (size_t)file_size);
 
+    LoggingManager::DispatchInformation("Registered binary source: {}", path.string());
+
     return publish_resource_locked(this->slots, &this->slot_count,
                                    &this->discarded_identifiers, &this->file_mapping,
                                    MAX_RESOURCES, canonical, impl, handle_out);
@@ -515,6 +531,8 @@ register_text_file_resource(const std::filesystem::path &path, ResourceHandle *h
 
     TextFileResource *impl = simplex_memory_new<TextFileResource>(
         canonical, (size_t)file_size);
+
+    LoggingManager::DispatchInformation("Registered text source: {}", path.string());
 
     return publish_resource_locked(this->slots, &this->slot_count,
                                    &this->discarded_identifiers, &this->file_mapping,
@@ -555,6 +573,8 @@ register_image_file_resource(const std::filesystem::path &path, ResourceHandle *
 
     ImageRGBAResource *impl = simplex_memory_new<ImageRGBAResource>(
         canonical, (int32_t)header_width, (int32_t)header_height);
+
+    LoggingManager::DispatchInformation("Registered image source: {}", path.string());
 
     return publish_resource_locked(this->slots, &this->slot_count,
                                    &this->discarded_identifiers, &this->file_mapping,
@@ -784,24 +804,38 @@ remove(const ResourceHandle &handle)
     // path-canonicalisation drift from the caller's lookup path.
     if (slot->impl != NULL)
     {
+
         switch (slot->impl->get_resource_type())
         {
+
             case ResourceType_BinaryFile:
-                this->file_mapping.erase(
-                    static_cast<BinaryFileResource*>(slot->impl)->get_path());
-                break;
+            {
+                auto source = static_cast<BinaryFileResource*>(slot->impl);
+                LoggingManager::DispatchInformation("Unregistered binary file resource: {}", source->get_path().string());
+                this->file_mapping.erase(source->get_path());
+            } break;
+
             case ResourceType_TextFile:
-                this->file_mapping.erase(
-                    static_cast<TextFileResource*>(slot->impl)->get_path());
-                break;
+            {
+                auto source = static_cast<TextFileResource*>(slot->impl);
+                LoggingManager::DispatchInformation("Unregistered text file resource: {}", source->get_path().string());
+                this->file_mapping.erase(source->get_path());
+            } break;
+
             case ResourceType_ImageFile:
-                this->file_mapping.erase(
-                    static_cast<ImageRGBAResource*>(slot->impl)->get_path());
-                break;
+            {
+                auto source = static_cast<ImageRGBAResource*>(slot->impl);
+                LoggingManager::DispatchInformation("Unregistered image file resource: {}", source->get_path().string());
+                this->file_mapping.erase(source->get_path());
+            } break;
+
             default:
+            {
                 SIMPLEX_NO_REACH("remove: unknown resource type");
-                break;
+            } break;
+
         }
+
     }
 
     if (slot->impl != NULL)
