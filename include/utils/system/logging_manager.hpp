@@ -5,17 +5,12 @@
 #include <mutex>
 #include <shared_mutex>
 #include <deque>
+#include <queue>
 #include <array>
 #include <algorithm>
-
-struct LoggingMessage
-{
-    size_t origin;
-    size_t issue;
-    std::string level;
-    std::string classification;
-    std::string message;
-};
+#include <iostream>
+#include <unordered_map>
+#include <sstream>
 
 enum class LoggingLevel : size_t
 {
@@ -34,16 +29,20 @@ enum class LoggingClassification : size_t
     Undefined,
     Internal,
     Engine,
-    Resource,
     _Count,
 };
 
-enum LoggingManagerSwitch
+struct LoggingMessage
 {
-    LoggingManagerSwitch_Disable,
-    LoggingManagerSwitch_EnableProduction,
-    LoggingManagerSwitch_EnableMinimal,
-    LoggingManagerSwitch_EnableFull,
+
+    real32_t issued;
+
+    LoggingLevel level;
+    LoggingClassification classification;
+
+    std::string thread;
+    std::string message;
+
 };
 
 class LoggingManager
@@ -56,10 +55,120 @@ class LoggingManager
             return manager;
         }
 
-        template <LoggingLevel l, LoggingClassification c, typename... Args>
-        static inline void DispatchMessage(std::string_view message, Args&&... args)
+        template <LoggingLevel l, LoggingClassification c, typename... Args> static inline void 
+        DispatchLog(std::format_string<Args...> mformat, Args&&... args)
         {
             
+            LoggingManager &manager = Get();
+
+            auto end = std::chrono::high_resolution_clock::now();
+            std::chrono::duration<real32_t> time_difference = end - manager.start; 
+            real32_t elapsed = time_difference.count();
+            constexpr real32_t epsilon_zero = 0.01f;
+            if (elapsed < epsilon_zero) elapsed = 0.0f;
+
+            auto thread_id_awkward = std::this_thread::get_id();
+            size_t thread_id = std::hash<std::thread::id>{}(thread_id_awkward);
+            auto result = Threadnames.find(thread_id);
+            
+            std::string_view thread = "Other";
+            if (result != Threadnames.end()) thread = result->second;
+
+            LoggingMessage message_log  = {};
+            message_log.classification  = c;
+            message_log.level           = l;
+            message_log.message         = std::format(mformat, std::forward<Args>(args)...);
+            message_log.thread          = thread;
+            message_log.issued          = elapsed;
+
+            {
+
+                std::unique_lock lock(manager.mutex);
+                manager.messages.emplace_back(message_log);
+                manager.queued_messages.push(message_log);
+
+                if (manager.messages.size() > MaxMessages) manager.messages.pop_front();
+
+            }
+            
+
+        }
+
+        template <typename... Args> static inline void
+        DispatchDebug(std::format_string<Args...> mformat, Args&&... args)
+        {
+            DispatchLog<LoggingLevel::Debug, LoggingClassification::Engine>(mformat, std::format<Args>(args)...);
+        }
+
+        template <typename... Args> static inline void
+        DispatchDiagnostic(std::format_string<Args...> mformat, Args&&... args)
+        {
+            DispatchLog<LoggingLevel::Diagnostic, LoggingClassification::Engine>(mformat, std::format<Args>(args)...);
+        }
+
+        template <typename... Args> static inline void
+        DispatchInformation(std::format_string<Args...> mformat, Args&&... args)
+        {
+            DispatchLog<LoggingLevel::Information, LoggingClassification::Engine>(mformat, std::format<Args>(args)...);
+        }
+
+        template <typename... Args> static inline void
+        DispatchWarning(std::format_string<Args...> mformat, Args&&... args)
+        {
+            DispatchLog<LoggingLevel::Warning, LoggingClassification::Engine>(mformat, std::format<Args>(args)...);
+        }
+
+        template <typename... Args> static inline void
+        DispatchCritical(std::format_string<Args...> mformat, Args&&... args)
+        {
+            DispatchLog<LoggingLevel::Critical, LoggingClassification::Engine>(mformat, std::format<Args>(args)...);
+        }
+
+        template <typename... Args> static inline void
+        DispatchError(std::format_string<Args...> mformat, Args&&... args)
+        {
+            DispatchLog<LoggingLevel::Error, LoggingClassification::Engine>(mformat, std::format<Args>(args)...);
+        }
+
+        static inline void 
+        ProcessMessageQueue()
+        {
+
+
+            LoggingManager &manager = Get();
+            std::unique_lock lock(manager.mutex);
+            while (!manager.queued_messages.empty())
+            {
+
+                const auto &current_message = manager.queued_messages.front();
+                std::string_view level = GetLoggingLevelString(current_message.level);
+                std::string_view classification = GetLoggingClassificationString(current_message.classification);
+
+                std::stringstream header;
+                header      << "[" << level << "]" 
+                            << "[" << classification << "]"
+                            << "[" << current_message.thread << "]"
+                            << "(" << std::setprecision(4) << current_message.issued << "s)"
+                            << " : ";
+
+                std::cout << header.view();
+                size_t length = header.view().length();
+
+                std::stringstream body { current_message.message };
+
+                bool processed = false;
+                std::string current_line;
+                while (std::getline(body, current_line))
+                {
+                    if (processed == true) std::cout << std::setw(length) << "";
+                    else processed = true;
+                    std::cout << current_line << "\n";
+                }
+
+                manager.queued_messages.pop();
+
+            }
+
         }
 
         static inline constexpr std::array<std::string_view, static_cast<size_t>(LoggingLevel::_Count)>
@@ -68,7 +177,7 @@ class LoggingManager
 
             constexpr std::array levels =
             {
-                std::string_view("Naked"),
+                std::string_view("None"),
                 std::string_view("Debug"),
                 std::string_view("Diagnostic"),
                 std::string_view("Information"),
@@ -92,10 +201,9 @@ class LoggingManager
 
             constexpr std::array classifications =
             {
-                std::string_view("Undefined"),
+                std::string_view(""),
                 std::string_view("Internal"),
                 std::string_view("Engine"),
-                std::string_view("Resource"),
             };
 
             static_assert(
@@ -123,33 +231,30 @@ class LoggingManager
             return levels_array[index];
         }
 
-        static constexpr inline size_t
-        GetLoggingHeaderLength()
+        static inline void
+        ClassifyThreadname(std::string_view name)
         {
 
-            constexpr std::array<std::string_view, static_cast<size_t>(LoggingLevel::_Count)> levels_array = GetLoggingLevelsArray();
-            constexpr size_t max_levels_length = std::max_element(levels_array.begin(), levels_array.end(),
-                [](std::string_view a, std::string_view b) -> bool
-                { 
-                    return a.length() < b.length(); 
-                })->length();
+            auto &manager = Get();
+            std::unique_lock lock(manager.mutex);
 
-            constexpr std::array<std::string_view, static_cast<size_t>(LoggingClassification::_Count)> classifications_array = GetLoggingClassificationsArray();
-            constexpr size_t max_classifications_length = std::max_element(classifications_array.begin(), classifications_array.end(),
-                [](std::string_view a, std::string_view b) -> bool
-                { 
-                    return a.length() < b.length(); 
-                })->length();
-
-            // NOTE(Chris): Reserve 4 more for the brackets.
-            constexpr size_t final_length = max_levels_length + max_classifications_length + 4;
-            return final_length;
+            auto thread_id_awkward = std::this_thread::get_id();
+            size_t thread_id = std::hash<std::thread::id>{}(thread_id_awkward);
+            if (Threadnames.find(thread_id) == Threadnames.end())
+            {
+                Threadnames[thread_id] = name;
+            }
 
         }
+
+        static constexpr size_t MaxMessages = 1024;
+        static inline std::unordered_map<size_t, std::string_view> Threadnames;
 
     private:
         std::shared_mutex mutex;
         std::deque<LoggingMessage> messages;
+        std::queue<LoggingMessage> queued_messages;
+        std::chrono::time_point<std::chrono::high_resolution_clock> start = std::chrono::high_resolution_clock::now();
 
     private:
         LoggingManager() = default;

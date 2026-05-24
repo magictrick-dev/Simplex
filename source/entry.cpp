@@ -52,8 +52,12 @@ entry(int argc, char **argv)
 {
 
     auto &logger = LoggingManager::Get();
-
-    print_engine_information();
+    LoggingManager::ClassifyThreadname("Main");
+    LoggingManager::DispatchLog<LoggingLevel::Diagnostic, LoggingClassification::Internal>(
+        "Simplex Version    : {}\n"
+        "Simplex Platform   : {}\n"
+        "Simplex Frontend   : {}\n", 
+        "0.0.1A", SIMPLEX_PLATFORM_TYPE, SIMPLEX_FRONTEND_RENDERER);
 
     CLIParser cli(argc, argv);
     cli.add_argument_rule("--run-tests", {}, "Runs the full test suite.");
@@ -174,6 +178,7 @@ entry(int argc, char **argv)
         glfwSwapBuffers(window);
         glfwPollEvents();
 
+        LoggingManager::ProcessMessageQueue(); // Spit logs to console.
         if (glfwWindowShouldClose(window)) runtime_flag = false;
 
     }

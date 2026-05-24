@@ -1,7 +1,15 @@
+# Build and temporary get eviscerated between builds anyway.
 build/
-resources/
 temporary/
+
+# Resources may be large or copy-righted, so just ignore them altogether.
+resources/
+
+# The usual stuff.
 .cache/
 .claude
-CLAUDE.md
 **/.DS_Store
+
+# Ignoring agent files, largely just for custom handling of code-style stuff.
+CLAUDE.md
+AGENTS.md

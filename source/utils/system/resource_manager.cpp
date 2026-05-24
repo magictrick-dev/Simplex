@@ -1,6 +1,7 @@
 #include <utils/defs.hpp>
 #include <utils/system/resource_manager.hpp>
 #include <utils/system/memory_alloc.hpp>
+#include <utils/system/logging_manager.hpp>
 
 #include <cstdio>
 #include <cstring>
@@ -301,7 +302,7 @@ thread_pool_start()
     for (uint32_t i = 0; i < thread_count; ++i)
     {
         this->thread_pool.threads.emplace_back(std::thread(
-            &ResourceManager::thread_pool_runtime, this));
+            &ResourceManager::thread_pool_runtime, this, i+1));
     }
 
 }
@@ -353,8 +354,12 @@ thread_pool_fetch_job(ResourceJob &job)
 }
 
 void ResourceManager::
-thread_pool_runtime()
+thread_pool_runtime(size_t index)
 {
+
+    std::string worker_name = "RMW" + std::to_string(index);
+    LoggingManager::ClassifyThreadname(worker_name);
+    LoggingManager::DispatchLog<LoggingLevel::Information, LoggingClassification::Engine>("Resource worker has deployed.");
 
     while (true)
     {
@@ -394,6 +399,8 @@ thread_pool_runtime()
         }
 
     }
+
+    LoggingManager::DispatchLog<LoggingLevel::Information, LoggingClassification::Engine>("Resource worker has shutdown.");
 
 }
 
