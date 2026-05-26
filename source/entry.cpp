@@ -10,6 +10,7 @@
 #include <utils/system/logging_manager.hpp>
 #include <parsers/rdview/rdview_parser.hpp>
 #include <parsers/rdview/rdview_ref_visitor.hpp>
+#include <scratch/threading.hpp>
 
 #if defined(_WIN32)
 #   include <windows.h>
@@ -51,6 +52,15 @@ static int
 entry(int argc, char **argv)
 {
 
+#   define DO_SCRATCH 1
+#   if defined(DO_SCRATCH) && DO_SCRATCH == 1
+        return scratch_main();
+#   endif
+
+    // NOTE(Chris): We want the logger to be one of the first things we initialize to properly
+    //              setup the time-since information (how many seconds since startup).
+    // TODO(Chris): Defer our logs to a file rather than to standard-output.
+    // TODO(Chris): GUI-based logging window?
     auto &logger = LoggingManager::Get();
     LoggingManager::ClassifyThreadname("Main");
     LoggingManager::DispatchLog<LoggingLevel::Diagnostic, LoggingClassification::Internal>(
@@ -59,6 +69,7 @@ entry(int argc, char **argv)
         "Simplex Frontend   : {}\n", 
         "0.0.1A", SIMPLEX_PLATFORM_TYPE, SIMPLEX_FRONTEND_RENDERER);
 
+    // NOTE(Chris): The CLI stuff defers directly the console, which is ideal.
     CLIParser cli(argc, argv);
     cli.add_argument_rule("--run-tests", {}, "Runs the full test suite.");
     cli.add_positional_rule(1, CLIValueType::Path, "Input scene description file (.rd).");
