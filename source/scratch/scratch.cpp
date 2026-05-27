@@ -6,6 +6,38 @@
 #include <scratch/scratch.hpp>
 #include <utils/defs.hpp>
 
+/// SDSA Allocator Interface
+/** 
+ * Provides a way of interacting with custom allocators when using Simplex datastructures.
+ */
+struct SDSA_AllocatorInterface
+{
+
+    /// @brief Allocates at least n-bytes from a derived implementation.
+    /// @param size The request size to allocate
+    /// @return If the return value is NULL, the allocation failed.
+    ///
+    /// The allocate method should defer to allocate_aligned with an alignment of 16.
+    inline virtual void*    allocate(const size_t size) = 0;
+    inline virtual void*    allocate_aligned(const size_t size, const size_t alignment) = 0;
+
+    inline virtual void*    reallocate(void *buffer, const size_t size) = 0;
+    inline virtual void*    reallocate_aligned(void *buffer, const size_t size, const size_t alignment) = 0;
+
+    inline virtual void     deallocate() = 0;
+
+};
+
+struct SDSA_SimplexDefaultAllocator
+{
+
+};
+
+struct SDSA_SimplexMemoryArenaAllocator
+{
+
+};
+
 template <typename T>
 class SparseSet
 {
