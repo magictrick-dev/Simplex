@@ -46,7 +46,7 @@ IF (WIN32)
         "source/parsers/rdview/rdview_node_types.cpp"
         "source/parsers/rdview/rdview_parser.cpp"
 
-        "source/scratch/threading.cpp"
+        "source/scratch/scratch.cpp"
     )
 
     SET_PROPERTY(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT Simplex)
@@ -81,6 +81,8 @@ IF (APPLE)
         "source/parsers/rdview/rdview_lexer.cpp"
         "source/parsers/rdview/rdview_node_types.cpp"
         "source/parsers/rdview/rdview_parser.cpp"
+
+        "source/scratch/scratch.cpp"
     )
 ENDIF (APPLE)
 
