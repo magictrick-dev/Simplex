@@ -64,6 +64,7 @@ class SparseSet
             const size_t remove_dense_index     = this->sparse_to_dense[sparse_index];
             const size_t swap_dense_index       = this->elements.size() - 1;
             const size_t swap_sparse_index      = this->dense_to_sparse[swap_dense_index];
+            std::cout << "Swap sparse is: " << swap_sparse_index << std::endl;
 
             // If the thing we remove is the back, removal is trivial.
             if (swap_dense_index == remove_dense_index)
@@ -77,9 +78,8 @@ class SparseSet
             // Move the element from the end and move it into the thing we are removing.
             this->elements[remove_dense_index] = this->elements[swap_dense_index];
 
-            // Update the dense to sparse to point it.
+            this->dense_to_sparse[remove_dense_index] = swap_sparse_index;
             this->sparse_to_dense[swap_sparse_index] = remove_dense_index;
-            this->dense_to_sparse[swap_dense_index] = swap_sparse_index;
             
             // Finally, remove the element.
             this->elements.pop_back();
@@ -131,19 +131,54 @@ scratch_main()
     my_sparse_set.insert(26,    "Bar");
     my_sparse_set.insert(25,    "Baz");
 
-    std::cout << std::endl << "---" << std::endl;
-    for (size_t i = 0; i < my_sparse_set.size(); ++i)
-    {
-        std::cout << my_sparse_set[i] << " : Sparse Index: " << my_sparse_set.get_sparse_from_dense(i) << std::endl;
-    }
-
-    my_sparse_set.remove(2);
-
-    std::cout << std::endl << "---" << std::endl;
+    std::cout << std::endl << "-------------------" << std::endl;
     for (size_t i = 0; i < my_sparse_set.size(); ++i)
     {
         const size_t sparse_index = my_sparse_set.get_sparse_from_dense(i);
         const size_t dense_index = my_sparse_set.get_dense_from_sparse(sparse_index);
+        std::cout << my_sparse_set[i] << std::endl;
+        std::cout << "       Iter. Index: " << i << std::endl;
+        std::cout << "      Sparse Index: " << sparse_index << std::endl;
+        std::cout << "       Dense Index: " << dense_index << std::endl;
+    }
+
+    my_sparse_set.remove(2);
+
+    std::cout << std::endl << "-------------------" << std::endl;
+    for (size_t i = 0; i < my_sparse_set.size(); ++i)
+    {
+        const size_t sparse_index = my_sparse_set.get_sparse_from_dense(i);
+        const size_t dense_index = my_sparse_set.get_dense_from_sparse(sparse_index);
+        std::cout << my_sparse_set[i] << std::endl;
+        std::cout << "       Iter. Index: " << i << std::endl;
+        std::cout << "      Sparse Index: " << sparse_index << std::endl;
+        std::cout << "       Dense Index: " << dense_index << std::endl;
+    }
+
+    my_sparse_set.remove(17);
+
+    std::cout << std::endl << "-------------------" << std::endl;
+    for (size_t i = 0; i < my_sparse_set.size(); ++i)
+    {
+        const size_t sparse_index = my_sparse_set.get_sparse_from_dense(i);
+        const size_t dense_index = my_sparse_set.get_dense_from_sparse(sparse_index);
+        std::cout << my_sparse_set[i] << std::endl;
+        std::cout << "       Iter. Index: " << i << std::endl;
+        std::cout << "      Sparse Index: " << sparse_index << std::endl;
+        std::cout << "       Dense Index: " << dense_index << std::endl;
+    }
+
+    my_sparse_set.remove(25);
+
+    std::cout << std::endl << "-------------------" << std::endl;
+    for (size_t i = 0; i < my_sparse_set.size(); ++i)
+    {
+        const size_t sparse_index = my_sparse_set.get_sparse_from_dense(i);
+        const size_t dense_index = my_sparse_set.get_dense_from_sparse(sparse_index);
+        std::cout << my_sparse_set[i] << std::endl;
+        std::cout << "       Iter. Index: " << i << std::endl;
+        std::cout << "      Sparse Index: " << sparse_index << std::endl;
+        std::cout << "       Dense Index: " << dense_index << std::endl;
     }
 
     return 0;
