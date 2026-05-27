@@ -112,6 +112,7 @@
 #include <parsers/rdview/rdview_token.hpp>
 #include <parsers/rdview/rdview_lexer.hpp>
 #include <parsers/rdview/rdview_node_types.hpp>
+#include <utils/system/memory_alloc.hpp>
 
 // NOTE(Chris): Base class exception for parsing errors. All deriving exceptions specify how
 //              the parser should synchronize after catching an exception.

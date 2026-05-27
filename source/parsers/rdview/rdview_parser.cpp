@@ -1,4 +1,5 @@
 #include <parsers/rdview/rdview_parser.hpp>
+#include <utils/system/memory_alloc.hpp>
 #include <utils/test_registry.hpp>
 
 RDViewParser::

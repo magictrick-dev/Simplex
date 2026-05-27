@@ -3,8 +3,10 @@
 #include <vector>
 #include <unordered_map>
 
+#include <scratch/nameof.hpp>
 #include <scratch/scratch.hpp>
 #include <utils/defs.hpp>
+#include <utils/typeid.hpp>
 
 /// SDSA Allocator Interface
 /** 
@@ -151,67 +153,63 @@ class SparseSet
 
 };
 
+template <typename Dummy>
+struct Foo
+{
+    Dummy aspect;
+    int32_t width;
+    int32_t height;
+};
+
+class Shape
+{
+    public:
+        Shape() = default;
+        virtual ~Shape() = default;
+
+        virtual int32_t area() { return _width * _height; }
+
+    protected:
+        int32_t _width;
+        int32_t _height;
+};
+
+class Square : public Shape
+{
+    public:
+        Square(int32_t side) { this->_width = side; this->_height = side; };
+        virtual ~Square() = default;
+
+        virtual int32_t area() override { return _width * _width; }
+};
+
+union Testunion
+{
+    int64_t packed;
+    struct
+    {
+        int32_t left;
+        int32_t right;
+    };
+};
+
+typedef std::vector<float> vectorf;
+
 int 
 scratch_main()
 {
-    
-    SparseSet<std::string> my_sparse_set;
 
-    my_sparse_set.insert(17,    "Hello");
-    my_sparse_set.insert(13,    "World");
-    my_sparse_set.insert(2,     "Foo");
-    my_sparse_set.insert(26,    "Bar");
-    my_sparse_set.insert(25,    "Baz");
+    float foo_bar = 32;
+    std::cout << TypeID<float>::Value << std::endl;
+    std::cout << TypeID<Shape>::Value << std::endl;
+    std::cout << TypeID<Foo<float>>::Value << std::endl;
+    std::cout << TypeID<Testunion>::Value << std::endl;
+    std::cout << TypeID<vectorf>::Value << std::endl;
 
-    std::cout << std::endl << "-------------------" << std::endl;
-    for (size_t i = 0; i < my_sparse_set.size(); ++i)
-    {
-        const size_t sparse_index = my_sparse_set.get_sparse_from_dense(i);
-        const size_t dense_index = my_sparse_set.get_dense_from_sparse(sparse_index);
-        std::cout << my_sparse_set[i] << std::endl;
-        std::cout << "       Iter. Index: " << i << std::endl;
-        std::cout << "      Sparse Index: " << sparse_index << std::endl;
-        std::cout << "       Dense Index: " << dense_index << std::endl;
-    }
-
-    my_sparse_set.remove(2);
-
-    std::cout << std::endl << "-------------------" << std::endl;
-    for (size_t i = 0; i < my_sparse_set.size(); ++i)
-    {
-        const size_t sparse_index = my_sparse_set.get_sparse_from_dense(i);
-        const size_t dense_index = my_sparse_set.get_dense_from_sparse(sparse_index);
-        std::cout << my_sparse_set[i] << std::endl;
-        std::cout << "       Iter. Index: " << i << std::endl;
-        std::cout << "      Sparse Index: " << sparse_index << std::endl;
-        std::cout << "       Dense Index: " << dense_index << std::endl;
-    }
-
-    my_sparse_set.remove(17);
-
-    std::cout << std::endl << "-------------------" << std::endl;
-    for (size_t i = 0; i < my_sparse_set.size(); ++i)
-    {
-        const size_t sparse_index = my_sparse_set.get_sparse_from_dense(i);
-        const size_t dense_index = my_sparse_set.get_dense_from_sparse(sparse_index);
-        std::cout << my_sparse_set[i] << std::endl;
-        std::cout << "       Iter. Index: " << i << std::endl;
-        std::cout << "      Sparse Index: " << sparse_index << std::endl;
-        std::cout << "       Dense Index: " << dense_index << std::endl;
-    }
-
-    my_sparse_set.remove(25);
-
-    std::cout << std::endl << "-------------------" << std::endl;
-    for (size_t i = 0; i < my_sparse_set.size(); ++i)
-    {
-        const size_t sparse_index = my_sparse_set.get_sparse_from_dense(i);
-        const size_t dense_index = my_sparse_set.get_dense_from_sparse(sparse_index);
-        std::cout << my_sparse_set[i] << std::endl;
-        std::cout << "       Iter. Index: " << i << std::endl;
-        std::cout << "      Sparse Index: " << sparse_index << std::endl;
-        std::cout << "       Dense Index: " << dense_index << std::endl;
-    }
+    auto list = TypeIDArray<float, int32_t, Shape>::Values;
+    auto hashes = TypeIDArray<float, int32_t, Shape>::Hashes;
+    for (auto l : list) std::cout << l << ", "; std::cout << std::endl;
+    for (auto h : hashes) std::cout << h << ", "; std::cout << std::endl;
 
     return 0;
 }
