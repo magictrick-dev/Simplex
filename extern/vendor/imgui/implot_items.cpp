@@ -25,9 +25,9 @@
 #ifndef IMGUI_DEFINE_MATH_OPERATORS
 #define IMGUI_DEFINE_MATH_OPERATORS
 #endif
-#include <IMGUI/implot.h>
+#include <vendor/imgui/implot.h>
 #ifndef IMGUI_DISABLE
-#include <IMGUI/implot_internal.h>
+#include <vendor/imgui/implot_internal.h>
 
 //-----------------------------------------------------------------------------
 // [SECTION] Macros and Defines

@@ -3,6 +3,11 @@
 #include <sstream>
 #include <iomanip>
 
+#ifndef TINYOBJLOADER_IMPLEMENTATION
+#   define TINYOBJLOADER_IMPLEMENTATION
+#endif
+#include <vendor/tinyobj/tiny_obj_loader.h>
+
 #include <utils/defs.hpp>
 #include <cli/cli.hpp>
 #include <utils/test_registry.hpp>
@@ -10,11 +15,12 @@
 #include <utils/system/logging_manager.hpp>
 #include <parsers/rdview/rdview_parser.hpp>
 #include <parsers/rdview/rdview_ref_visitor.hpp>
+#include <scratch/scratch.hpp>
 
 #if defined(_WIN32)
 #   include <windows.h>
 #endif
-#include <GLAD/glad.h>
+#include <vendor/glad/glad.h>
 #include <GLFW/glfw3.h>
 
 #ifndef SIMPLEX_PLATFORM_INFORMATION
@@ -51,6 +57,10 @@ static int
 entry(int argc, char **argv)
 {
 
+    // NOTE(Chris): We want the logger to be one of the first things we initialize to properly
+    //              setup the time-since information (how many seconds since startup).
+    // TODO(Chris): Defer our logs to a file rather than to standard-output.
+    // TODO(Chris): GUI-based logging window?
     auto &logger = LoggingManager::Get();
     LoggingManager::ClassifyThreadname("Main");
     LoggingManager::DispatchLog<LoggingLevel::Diagnostic, LoggingClassification::Internal>(
@@ -59,9 +69,11 @@ entry(int argc, char **argv)
         "Simplex Frontend   : {}\n", 
         "0.0.1A", SIMPLEX_PLATFORM_TYPE, SIMPLEX_FRONTEND_RENDERER);
 
+    // NOTE(Chris): The CLI stuff defers directly the console, which is ideal.
     CLIParser cli(argc, argv);
     cli.add_argument_rule("--run-tests", {}, "Runs the full test suite.");
-    cli.add_positional_rule(1, CLIValueType::Path, "Input scene description file (.rd).");
+    cli.add_argument_rule("--run-scratch", {}, "Runs the scratch code and exits without doing anything else.");
+    //cli.add_positional_rule(1, CLIValueType::Path, "Input scene description file (.rd).");
 
     try
     {
@@ -73,6 +85,14 @@ entry(int argc, char **argv)
         cli.print_help();
         return 1;
     }
+
+#   define DO_SCRATCH 1
+#   if defined(DO_SCRATCH) && DO_SCRATCH == 1
+        if (cli.has_argument("--run-scratch"))
+        {
+            return scratch_main();
+        }
+#   endif
 
     // NOTE(Chris): Running tests will bypass the runtime.
     if (cli.has_argument("--run-tests")) 
@@ -105,20 +125,12 @@ entry(int argc, char **argv)
     // NOTE(Chris): This is the point where we load the window, prepare the graphics front-end,
     //              and handle another compute-bound shenanigans.
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 1);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
     GLFWwindow *window = glfwCreateWindow(1280, 960, "Simplex Render Viewer", NULL, NULL);
     if (window == NULL)
     {
-        const char* description;
-        int code = glfwGetError(&description);
-
-        if (code != GLFW_NO_ERROR) 
-        {
-            printf("GLFW Error (%d): %s\n", code, description);
-        }
-
         std::cout << "Failed to create GLFW window." << std::endl;
         glfwTerminate();
         return -1;
@@ -194,8 +206,6 @@ entry(int argc, char **argv)
 }
 
 #if defined(__APPLE__) && defined(__MACH__)
-#   include <GLAD/glad.h>
-#   include <GLFW/glfw3.h>
 
     int 
     main(int argc, char **argv)

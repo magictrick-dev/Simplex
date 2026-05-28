@@ -23,5 +23,3 @@ typedef double real64_t;
 #   define SIMPLEX_NO_IMPLEMENTATION(reason)
 #   define SIMPLEX_NO_REACH(reason)
 #endif
-
-#include <utils/system/memory_alloc.hpp>

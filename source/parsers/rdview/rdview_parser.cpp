@@ -1,4 +1,5 @@
 #include <parsers/rdview/rdview_parser.hpp>
+#include <utils/system/memory_alloc.hpp>
 #include <utils/test_registry.hpp>
 
 RDViewParser::
@@ -1021,7 +1022,7 @@ match_curve()
     auto curve_type = this->fetch_type_and_consume(RDViewTokenType_String);
 
     RDViewCurveType type = RDViewNodeInterface::ClassifyCurveType(curve_type.string.value);
-    if (type == RDViewPatchType_Invalid)
+    if (type == RDViewCurveType_Invalid)
     {
         this->throw_error<RDViewParserErrorICF>(curve_type, 
             "expected a valid curve type, expected: 'Bezier'.");

@@ -1,16 +1,32 @@
 #include <atomic>
+#include <mutex>
+#include <unordered_map>
 
 #include <utils/defs.hpp>
 #include <utils/system/memory_alloc.hpp>
 
 #if defined(_WIN32)
 #   include <malloc.h>
+#   include <windows.h>
 #endif
 
-static std::atomic<size_t> memory_allocated = 0;
-static std::atomic<size_t> memory_released = 0;
-static std::atomic<size_t> memory_commit = 0;
-static std::atomic<size_t> memory_peak = 0;
+#if defined(__APPLE__) || defined(__unix__)
+#   include <sys/mman.h>
+#   include <unistd.h>
+#endif
+
+#if defined(__APPLE__)
+#   include <mach/mach.h>
+#   include <mach/mach_vm.h>
+#endif
+
+static std::atomic<size_t> memory_allocated         = 0;
+static std::atomic<size_t> memory_released          = 0;
+static std::atomic<size_t> memory_commit            = 0;
+static std::atomic<size_t> memory_peak              = 0;
+static std::atomic<size_t> virtual_memory_commit    = 0;
+static std::atomic<size_t> virtual_memory_allocated = 0;
+static std::atomic<size_t> virtual_memory_released  = 0;
 
 size_t 
 simplex_memory_get_allocations_total()
@@ -46,6 +62,24 @@ bool
 simplex_memory_is_balanced()
 {
     return memory_allocated == memory_released;
+}
+
+size_t 
+simplex_memory_get_virtual_allocations_total()
+{
+    return virtual_memory_allocated;
+}
+
+size_t 
+simplex_memory_get_virtual_releases_total()
+{
+    return virtual_memory_released;
+}
+
+size_t 
+simplex_memory_get_virtual_live()
+{
+    return virtual_memory_commit;
 }
 
 void*   
@@ -117,6 +151,305 @@ simplex_internal_memory_description(void *pointer)
 #   endif
 
 }
+
+static std::mutex virtual_mapping_mutex;
+static std::unordered_map<void*,size_t> virtual_allocation_sizes;
+
+void*   
+simplex_virtual_allocate(size_t size)
+{
+
+    SIMPLEX_ASSERT(size > 0);
+    const size_t page_size = simplex_virtual_page_size();
+    const size_t rounded_size = ((size + page_size - 1) / page_size) * page_size;
+
+    void *result = NULL;
+
+#   if defined(_WIN32)
+        result = VirtualAlloc(nullptr, rounded_size, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
+#   elif defined(__APPLE__) || defined(__unix__)
+        result = mmap(nullptr, rounded_size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+#   else
+#       pragma error "Undefined virtual allocation for given platform."
+#   endif
+
+    if (result != NULL)
+    {
+        std::scoped_lock lock(virtual_mapping_mutex);
+        virtual_allocation_sizes[result] = rounded_size;
+        virtual_memory_allocated += rounded_size;
+        virtual_memory_commit += rounded_size;
+    }
+
+    return result;
+
+}
+
+void    
+simplex_virtual_free(void *buffer)
+{
+
+    SIMPLEX_CHECK_PTR(buffer);
+
+    size_t allocation_size = 0;
+
+    {
+        std::scoped_lock lock(virtual_mapping_mutex);
+        auto it = virtual_allocation_sizes.find(buffer);
+        if (it == virtual_allocation_sizes.end()) return;
+        allocation_size = it->second;
+        virtual_allocation_sizes.erase(it);
+    }
+
+#   if defined(_WIN32)
+        VirtualFree(buffer, 0, MEM_RELEASE);
+#   elif defined(__APPLE__) || defined(__unix__)
+        munmap(buffer, allocation_size);
+#   else
+#       pragma error "Undefined virtual free for given platform."
+#   endif
+
+    virtual_memory_released += allocation_size;
+    virtual_memory_commit -= allocation_size;
+
+}
+
+size_t  
+simplex_virtual_page_size()
+{
+
+#   if defined(_WIN32)
+        SYSTEM_INFO system_info = {};
+        GetSystemInfo(&system_info);
+        return static_cast<size_t>(system_info.dwAllocationGranularity);
+#   elif defined(__APPLE__) || defined(__unix__)
+        const size_t page_size = static_cast<size_t>(sysconf(_SC_PAGESIZE));
+        if (page_size == 0) return 4096;
+        return page_size;
+#   else
+#       pragma error "Undefined virtual page size for given platform."
+#   endif
+
+}
+
+size_t  
+simplex_virtual_allocation_size(void* virtual_allocated_buffer)
+{
+
+    if (!virtual_allocated_buffer) return 0;
+
+#   if defined(_WIN32)
+
+        MEMORY_BASIC_INFORMATION info = {};
+        if (VirtualQuery(virtual_allocated_buffer, &info, sizeof(info)) == 0)
+        {
+            return 0;
+        }
+
+        return static_cast<size_t>(info.RegionSize);
+
+#   elif defined(__APPLE__)
+
+        mach_vm_address_t address = reinterpret_cast<mach_vm_address_t>(virtual_allocated_buffer);
+        mach_vm_size_t size = 0;
+
+        vm_region_basic_info_data_64_t info = {};
+        mach_msg_type_number_t info_count = VM_REGION_BASIC_INFO_COUNT_64;
+        mach_port_t object_name = MACH_PORT_NULL;
+
+        kern_return_t result = mach_vm_region(
+            mach_task_self(),
+            &address,
+            &size,
+            VM_REGION_BASIC_INFO_64,
+            reinterpret_cast<vm_region_info_t>(&info),
+            &info_count,
+            &object_name
+        );
+
+        if (result != KERN_SUCCESS)
+        {
+            return 0;
+        }
+
+        return static_cast<size_t>(size);
+
+#   elif defined(__linux__)
+
+        FILE* maps = std::fopen("/proc/self/maps", "r");
+        if (!maps) return 0;
+
+        const uintptr_t pointer = reinterpret_cast<uintptr_t>(virtual_allocated_buffer);
+
+        char line[512];
+        while (std::fgets(line, sizeof(line), maps))
+        {
+            uintptr_t begin = 0;
+            uintptr_t end = 0;
+
+            if (std::sscanf(line, "%zx-%zx", &begin, &end) == 2)
+            {
+                if (pointer >= begin && pointer < end)
+                {
+                    std::fclose(maps);
+                    return static_cast<size_t>(end - begin);
+                }
+            }
+        }
+
+        std::fclose(maps);
+        return 0;
+
+#   elif defined(__unix__)
+
+        // Generic Unix has no portable OS query for mmap region size.
+        // Fall back to the tracked size.
+        std::lock_guard<std::mutex> lock(virtual_mapping_mutex);
+
+        auto it = virtual_allocation_sizes.find(virtual_allocated_buffer);
+        if (it == virtual_allocation_sizes.end()) return 0;
+
+        return it->second;
+
+#   else
+
+        std::lock_guard<std::mutex> lock(virtual_mapping_mutex);
+
+        auto it = virtual_allocation_sizes.find(virtual_allocated_buffer);
+        if (it == virtual_allocation_sizes.end()) return 0;
+
+        return it->second;
+
+#   endif
+
+}
+
+bool            
+simplex_allocate_memory_arena(MemoryArena *arena, size_t request_size)
+{
+
+    SIMPLEX_CHECK_PTR(arena);
+    void *buffer = simplex_virtual_allocate(request_size);
+
+    if (buffer == NULL)
+    {
+        return false;
+    }
+
+    arena->buffer           = buffer;
+    arena->offset_bottom    = 0;
+    arena->offset_top       = 0;
+    arena->size             = simplex_virtual_allocation_size(buffer);
+    SIMPLEX_ASSERT(request_size <= arena->size);
+
+    return true;
+}
+
+void            
+simplex_deallocate_memory_arena(MemoryArena *arena)
+{
+
+    SIMPLEX_CHECK_PTR(arena);
+    if (arena->buffer != NULL)
+    {
+        simplex_virtual_free(arena->buffer);
+    }
+
+}
+
+void*           
+simplex_memory_arena_push_bottom(MemoryArena *arena, size_t size)
+{
+
+    SIMPLEX_CHECK_PTR(arena);
+    constexpr size_t alignment = 32;
+    const size_t aligned_size = (size + alignment - 1) & ~(alignment - 1);
+    const size_t commit_size = simplex_memory_arena_get_commit(arena);
+
+    SIMPLEX_ASSERT(commit_size >= aligned_size);
+
+    void *location = static_cast<uint8_t*>(arena->buffer) + arena->offset_bottom;
+    arena->offset_bottom += aligned_size;
+    return location;
+
+}
+
+void*
+simplex_memory_arena_push_top(MemoryArena *arena, size_t size)
+{
+
+    SIMPLEX_CHECK_PTR(arena);
+    constexpr size_t alignment = 32;
+    const size_t aligned_size = (size + alignment - 1) & ~(alignment - 1);
+    const size_t commit_size = simplex_memory_arena_get_commit(arena);
+
+    SIMPLEX_ASSERT(commit_size >= aligned_size);
+
+    arena->offset_bottom += aligned_size;
+    void *location = static_cast<uint8_t*>(arena->buffer) + (arena->size - arena->offset_bottom);
+
+    return location;
+
+}
+
+void            
+simplex_memory_arena_pop_bottom(MemoryArena *arena, size_t size)
+{
+
+    SIMPLEX_CHECK_PTR(arena);
+    constexpr size_t alignment = 32;
+    const size_t aligned_size = (size + alignment - 1) & ~(alignment - 1);
+    arena->offset_bottom -= size;
+
+}
+
+void            
+simplex_memory_arena_pop_top(MemoryArena *arena, size_t size)
+{
+
+    SIMPLEX_CHECK_PTR(arena);
+    constexpr size_t alignment = 32;
+    const size_t aligned_size = (size + alignment - 1) & ~(alignment - 1);
+    arena->offset_top -= size;
+
+}
+
+arena_stamp_t   
+simplex_memory_arena_stamp_bottom(MemoryArena *arena)
+{
+    SIMPLEX_CHECK_PTR(arena);
+    return arena->offset_bottom;
+}
+
+arena_stamp_t   
+simplex_memory_arena_stamp_top(MemoryArena *arena)
+{
+    SIMPLEX_CHECK_PTR(arena);
+    return arena->offset_top;
+}
+
+void            
+simplex_memory_arena_restore_bottom(MemoryArena *arena, arena_stamp_t stamp)
+{
+    SIMPLEX_CHECK_PTR(arena);
+    arena->offset_bottom = stamp;
+}
+
+void            
+simplex_memory_arena_restore_top(MemoryArena *arena, arena_stamp_t stamp)
+{
+    SIMPLEX_CHECK_PTR(arena);
+    arena->offset_top = stamp;
+}
+
+size_t         
+simplex_memory_arena_get_commit(MemoryArena *arena)
+{
+    SIMPLEX_CHECK_PTR(arena);
+    const size_t commit = arena->offset_bottom + arena->offset_top;
+    return commit;
+}
+
 
 
 #include <utils/test_registry.hpp>

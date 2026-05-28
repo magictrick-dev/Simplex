@@ -57,7 +57,7 @@ Index of this file:
 */
 
 #pragma once
-#include <IMGUI/fontawesome.h>
+#include <vendor/imgui/fontawesome.h>
 
 // Configuration file with compile-time options
 // (edit imconfig.h or '#define IMGUI_USER_CONFIG "myfilename.h" from your build system)

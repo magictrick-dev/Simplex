@@ -3,9 +3,9 @@
 
 #if defined(SIMPLEX_ENABLE_TESTS) && SIMPLEX_ENABLE_TESTS == 1
 
-#include <GLM/glm.hpp>
-#include <GLM/ext/matrix_transform.hpp>
-#include <GLM/ext/matrix_clip_space.hpp>
+#include <glm/glm.hpp>
+#include <glm/ext/matrix_transform.hpp>
+#include <glm/ext/matrix_clip_space.hpp>
 #include <cmath>
 
 // ---------------------------------------------------------------------------
