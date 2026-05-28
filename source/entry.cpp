@@ -62,7 +62,7 @@ entry(int argc, char **argv)
     // TODO(Chris): Defer our logs to a file rather than to standard-output.
     // TODO(Chris): GUI-based logging window?
     auto &logger = LoggingManager::Get();
-    LoggingManager::ClassifyThreadname("Main");
+    LoggingManager::ClassifyThreadname("MAIN");
     LoggingManager::DispatchLog<LoggingLevel::Diagnostic, LoggingClassification::Internal>(
         "Simplex Version    : {}\n"
         "Simplex Platform   : {}\n"
@@ -128,7 +128,7 @@ entry(int argc, char **argv)
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 1);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
-    GLFWwindow *window = glfwCreateWindow(1280, 960, "Simplex Render Viewer", NULL, NULL);
+    GLFWwindow *window = glfwCreateWindow(1280, 720, "Simplex Render Viewer", NULL, NULL);
     if (window == NULL)
     {
         std::cout << "Failed to create GLFW window." << std::endl;

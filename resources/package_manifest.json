@@ -1,0 +1,87 @@
+{
+    "pkgversion":   1,
+    "metadata":
+    {
+        "name":         "core_manifest",
+        "version":      "1.0.0",
+        "author":       "Chris DeJong",
+        "email":        "magiktrikdev@gmail.com",
+        "date":         "may_28_2026",
+        "required":     true,
+        "autoreload":   true
+    },
+    "files": 
+    [
+        { 
+            "name": "cube",
+            "identifier": 0,
+            "path": "./resources/models/cube.obj",
+            "autoreload": false,
+            "deferable": true,
+            "required": true  
+        },
+        { 
+            "name": "cylinder",
+            "identifier": 1,
+            "path": "./resources/models/cylinder.obj",
+            "autoreload": false,
+            "deferable": true,
+            "required": true    
+        },
+        { 
+            "name": "sphere",
+            "identifier": 2,
+            "path": "./resources/models/sphere.obj",
+            "autoreload": false,
+            "deferable": true,
+            "required": true    
+        },
+        { 
+            "name": "fox",
+            "identifier": 3,
+            "path": "./resources/models/Fox.obj",
+            "autoreload": false,
+            "deferable": true,
+            "required": true    
+        },
+        { 
+            "name": "fox mtl",
+            "identifier": 4,
+            "path": "./resources/models/Fox.mtl",
+            "autoreload": false,
+            "deferable": true,
+            "required": true    
+        },
+        { 
+            "name": "vertex shader",
+            "identifier": 5,
+            "path": "./resources/models/vertex_shader.glsl",
+            "autoreload": true,
+            "deferable": true,
+            "required": false   
+        },
+        { 
+            "name": "fragment shader",
+            "identifier": 6,
+            "path": "./resources/models/fragment_shader.glsl",
+            "autoreload": true,
+            "deferable": true,
+            "required": false   
+        }
+    ],
+    "resources":
+    [
+        {
+            "name": "cube",
+            "index": 0,
+            "offset": 0,
+            "length": 468
+        },
+        {
+            "name": "cylinder",
+            "index": 1,
+            "offset": 468,
+            "length": 214
+        }
+    ]
+}
