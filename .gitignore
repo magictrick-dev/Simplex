@@ -2,9 +2,6 @@
 build/
 temporary/
 
-# Resources may be large or copy-righted, so just ignore them altogether.
-resources/
-
 # The usual stuff.
 .cache/
 .claude
