@@ -16,6 +16,11 @@ class IRenderEngine
 
         }
 
+        virtual inline ~IRenderEngine() 
+        { 
+
+        }
+
         virtual inline bool initialize() = 0;
         virtual inline bool shutdown() = 0;
 
