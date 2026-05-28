@@ -3,6 +3,11 @@
 #include <sstream>
 #include <iomanip>
 
+#ifndef TINYOBJLOADER_IMPLEMENTATION
+#   define TINYOBJLOADER_IMPLEMENTATION
+#endif
+#include <vendor/tinyobj/tiny_obj_loader.h>
+
 #include <utils/defs.hpp>
 #include <cli/cli.hpp>
 #include <utils/test_registry.hpp>
@@ -15,7 +20,7 @@
 #if defined(_WIN32)
 #   include <windows.h>
 #endif
-#include <GLAD/glad.h>
+#include <vendor/glad/glad.h>
 #include <GLFW/glfw3.h>
 
 #ifndef SIMPLEX_PLATFORM_INFORMATION
@@ -201,8 +206,6 @@ entry(int argc, char **argv)
 }
 
 #if defined(__APPLE__) && defined(__MACH__)
-#   include <GLAD/glad.h>
-#   include <GLFW/glfw3.h>
 
     int 
     main(int argc, char **argv)

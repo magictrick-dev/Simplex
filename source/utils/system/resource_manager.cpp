@@ -48,7 +48,7 @@ simplex_stbi_realloc(void *pointer, size_t new_size)
 #define STBI_REALLOC(p, sz)     simplex_stbi_realloc((p), (sz))
 #define STBI_FREE(p)            simplex_stbi_free(p)
 #define STB_IMAGE_IMPLEMENTATION
-#include <STB/stb_image.h>
+#include <vendor/stb/stb_image.h>
 
 BinaryFileResource::
 BinaryFileResource(const std::filesystem::path &path, size_t size)
