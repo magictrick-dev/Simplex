@@ -153,6 +153,8 @@ class SparseSet
 
 };
 
+
+
 template <typename Dummy>
 struct Foo
 {

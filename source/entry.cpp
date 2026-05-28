@@ -1,12 +1,25 @@
-#include <iostream>
-#include <fstream>
-#include <sstream>
-#include <iomanip>
-
 #ifndef TINYOBJLOADER_IMPLEMENTATION
 #   define TINYOBJLOADER_IMPLEMENTATION
 #endif
 #include <vendor/tinyobj/tiny_obj_loader.h>
+
+#if defined(_WIN32)
+#   define WIN32_LEAN_AND_MEAN
+#   define NOMINMAX
+#   include <windows.h>
+#   define SIMPLEX_WIN32_UNFUCK 1
+#   if defined(SIMPLEX_WIN32_UNFUCK) && SIMPLEX_WIN32_UNFUCK == 1
+#       undef near
+#       undef far
+#       undef max
+#       undef min
+#   endif
+#endif
+
+#include <iostream>
+#include <fstream>
+#include <sstream>
+#include <iomanip>
 
 #include <utils/defs.hpp>
 #include <cli/cli.hpp>
@@ -226,7 +239,14 @@ entry(int argc, char **argv)
 #endif
 
 #if defined(_WIN32)
+#   ifndef WIN32_LEAN_AND_MEAN
+#       define WIN32_LEAN_AND_MEAN
+#   endif
+#   ifndef NOMINMAX
+#       define NOMINMAX
+#   endif
 #   include <windows.h>
+#   include <shellapi.h>
 #   include <conio.h>
 
     static inline void
