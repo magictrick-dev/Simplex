@@ -5,86 +5,110 @@
 #include <vector>
 #include <array>
 
-template <typename type_t, size_t capacity>
-class StaticVector
+namespace spx
 {
 
-    public:
-        inline StaticVector() = default;
-        virtual inline ~StaticVector() = default;
+    template <typename type_t, size_t capacity>
+    class array
+    {
 
-        inline type_t& get(size_t index) { return *get_ptr(index); }
-        inline type_t& operator[](size_t) { return this->get(index); }
-        inline const type_t& get(size_t index) const { return *get_ptr(index); }
-        inline const type_t& operator[](size_t) const { return this->get(index); }
+        public:
+            inline array() = default;
+            inline ~array() = default;
 
-        template <typename... Args> inline void
-        emplace_back(Args&&... args)
-        {
+        private:
+            type_t elements[capacity];
 
-            SIMPLEX_ASSERT(count < capacity);
+    };
 
-            const size_t index = this->count;
-            type_t *location = this->get_ptr(index);
+    template <typename type_t, size_t capacity>
+    class static_vector
+    {
 
-            new (location) type_t(std::forward<Args>(args)...);
+        public:
+            inline static_vector() = default;
+            virtual inline ~static_vector() = default;
 
-            this->count++;
+            inline type_t& get(size_t index) { return *get_ptr(index); }
+            inline type_t& operator[](size_t) { return this->get(index); }
+            inline type_t* begin() { return this->get_ptr(0); }
+            inline type_t* end() { return this->get_ptr(capacity); }
+            inline size_t size() const { return this->count; }
+            inline const type_t& get(size_t index) const { return *get_ptr(index); }
+            inline const type_t& operator[](size_t) const { return this->get(index); }
+            inline const type_t* begin() const { return this->get_ptr(0); }
+            inline const type_t* end() const { constexpr size_t end = capacity - 1; return this->get_ptr(end); }
+            inline constexpr size_t capacity() const { return capacity; }
 
-        }
+            template <typename... Args> inline void
+            emplace_back(Args&&... args)
+            {
 
-        inline void
-        push_back(type_t &value)
-        {
+                SIMPLEX_ASSERT(count < capacity);
 
-            SIMPLEX_ASSERT(count < capacity);
+                const size_t index = this->count;
+                type_t *location = this->get_ptr(index);
 
-            const size_t index = this->count;
-            type_t *location = this->get_ptr(index);
+                new (location) type_t(std::forward<Args>(args)...);
 
-            new (location) type_t(value);
+                this->count++;
 
-            this->count++;
+            }
 
-        }
+            inline void
+            push_back(type_t &value)
+            {
 
-        inline void 
-        push_back(type_t &&value)
-        {
+                SIMPLEX_ASSERT(count < capacity);
 
-            SIMPLEX_ASSERT(count < capacity);
+                const size_t index = this->count;
+                type_t *location = this->get_ptr(index);
 
-            const size_t index = this->count;
-            type_t *location = this->get_ptr(index);
+                new (location) type_t(value);
 
-            new (location) type_t(std::move(value));
+                this->count++;
 
-            this->count++;
+            }
 
-        }
+            inline void 
+            push_back(type_t &&value)
+            {
 
-        inline void
-        pop_back()
-        {
+                SIMPLEX_ASSERT(count < capacity);
 
-            SIMPLEX_ASSERT(count > 0);
+                const size_t index = this->count;
+                type_t *location = this->get_ptr(index);
 
-            this->count--;
-            type_t *location = this->get_ptr(this->count);
+                new (location) type_t(std::move(value));
 
-            location->~type_t();
+                this->count++;
 
-        }
+            }
 
-    private:
-        inline type_t* get_ptr(size_t index) { return reinterpret_cast<type_t*>(&buffer[index * sizeof(type_t)]); }
-        inline const type_t* get_ptr(size_t index) const { return reinterpret_cast<type_t*>(&buffer[index * sizeof(type_t)]); }
+            inline void
+            pop_back()
+            {
 
-    private:
-        alignas(type_t) std::byte buffer[capacity * sizeof(type_t)];
-        size_t count = 0;
+                SIMPLEX_ASSERT(count > 0);
 
-};
+                this->count--;
+                type_t *location = this->get_ptr(this->count);
+
+                location->~type_t();
+
+            }
+
+        private:
+            inline type_t* get_ptr(size_t index) { return reinterpret_cast<type_t*>(&buffer[index * sizeof(type_t)]); }
+            inline const type_t* get_ptr(size_t index) const { return reinterpret_cast<type_t*>(&buffer[index * sizeof(type_t)]); }
+
+        private:
+            alignas(type_t) std::byte buffer[capacity * sizeof(type_t)];
+            size_t count = 0;
+
+    };
+
+}
 
 class SparseSetInterface
 {
@@ -92,12 +116,6 @@ class SparseSetInterface
     public:
         SparseSetInterface() { }
         virtual ~SparseSetInterface() { }
-
-        virtual size_t size() const = 0;
-        virtual std::vector<entity_t>::iterator begin() = 0;
-        virtual std::vector<entity_t>::iterator end() = 0;
-        virtual std::vector<entity_t>::const_iterator begin() const = 0;
-        virtual std::vector<entity_t>::const_iterator end() const = 0;
 
 };
 
@@ -109,18 +127,10 @@ class SparseSet : public SparseSetInterface
         SparseSet() = default;
         ~SparseSet() = default;
 
-        inline type_t& operator[](const size_t index)                               { return this->elements[index];         }
-        inline const type_t& operator[](const size_t index) const                   { return this->elements[index];         }
-        virtual inline size_t size() const override                                 { return this->elements.size();         }
-        virtual inline std::vector<entity_t>::iterator begin() override             { return this->dense_to_sparse.begin(); }
-        virtual inline std::vector<entity_t>::iterator end() override               { return this->dense_to_sparse.end();   }
-        virtual inline std::vector<entity_t>::const_iterator begin() const override { return this->dense_to_sparse.begin(); }
-        virtual inline std::vector<entity_t>::const_iterator end() const override   { return this->dense_to_sparse.end();   }
-
     private:
-        StaticVector<type_t, capacity> elements;
-        StaticVector<entity_t, capacity> dense_to_sparse;
-        StaticVector<int32_t, capacity> sparse_to_dense;
+        spx::static_vector<type_t, capacity> elements;
+        std::array<entity_t, capacity> dense_to_sparse;
+        std::array<int32_t, capacity> sparse_to_dense;
         
 };
 
