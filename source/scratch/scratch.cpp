@@ -3,10 +3,12 @@
 #include <vector>
 #include <unordered_map>
 
-#include <scratch/nameof.hpp>
 #include <scratch/scratch.hpp>
+
 #include <utils/defs.hpp>
 #include <utils/typeid.hpp>
+#include <utils/linear.hpp>
+#include <utils/system/resource_manager.hpp>
 
 /// SDSA Allocator Interface
 /** 
@@ -40,8 +42,18 @@ struct SDSA_SimplexMemoryArenaAllocator
 
 };
 
+class SparseSetInterface
+{
+
+    public:
+        SparseSetInterface() { }
+        virtual ~SparseSetInterface() { }
+
+
+};
+
 template <typename T>
-class SparseSet
+class SparseSet : public SparseSetInterface
 {
 
     public:
@@ -153,65 +165,82 @@ class SparseSet
 
 };
 
-
-
-template <typename Dummy>
-struct Foo
+struct Metadata
 {
-    Dummy aspect;
-    int32_t width;
-    int32_t height;
+    std::string name;
+    std::string uuid;
+    EntityID self;
 };
 
-class Shape
+struct Transform
 {
-    public:
-        Shape() = default;
-        virtual ~Shape() = default;
-
-        virtual int32_t area() { return _width * _height; }
-
-    protected:
-        int32_t _width;
-        int32_t _height;
+    vec3f position;
+    vec3f rotation;
+    vec3f scale;
 };
 
-class Square : public Shape
+struct Mesh
 {
-    public:
-        Square(int32_t side) { this->_width = side; this->_height = side; };
-        virtual ~Square() = default;
-
-        virtual int32_t area() override { return _width * _width; }
+    ResourceHandle handle;
 };
 
-union Testunion
+struct Material
 {
-    int64_t packed;
-    struct
+    ResourceHandle texture;
+    ResourceHandle normal;
+    ResourceHandle bump;
+    real32_t Ka;
+    real32_t Kd;
+    real32_t Ks;
+    real32_t Ke;
+};
+
+struct EntityID
+{
+
+    union
     {
-        int32_t left;
-        int32_t right;
+
+        uint64_t handle;
+
+        struct
+        {
+
+            uint32_t identifier;
+            uint16_t generation;
+            uint16_t flags;
+
+        };
+
     };
+
 };
 
-typedef std::vector<float> vectorf;
+class EntitySystem
+{
+
+    public:
+        template <typename T> static inline void 
+        RegisterComponent()
+        {
+
+        }
+
+        template <typename... Ts> static inline void 
+        RegisterComponents()
+        {
+
+        }
+
+    private:
+        static inline std::vector<EntityID> entities;
+        static inline std::unordered_map<size_t, SparseSetInterface*> components;
+
+};
 
 int 
 scratch_main()
 {
-
-    float foo_bar = 32;
-    std::cout << TypeID<float>::Value << std::endl;
-    std::cout << TypeID<Shape>::Value << std::endl;
-    std::cout << TypeID<Foo<float>>::Value << std::endl;
-    std::cout << TypeID<Testunion>::Value << std::endl;
-    std::cout << TypeID<vectorf>::Value << std::endl;
-
-    auto list = TypeIDArray<float, int32_t, Shape>::Values;
-    auto hashes = TypeIDArray<float, int32_t, Shape>::Hashes;
-    for (auto l : list) std::cout << l << ", "; std::cout << std::endl;
-    for (auto h : hashes) std::cout << h << ", "; std::cout << std::endl;
 
     return 0;
 }
