@@ -165,6 +165,27 @@ class SparseSet : public SparseSetInterface
 
 };
 
+struct EntityID
+{
+
+    union
+    {
+
+        uint64_t handle;
+
+        struct
+        {
+
+            uint32_t identifier;
+            uint16_t generation;
+            uint16_t flags;
+
+        };
+
+    };
+
+};
+
 struct Metadata
 {
     std::string name;
@@ -195,31 +216,16 @@ struct Material
     real32_t Ke;
 };
 
-struct EntityID
-{
-
-    union
-    {
-
-        uint64_t handle;
-
-        struct
-        {
-
-            uint32_t identifier;
-            uint16_t generation;
-            uint16_t flags;
-
-        };
-
-    };
-
-};
-
 class EntitySystem
 {
 
     public:
+        static inline EntitySystem& Get()
+        {
+            static EntitySystem system = {};
+            return system;
+        }
+
         template <typename T> static inline void 
         RegisterComponent()
         {
@@ -233,6 +239,21 @@ class EntitySystem
         }
 
     private:
+        EntitySystem()
+        {
+
+        }
+
+        ~EntitySystem()
+        {
+
+        }
+
+        inline EntitySystem(EntitySystem &copy) = delete; // Singleton enforcement, no copy.
+        inline EntitySystem& operator==(EntitySystem &&other) = delete; // Singleton enforcement, no hacky copy.
+
+    private:
+        static inline EntityID fallback_entity;
         static inline std::vector<EntityID> entities;
         static inline std::unordered_map<size_t, SparseSetInterface*> components;
 
@@ -241,6 +262,8 @@ class EntitySystem
 int 
 scratch_main()
 {
+
+    auto& entity_system = EntitySystem::Get();
 
     return 0;
 }
