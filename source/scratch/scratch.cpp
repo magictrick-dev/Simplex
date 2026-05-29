@@ -2,6 +2,7 @@
 #include <limits>
 #include <vector>
 #include <unordered_map>
+#include <queue>
 
 #include <scratch/scratch.hpp>
 
@@ -9,6 +10,7 @@
 #include <utils/typeid.hpp>
 #include <utils/linear.hpp>
 #include <utils/system/resource_manager.hpp>
+#include <utils/system/memory_alloc.hpp>
 
 /// SDSA Allocator Interface
 /** 
@@ -165,26 +167,22 @@ class SparseSet : public SparseSetInterface
 
 };
 
-struct EntityID
+union EntityID
 {
 
-    union
+    uint64_t handle;
+
+    struct
     {
 
-        uint64_t handle;
-
-        struct
-        {
-
-            uint32_t identifier;
-            uint16_t generation;
-            uint16_t flags;
-
-        };
+        uint32_t identifier;
+        uint16_t generation;
+        uint16_t flags;
 
     };
 
 };
+
 
 struct Metadata
 {
@@ -226,21 +224,43 @@ class EntitySystem
             return system;
         }
 
-        template <typename T> static inline void 
-        RegisterComponent()
+        template <typename T> inline void 
+        register_component()
         {
 
-        }
+            auto &self = Get();
 
-        template <typename... Ts> static inline void 
-        RegisterComponents()
-        {
+            constexpr size_t type_hash = TypeID<T>::Hash;
+            auto it = self.components.find(type_hash);
+
+            // NOTE(Chris): Not really a fan of a conditional here, but it prevents stupid
+            //              double-allocation behaviors.
+            if (it == self.components.end())
+            {
+
+                SparseSet<T>* component_sparse_set = simplex_memory_new<SparseSet<T>>();
+                component_sparse_set.insert(self.entity_placeholder.identifier);
+                component_sparse_set.insert(self.entity_trap.identifier);
+                self.components[type_hash] = component_sparse_set;
+
+            }
+            else
+            {
+                // TODO(Chris): Should we just silently fail?
+                SIMPLEX_ASSERT("EntitySystem attempted to double register a component!");
+            }
+
 
         }
 
     private:
         EntitySystem()
         {
+
+            this->entity_placeholder    = { .identifier = 0, .generation = 0 };
+            this->entity_trap           = { .identifier = 1, .generation = 0 };
+            this->entities.push_back(entity_placeholder);
+            this->entities.push_back(entity_trap);
 
         }
 
@@ -253,9 +273,12 @@ class EntitySystem
         inline EntitySystem& operator==(EntitySystem &&other) = delete; // Singleton enforcement, no hacky copy.
 
     private:
-        static inline EntityID fallback_entity;
-        static inline std::vector<EntityID> entities;
-        static inline std::unordered_map<size_t, SparseSetInterface*> components;
+        EntityID entity_placeholder;        // For silent-but-okay fails.
+        EntityID entity_trap;               // For forced trigger fails.
+
+        std::vector<EntityID> entities;
+        std::queue<EntityID> compost;
+        std::unordered_map<size_t, SparseSetInterface*> components;
 
 };
 
@@ -264,6 +287,10 @@ scratch_main()
 {
 
     auto& entity_system = EntitySystem::Get();
+    entity_system.register_component<Metadata>();
+    entity_system.register_component<Transform>();
+    entity_system.register_component<Mesh>();
+    entity_system.register_component<Material>();
 
     return 0;
 }
