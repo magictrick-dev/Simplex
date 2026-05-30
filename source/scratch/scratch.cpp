@@ -2,214 +2,277 @@
 #include <limits>
 #include <vector>
 #include <unordered_map>
+#include <queue>
 
-#include <scratch/nameof.hpp>
 #include <scratch/scratch.hpp>
+
 #include <utils/defs.hpp>
 #include <utils/typeid.hpp>
+#include <utils/linear.hpp>
+#include <utils/system/resource_manager.hpp>
+#include <utils/system/memory_alloc.hpp>
 
-/// SDSA Allocator Interface
-/** 
- * Provides a way of interacting with custom allocators when using Simplex datastructures.
- */
-struct SDSA_AllocatorInterface
+#include <simplex/array.hpp>
+#include <simplex/static_array.hpp>
+#include <simplex/components/metadata.hpp>
+#include <simplex/components/transform.hpp>
+#include <simplex/components/mesh.hpp>
+#include <simplex/components/material.hpp>
+
+union entity_t
 {
 
-    /// @brief Allocates at least n-bytes from a derived implementation.
-    /// @param size The request size to allocate
-    /// @return If the return value is NULL, the allocation failed.
-    ///
-    /// The allocate method should defer to allocate_aligned with an alignment of 16.
-    inline virtual void*    allocate(const size_t size) = 0;
-    inline virtual void*    allocate_aligned(const size_t size, const size_t alignment) = 0;
+    uint64_t handle;
 
-    inline virtual void*    reallocate(void *buffer, const size_t size) = 0;
-    inline virtual void*    reallocate_aligned(void *buffer, const size_t size, const size_t alignment) = 0;
-
-    inline virtual void     deallocate() = 0;
-
-};
-
-struct SDSA_SimplexDefaultAllocator
-{
-
-};
-
-struct SDSA_SimplexMemoryArenaAllocator
-{
-
-};
-
-template <typename T>
-class SparseSet
-{
-
-    public:
-        SparseSet() = default;
-        ~SparseSet() = default;
-
-        inline std::vector<T>::iterator begin()                 { return this->elements.begin();    }
-        inline std::vector<T>::iterator end()                   { return this->elements.end();      }
-        inline std::vector<T>::const_iterator begin() const     { return this->elements.begin();    }
-        inline std::vector<T>::const_iterator end() const       { return this->elements.end();      }
-        inline T& operator[](const size_t index)                { return this->elements[index];     }
-        inline const T& operator[](const size_t index) const    { return this->elements[index];     }
-        inline size_t size() const                              { return this->elements.size();     }
-
-        inline void
-        insert(size_t sparse_index, T value)
-        {
-
-            SIMPLEX_ASSERT(!this->exists(sparse_index));
-
-            const size_t dense_index = this->elements.size();
-
-            this->elements.emplace_back(value);
-            this->sparse_to_dense[sparse_index]     = dense_index;
-            this->dense_to_sparse[dense_index]      = sparse_index;
-
-        }
-
-        inline T& 
-        get(size_t sparse_index)
-        {
-            return this->elements[sparse_to_dense[sparse_index]];
-        }
-
-        inline const T& 
-        get(size_t sparse_index) const
-        {
-            return this->elements[sparse_to_dense[sparse_index]];
-        }
-
-        inline bool
-        exists(size_t sparse_index) const
-        {
-            auto it = sparse_to_dense.find(sparse_index);
-            const bool result = (it != sparse_to_dense.end());
-            return result;
-        }
-
-        inline void
-        remove(size_t sparse_index)
-        {
-
-            SIMPLEX_ASSERT(this->exists(sparse_index));
-            const size_t remove_dense_index     = this->sparse_to_dense[sparse_index];
-            const size_t swap_dense_index       = this->elements.size() - 1;
-            const size_t swap_sparse_index      = this->dense_to_sparse[swap_dense_index];
-            std::cout << "Swap sparse is: " << swap_sparse_index << std::endl;
-
-            // If the thing we remove is the back, removal is trivial.
-            if (swap_dense_index == remove_dense_index)
-            {
-                this->sparse_to_dense.erase(sparse_index);
-                this->dense_to_sparse.erase(remove_dense_index);
-                this->elements.pop_back();
-                return;
-            }
-            
-            // Move the element from the end and move it into the thing we are removing.
-            this->elements[remove_dense_index] = this->elements[swap_dense_index];
-
-            this->dense_to_sparse[remove_dense_index] = swap_sparse_index;
-            this->sparse_to_dense[swap_sparse_index] = remove_dense_index;
-            
-            // Finally, remove the element.
-            this->elements.pop_back();
-            
-        }
-
-        inline size_t 
-        get_dense_from_sparse(const size_t index) const
-        {
-            const auto it = this->sparse_to_dense.find(index);
-            if (it != this->sparse_to_dense.end())
-            {
-                return it->second;
-            }
-            SIMPLEX_NO_REACH("Attempting to access a non-existent sparse index.");
-            return std::numeric_limits<size_t>::max();
-        }
-
-        inline size_t 
-        get_sparse_from_dense(const size_t index) const
-        {
-            const auto it = this->dense_to_sparse.find(index);
-            if (it != this->dense_to_sparse.end())
-            {
-                return it->second;
-            }
-            SIMPLEX_NO_REACH("Attempting to access a non-existent dense index.");
-            return std::numeric_limits<size_t>::max();
-        }
-
-
-    private:
-        std::vector<T> elements;
-        std::unordered_map<size_t,size_t> sparse_to_dense;
-        std::unordered_map<size_t,size_t> dense_to_sparse;
-        
-
-};
-
-template <typename Dummy>
-struct Foo
-{
-    Dummy aspect;
-    int32_t width;
-    int32_t height;
-};
-
-class Shape
-{
-    public:
-        Shape() = default;
-        virtual ~Shape() = default;
-
-        virtual int32_t area() { return _width * _height; }
-
-    protected:
-        int32_t _width;
-        int32_t _height;
-};
-
-class Square : public Shape
-{
-    public:
-        Square(int32_t side) { this->_width = side; this->_height = side; };
-        virtual ~Square() = default;
-
-        virtual int32_t area() override { return _width * _width; }
-};
-
-union Testunion
-{
-    int64_t packed;
     struct
     {
-        int32_t left;
-        int32_t right;
+
+        uint32_t identifier;
+        uint16_t generation;
+        uint16_t flags;
+
     };
+
+    inline operator uint64_t()                          { return handle;                        }
+    inline entity_t& operator=(uint64_t handle)         { this->handle = handle; return *this;  }
+    inline bool operator==(const entity_t&other) const  { return this->handle == other.handle;  }
+    inline bool operator!=(const entity_t &other) const { return !(*this == other);             }
+
 };
 
-typedef std::vector<float> vectorf;
+class component_sparse_set_interface
+{
+
+    public:
+                 component_sparse_set_interface() = default;
+        virtual ~component_sparse_set_interface() = default;
+
+        virtual entity_t* begin() = 0;
+        virtual entity_t* end() = 0;
+        virtual const entity_t* begin() const = 0;
+        virtual const entity_t* end() const = 0;
+        virtual bool contains(const entity_t &e) const = 0;
+        virtual size_t load_factor() const = 0;
+
+};
+
+template <typename type_t, size_t capacity>
+class component_sparse_set : public component_sparse_set_interface
+{
+
+    constexpr int32_t invalid_index = -1;
+
+    public:
+        inline component_sparse_set()
+        {
+
+            for (size_t i = 0; i < capacity; ++i) 
+            {
+                sparse_to_dense[i] = invalid_index;
+                dense_to_sparse[i] = { .identifier = 0, .generation = 0 };
+            }
+
+        }
+
+        virtual ~component_sparse_set() = default;
+
+        virtual inline entity_t* begin() override               { return this->elements.begin();    }
+        virtual inline entity_t* end() override                 { return this->elements.end();      }
+        virtual inline const entity_t* begin() const override   { return this->elements.begin();    }
+        virtual inline const entity_t* end() const override     { return this->elements.end();      }
+        virtual inline size_t load_factor() const override      { return this->elements.size();     }
+
+        template <typename... Args> inline void 
+        insert(const entity_t& e, Args&&... args)
+        {
+
+            const size_t sparse_index = e.identifier % capacity;
+            const size_t dense_index = this->sparse_to_dense[sparse_index];
+
+            // NOTE(Chris): We expect that the API checks that the entity exists first,
+            //              as emplacement assumes a new value.
+            SIMPLEX_ASSERT(dense_index == invalid_index);
+            const size_t insertion_index = this->elements.size();
+            this->elements.emplace_back(std::forward<Args>(args)...);
+
+            this->sparse_to_dense[sparse_index] = insertion_index;
+            this->dense_to_sparse[insertion_index] = e;
+
+        }
+
+        inline void
+        remove(const entity_t& e)
+        {
+
+        }
+
+        virtual inline bool
+        contains(const entity_t& e) const
+        {
+
+            const size_t sparse_index = e.identifer % capacity;
+            const size_t dense_index = this->sparse_to_dense[sparse_index];
+            
+            if (dense_index == invalid_index) return false;
+            return (this->dense_to_sparse[dense_index] == e);
+            
+        }
+
+        inline type_t& operator[](size_t dense_index) { return this->elements[dense_index]; }
+        inline const type_t& operator[](size_t dense_index) const { return this->elements[dense_index]; }
+
+    private:
+        spx::array<entity_t, capacity>          dense_to_sparse;
+        spx::array<int32_t, capacity>           sparse_to_dense;
+        spx::static_array<type_t, capacity>     elements;
+        
+};
+
+template <size_t pages, size_t capacity>
+struct paged_components
+{
+
+    public:
+        inline component_sparse_set_interface* operator[](size_t index) { return this->interfaces[index]; }
+        inline const component_sparse_set_interface* operator[](size_t index) const { return this->interfaces[index]; }
+    
+        inline bool 
+        page_is_allocated(size_t page_index) const
+        {
+
+            const bool result = (interfaces[page_index] != NULL);
+            return result;
+
+        }
+    
+        template <typename type_t> inline void 
+        allocate_page(const size_t index)
+        {  
+
+            if (interfaces[index] == nullptr)
+            {
+                interfaces[index] = simplex_memory_new<component_sparse_set<type_t, capacity>>();
+            }
+
+        }
+
+        template <typename type_t> inline void
+        deallocate_page(const size_t index)
+        {
+            if (interfaces[index] != nullptr)
+            {
+                component_sparse_set<type_t, capacity> *component_set =
+                    reinterpret_cast<component_sparse_set<type_t, capacity>>(interfaces[index]);
+                simplex_memory_delete(component_set);
+                interfaces[index] = nullptr;
+            }
+        }
+    
+    private:
+        spx::array<component_sparse_set_interface*, pages> interfaces;
+
+
+};
+
+class EntitySystem
+{
+
+    public:
+        static inline EntitySystem& Get()
+        {
+            static EntitySystem system = {};
+            return system;
+        }
+
+        template <typename type_t> inline void 
+        register_component()
+        {
+
+            constexpr size_t type_hash = TypeID<type_t>::Hash;
+            if (this->component_pages.find(type_hash) != this->component_pages.end()) return;
+
+            this->component_pages[type_hash] = {};
+            //this->attach_component<type_t>(this->entity_placeholder);
+            //this->attach_component<type_t>(this->entity_trap);
+
+        }
+
+        inline entity_t 
+        create_entity()
+        {
+
+            entity_t result_entity = { };
+
+            if (!entities_inactive.empty())
+            {
+                result_entity = entities_inactive.front();
+                entities_inactive.pop();
+            }
+            else
+            {
+                const size_t entity_identifier = entities_active.size();
+                entities_active.emplace_back();
+                result_entity = entities_active.back();
+                result_entity.identifier = entity_identifier;
+                result_entity.generation = 0;
+            }
+
+            result_entity.flags = 0;
+            return result_entity;
+
+        }
+
+        inline void
+        destroy_entity(const entity_t &e)
+        {
+
+            const size_t entity_index = e.identifier;
+            if (this->entities_active[entity_index] != e) return;
+            this->entities_active[entity_index].generation++;
+            this->entities_inactive.push(e);
+
+        }
+
+        template <typename type_t, typename... Args> type_t& 
+        attach_component(const entity_t &e, Args&&... args)
+        {
+            return {};
+        }
+
+    private:
+        EntitySystem()
+        {
+            entity_placeholder = this->create_entity();
+            entity_trap = this->create_entity();
+        }
+
+        ~EntitySystem()
+        {
+
+            return;
+        }
+
+        inline EntitySystem(EntitySystem &copy) = delete;
+        inline EntitySystem& operator==(EntitySystem &&other) = delete;
+
+    private:
+        entity_t entity_placeholder;
+        entity_t entity_trap;
+        std::vector<entity_t> entities_active;
+        std::queue<entity_t> entities_inactive;
+        std::unordered_map<size_t, paged_components<64, 4096>> component_pages;
+
+};
 
 int 
 scratch_main()
 {
 
-    float foo_bar = 32;
-    std::cout << TypeID<float>::Value << std::endl;
-    std::cout << TypeID<Shape>::Value << std::endl;
-    std::cout << TypeID<Foo<float>>::Value << std::endl;
-    std::cout << TypeID<Testunion>::Value << std::endl;
-    std::cout << TypeID<vectorf>::Value << std::endl;
-
-    auto list = TypeIDArray<float, int32_t, Shape>::Values;
-    auto hashes = TypeIDArray<float, int32_t, Shape>::Hashes;
-    for (auto l : list) std::cout << l << ", "; std::cout << std::endl;
-    for (auto h : hashes) std::cout << h << ", "; std::cout << std::endl;
+    auto& entity_system = EntitySystem::Get();
+    entity_system.register_component<spx::metadata>();
+    entity_system.register_component<spx::transform>();
+    entity_system.register_component<spx::mesh>();
+    entity_system.register_component<spx::material>();
 
     return 0;
 }

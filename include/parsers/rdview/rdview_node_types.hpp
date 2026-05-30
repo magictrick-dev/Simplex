@@ -598,8 +598,8 @@ struct RDViewNodeClipping : public RDViewNodeInterface
         inline virtual ~RDViewNodeClipping() { }
         inline virtual void visit(RDViewNodeVisitor *visitor) override { visitor->accept(this); }
 
-        real32_t near;
-        real32_t far;
+        float near;
+        float far;
 };
 
 struct RDViewNodePoint : public RDViewNodeInterface
