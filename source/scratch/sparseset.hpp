@@ -4,6 +4,9 @@
 
 #include <vector>
 #include <array>
+#include <utility>
+#include <cstddef>
+#include <new>
 
 namespace spx
 {
@@ -20,7 +23,7 @@ namespace spx
             inline type_t& operator[](size_t index)             { return this->get(index);          }
             inline type_t* begin()                              { return elements;                  }
             inline type_t* end()                                { return elements + capacity;       }
-            inline size_t size() const                          { return this->count;               }
+            inline size_t size() const                          { return capacity;                  }
             inline const type_t& get(size_t index) const        { return elements[index];           }
             inline const type_t& operator[](size_t index) const { return this->get(index);          }
             inline const type_t* begin() const                  { return elements;                  }
@@ -32,27 +35,203 @@ namespace spx
     };
 
     template <typename type_t>
-    class vector
+    class dynamic_array
     {
 
         public:
-            inline vector() : elements(NULL), reserved(0), count(0)     { this->increase_capacity(); }
-            inline virtual ~vector()                                    { this->release_memory(); }
+            inline dynamic_array() : elements(NULL), reserved(0), count(0) { this->increase_reserves();    }
+            inline virtual ~dynamic_array()                                { this->release_memory();       }
+
+            inline dynamic_array(const dynamic_array<type_t>& other) : elements(NULL), reserved(0), count(0)
+            {
+
+                this->set_reserves(other.reserved);
+                this->count = other.count;
+                for (size_t i = 0; i < other.count; ++i)
+                {
+                    type_t *current = this->elements + i;
+                    new (current) type_t(other[i]);
+                }
+
+            }
+
+            inline dynamic_array(dynamic_array<type_t>&& other)
+            {
+                this->reserved = other.reserved;
+                this->elements = other.elements;
+                this->count = other.count;
+
+                other.reserved = 0;
+                other.count = 0;
+                other.elements = NULL;
+            }
+
+            inline dynamic_array<type_t>& 
+            operator=(const dynamic_array<type_t> &other)
+            {
+
+                if (this == &other) return *this;
+
+                this->set_reserves(other.reserved);
+                for (size_t i = 0; i < other.count; ++i)
+                {
+                    type_t *current = this->elements + i;
+                    new (current) type_t(other[i]);
+                }
+
+                this->count = other.count;
+                return *this;
+
+            }
+
+            inline dynamic_array<type_t>& 
+            operator=(dynamic_array<type_t>&& other)
+            {
+
+                if (this == &other) return *this;
+
+                this->release_memory();
+
+                this->reserved = other.reserved;
+                this->elements = other.elements;
+                this->count = other.count;
+
+                other.reserved = 0;
+                other.count = 0;
+                other.elements = NULL;
+
+                return *this;
+
+            }
 
             inline type_t& get(size_t index)                    { return elements[index];           }
             inline type_t& operator[](size_t index)             { return this->get(index);          }
             inline type_t* begin()                              { return elements;                  }
             inline type_t* end()                                { return elements + count;          }
             inline size_t size() const                          { return this->count;               }
-            inline size_t capacity() const                      { return this->capacity;            }
+            inline size_t capacity() const                      { return this->reserved;            }
             inline const type_t& get(size_t index) const        { return elements[index];           }
             inline const type_t& operator[](size_t index) const { return this->get(index);          }
             inline const type_t* begin() const                  { return elements;                  }
             inline const type_t* end() const                    { return elements + count;          }
 
+            template <typename... Args> inline void
+            emplace_back(Args&&... args)
+            {
+                
+                if (this->count == this->reserved)
+                {
+                    this->increase_reserves();
+                }
+
+                const size_t index = this->count;
+
+                type_t *current = this->elements + index;
+                new (current) type_t(std::forward<Args>(args)...);
+                this->count++;
+                
+            }
+
+            inline void
+            push_back(const type_t &value)
+            {
+
+                if (this->count == this->reserved)
+                {
+                    this->increase_reserves();
+                }
+
+                const size_t index = this->count;
+
+                type_t *current = this->elements + index;
+                new (current) type_t(value);
+                this->count++;
+
+            }
+
+            inline void
+            push_back(type_t &&value)
+            {
+
+                if (this->count == this->reserved)
+                {
+                    this->increase_reserves();
+                }
+
+                const size_t index = this->count;
+
+                type_t *current = this->elements + index;
+                new (current) type_t(std::move(value));
+                this->count++;
+
+            }
+
+            inline void
+            pop_back()
+            {
+
+                SIMPLEX_ASSERT(this->count > 0);
+
+                this->count--;
+                const size_t index = this->count;
+                type_t *current = this->elements + index;
+                current->~type_t();
+
+            }
+
+            inline void shrink_to_fit()
+            {
+
+                constexpr size_t new_capacity = get_minimum_reserved();
+                while (new_capacity < this->count) new_capacity *= 2;
+
+                type_t *new_elements = (type_t*)simplex_memory_alloc(new_capacity * sizeof(type_t));
+
+                for (size_t i = 0; i < this->count; ++i)
+                {
+                    type_t *previous = elements + i;
+                    type_t *current = new_elements + i;
+                    new (current) type_t(std::move(this->elements[i]));
+                    previous->~type_t();
+                }
+
+                simplex_memory_free(elements);
+                elements = new_elements;
+                reserved = new_capacity;
+
+            }
+
+            inline constexpr size_t get_minimum_reserved()
+            {
+                size_t minimum = 1;
+                if constexpr (sizeof(type_t) < 4)       initial_count = 64;
+                else if constexpr (sizeof(type_t) < 8)  initial_count = 32;
+                else if constexpr (sizeof(type_t) < 16) initial_count = 16;
+                else if constexpr (sizeof(type_t) < 32) initial_count = 8;
+                else if constexpr (sizeof(type_t) < 64) initial_count = 4;
+                else                                    initial_count = 1;
+                return minimum;
+            }
+
         private:
+
+            inline void
+            set_reserves(size_t size)
+            {
+
+                // TODO(Chris): Enforce a power of two here.
+
+                // NOTE(Chris): simplex_memory_alloc currently provides malloc-level alignment.
+                //              Over-aligned type_t support needs an aligned allocation path.
+                if (elements != nullptr) this->release_memory();
+                this->elements = (type_t*)simplex_memory_alloc(size * sizeof(type_t));
+                this->reserved = size;
+
+
+            }
+
             inline void 
-            increase_capacity()
+            increase_reserves()
             {
 
                 // NOTE(Chris): Presizing based on the size of the elements for efficiency.
@@ -60,50 +239,34 @@ namespace spx
                 if (elements == nullptr)
                 {
 
-                    constexpr size_t initial_count = 1;
-
-                    if constexpr (sizeof(type_t) < 4)       size = 64;
-                    else if constexpr (sizeof(type_t) < 8)  size = 32;
-                    else if constexpr (sizeof(type_t) < 16) size = 16;
-                    else if constexpr (sizeof(type_t) < 32) size = 8;
-                    else if constexpr (sizeof(type_t) < 64) size = 4;
-                    else                                    size = 1;
-
-                    this->elements = simplex_memory_alloc(sizeof(type_t) * initial_count);
+                    this->elements = (type_t*)simplex_memory_alloc(sizeof(type_t) * get_minimum_reserved());
                     reserved = initial_count;
-
                     return;
+
                 }
 
                 size_t new_capacity = count * 2;
                 type_t *new_elements = (type_t*)simplex_memory_alloc(new_capacity * sizeof(type_t));
-                memcpy(new_elements, elements, count * sizeof(type_t));
+
+                for (size_t i = 0; i < this->count; ++i)
+                {
+                    type_t *previous = elements + i;
+                    type_t *current = new_elements + i;
+                    new (current) type_t(std::move(this->elements[i]));
+                    previous->~type_t();
+                }
+
                 simplex_memory_free(elements);
+
                 elements = new_elements;
                 reserved = new_capacity;
 
-            }
-
-            inline void
-            decrease_capacity()
-            {
-
-                if (this->reserved == 1) return;
-
-                size_t new_capacity = count / 2;
-                SIMPLEX_ASSERT(new_capacity >= count);
-                type_t *new_elements = (type_t*)simplex_memory_alloc(new_capacity * sizeof(type_t));
-                memcpy(new_elements, elements, count *sizeof(type_t));
-                simplex_memory_free(elements);
-                elements = new_elements;
-                reserved = new_capacity;
-                
             }
 
             inline void
             release_memory()
             {
-                // NOTE(Chris): Invoke this *only* for the destructor.
+
                 if (this->elements != NULL)
                 {
                     for (size_t i = 0; i < this->count; ++i)
@@ -114,6 +277,7 @@ namespace spx
                     simplex_memory_free(this->elements);
                     this->elements = NULL;
                 }
+
             }
 
         private:
@@ -124,22 +288,118 @@ namespace spx
     };
 
     template <typename type_t, size_t capacity>
-    class static_vector
+    class static_array
     {
 
         public:
-            inline static_vector() = default;
-            virtual inline ~static_vector() = default;
+            inline static_array() = default;
+
+            inline static_array(const static_array<type_t, capacity>& other)
+            {
+
+                for (size_t i = 0; i < other.count; ++i)
+                {
+                    type_t *current = this->get_ptr(i);
+                    new (current) type_t(other[i]);
+                }
+
+                this->count = other.count;
+                
+            }
+
+            inline static_array(static_array<type_t, capacity>&& other)
+            {
+
+                for (size_t i = 0; i < other.count; ++i)
+                {
+                    type_t *previous = other.get_ptr(i);
+                    type_t *current = this->get_ptr(i);
+                    new (current) type_t(std::move(other[i]));
+                    previous->~type_t();
+                }
+
+                this->count = other.count;
+                other.count = 0;
+
+            }
+
+            virtual inline ~static_array()
+            {
+
+                for (size_t i = 0; i < this->count; ++i)
+                {
+                    type_t *current = this->get_ptr(i);
+                    current->~type_t();
+                }
+
+                this->count = 0;
+
+            }
+
+            inline static_array<type_t, capacity>&
+            operator=(const static_array<type_t, capacity>& other)
+            {
+
+                if (this == &other) return *this;
+
+                for (size_t i = 0; i < this->count; ++i)
+                {
+                    type_t *current = this->get_ptr(i);
+                    current->~type_t();
+                }
+
+                this->count = 0;
+
+                for (size_t i = 0; i < other.count; ++i)
+                {
+                    type_t *current = this->get_ptr(i);
+                    new (current) type_t(other[i]);
+                }
+
+                this->count = other.count;
+
+                return *this;
+
+            }
+
+            inline static_array<type_t, capacity>&
+            operator=(static_array<type_t, capacity>&& other)
+            {
+
+                if (this == &other) return *this;
+
+                for (size_t i = 0; i < this->count; ++i)
+                {
+                    type_t *current = this->get_ptr(i);
+                    current->~type_t();
+                }
+
+                this->count = 0;
+
+                for (size_t i = 0; i < other.count; ++i)
+                {
+                    type_t *previous = other.get_ptr(i);
+                    type_t *current = this->get_ptr(i);
+                    new (current) type_t(std::move(other[i]));
+                    previous->~type_t();
+                }
+
+                this->count = other.count;
+                other.count = 0;
+
+                return *this;
+
+            }
 
             inline type_t& get(size_t index)                    { return *get_ptr(index);           }
             inline type_t& operator[](size_t index)             { return this->get(index);          }
             inline type_t* begin()                              { return this->get_ptr(0);          }
-            inline type_t* end()                                { return this->get_ptr(capacity);   }
+            inline type_t* end()                                { return this->get_ptr(count);      }
             inline size_t size() const                          { return this->count;               }
             inline const type_t& get(size_t index) const        { return *get_ptr(index);           }
             inline const type_t& operator[](size_t index) const { return this->get(index);          }
             inline const type_t* begin() const                  { return this->get_ptr(0);          }
-            inline const type_t* end() const                    { return this->get_ptr(capacity);   }
+            inline const type_t* end() const                    { return this->get_ptr(count);      }
 
             template <typename... Args> inline void
             emplace_back(Args&&... args)
@@ -157,7 +417,7 @@ namespace spx
             }
 
             inline void
-            push_back(type_t &value)
+            push_back(const type_t &value)
             {
 
                 SIMPLEX_ASSERT(count < capacity);
@@ -229,7 +489,7 @@ class SparseSet : public SparseSetInterface
         ~SparseSet() = default;
 
     private:
-        spx::static_vector<type_t, capacity> elements;
+        spx::static_array<type_t, capacity> elements;
         std::array<entity_t, capacity> dense_to_sparse;
         std::array<int32_t, capacity> sparse_to_dense;
         
