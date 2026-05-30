@@ -12,13 +12,33 @@
 #include <utils/system/resource_manager.hpp>
 #include <utils/system/memory_alloc.hpp>
 
-#include <scratch/entity.hpp>
 #include <simplex/array.hpp>
 #include <simplex/static_array.hpp>
 #include <simplex/components/metadata.hpp>
 #include <simplex/components/transform.hpp>
 #include <simplex/components/mesh.hpp>
 #include <simplex/components/material.hpp>
+
+union entity_t
+{
+
+    uint64_t handle;
+
+    struct
+    {
+
+        uint32_t identifier;
+        uint16_t generation;
+        uint16_t flags;
+
+    };
+
+    inline operator uint64_t()                          { return handle;                        }
+    inline entity_t& operator=(uint64_t handle)         { this->handle = handle; return *this;  }
+    inline bool operator==(const entity_t&other) const  { return this->handle == other.handle;  }
+    inline bool operator!=(const entity_t &other) const { return !(*this == other);             }
+
+};
 
 class component_sparse_set_interface
 {
@@ -32,7 +52,7 @@ class component_sparse_set_interface
         virtual const entity_t* begin() const = 0;
         virtual const entity_t* end() const = 0;
         virtual bool contains(const entity_t &e) const = 0;
-
+        virtual size_t load_factor() const = 0;
 
 };
 
@@ -40,47 +60,62 @@ template <typename type_t, size_t capacity>
 class component_sparse_set : public component_sparse_set_interface
 {
 
+    constexpr int32_t invalid_index = -1;
+
     public:
-                 component_sparse_set() = default;
+        inline component_sparse_set()
+        {
+
+            for (size_t i = 0; i < capacity; ++i) 
+            {
+                sparse_to_dense[i] = invalid_index;
+                dense_to_sparse[i] = { .identifier = 0, .generation = 0 };
+            }
+
+        }
+
         virtual ~component_sparse_set() = default;
 
-        virtual inline entity_t* begin() override          { return this->elements.begin();     }
-        virtual inline entity_t* end() override            { return this->elements.end();       }
-        virtual inline const entity_t* begin() const       { return this->elements.begin();     }
-        virtual inline const entity_t* end() const         { return this->elements.end();       }
+        virtual inline entity_t* begin() override               { return this->elements.begin();    }
+        virtual inline entity_t* end() override                 { return this->elements.end();      }
+        virtual inline const entity_t* begin() const override   { return this->elements.begin();    }
+        virtual inline const entity_t* end() const override     { return this->elements.end();      }
+        virtual inline size_t load_factor() const override      { return this->elements.size();     }
+
+        template <typename... Args> inline void 
+        insert(const entity_t& e, Args&&... args)
+        {
+
+            const size_t sparse_index = e.identifier % capacity;
+            const size_t dense_index = this->sparse_to_dense[sparse_index];
+
+            // NOTE(Chris): We expect that the API checks that the entity exists first,
+            //              as emplacement assumes a new value.
+            SIMPLEX_ASSERT(dense_index == invalid_index);
+            const size_t insertion_index = this->elements.size();
+            this->elements.emplace_back(std::forward<Args>(args)...);
+
+            this->sparse_to_dense[sparse_index] = insertion_index;
+            this->dense_to_sparse[insertion_index] = e;
+
+        }
+
+        inline void
+        remove(const entity_t& e)
+        {
+
+        }
 
         virtual inline bool
-        contains(const entity_t &e) const
+        contains(const entity_t& e) const
         {
 
-            const size_t lookup = e.identifier % capacity;
-            const int32_t result = sparse_to_dense[lookup];
-            if (result == -1) return false;
-
-            return dense_to_sparse[result] == e;
+            const size_t sparse_index = e.identifer % capacity;
+            const size_t dense_index = this->sparse_to_dense[sparse_index];
             
-        }
-
-        inline type_t&
-        get_from_sparse(const entity_t &e)
-        {
-
-            const size_t lookup = e.identifier % capacity;
-            const int32_t location = sparse_to_dense[lookup];
-            SIMPLEX_ASSERT(lookup != -1);
-            return elements[location];
-
-        }
-
-        inline const type_t&
-        get_from_sparse(const entity_t &e) const
-        {
-
-            const size_t lookup = e.identifier % capacity;
-            const int32_t location = sparse_to_dense[lookup];
-            SIMPLEX_ASSERT(lookup != -1);
-            return elements[location];
-
+            if (dense_index == invalid_index) return false;
+            return (this->dense_to_sparse[dense_index] == e);
+            
         }
 
         inline type_t& operator[](size_t dense_index) { return this->elements[dense_index]; }
@@ -94,7 +129,7 @@ class component_sparse_set : public component_sparse_set_interface
 };
 
 template <size_t pages, size_t capacity>
-struct paged_entity_component
+struct paged_components
 {
 
     public:
@@ -102,11 +137,10 @@ struct paged_entity_component
         inline const component_sparse_set_interface* operator[](size_t index) const { return this->interfaces[index]; }
     
         inline bool 
-        entity_to_page_exists(const entity_t &e) const
+        page_is_allocated(size_t page_index) const
         {
 
-            const size_t page = e.identifier / capacity;
-            const bool result = (interfaces[page] != NULL);
+            const bool result = (interfaces[page_index] != NULL);
             return result;
 
         }
@@ -150,9 +184,16 @@ class EntitySystem
             return system;
         }
 
-        template <typename T> inline void 
+        template <typename type_t> inline void 
         register_component()
         {
+
+            constexpr size_t type_hash = TypeID<type_t>::Hash;
+            if (this->component_pages.find(type_hash) != this->component_pages.end()) return;
+
+            this->component_pages[type_hash] = {};
+            //this->attach_component<type_t>(this->entity_placeholder);
+            //this->attach_component<type_t>(this->entity_trap);
 
         }
 
@@ -195,23 +236,17 @@ class EntitySystem
         template <typename type_t, typename... Args> type_t& 
         attach_component(const entity_t &e, Args&&... args)
         {
-
+            return {};
         }
 
     private:
         EntitySystem()
         {
-
-            return;
+            entity_placeholder = this->create_entity();
+            entity_trap = this->create_entity();
         }
 
         ~EntitySystem()
-        {
-
-            return;
-        }
-
-        inline void initialize_entity(const entity_t &e)
         {
 
             return;
@@ -221,9 +256,11 @@ class EntitySystem
         inline EntitySystem& operator==(EntitySystem &&other) = delete;
 
     private:
+        entity_t entity_placeholder;
+        entity_t entity_trap;
         std::vector<entity_t> entities_active;
         std::queue<entity_t> entities_inactive;
-        std::unordered_map<size_t, std::vector<component_sparse_set_interface*>> component_pages;
+        std::unordered_map<size_t, paged_components<64, 4096>> component_pages;
 
 };
 
