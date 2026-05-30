@@ -13,36 +13,35 @@
 #include <utils/system/memory_alloc.hpp>
 
 #include <scratch/entity.hpp>
-#include <scratch/sparseset.hpp>
+#include <simplex/array.hpp>
+#include <simplex/static_array.hpp>
+#include <simplex/components/metadata.hpp>
+#include <simplex/components/transform.hpp>
+#include <simplex/components/mesh.hpp>
+#include <simplex/components/material.hpp>
 
-struct Metadata
+class component_sparse_set_interface
 {
-    std::string name;
-    std::string uuid;
-    entity_t self;
+
+    public:
+                    component_sparse_set_interface() = default;
+        virtual    ~component_sparse_set_interface() = default;
+
 };
 
-struct Transform
+template <typename type_t, size_t capacity>
+class component_sparse_set : public component_sparse_set_interface
 {
-    vec3f position;
-    vec3f rotation;
-    vec3f scale;
-};
 
-struct Mesh
-{
-    ResourceHandle handle;
-};
+    public:
+                    component_sparse_set() = default;
+        virtual    ~component_sparse_set() = default;
 
-struct Material
-{
-    ResourceHandle texture;
-    ResourceHandle normal;
-    ResourceHandle bump;
-    real32_t Ka;
-    real32_t Kd;
-    real32_t Ks;
-    real32_t Ke;
+    private:
+        spx::array<entity_t, capacity>          dense_to_sparse;
+        spx::array<int32_t, capacity>           sparse_to_dense;
+        spx::static_array<type_t, capacity>     elements;
+        
 };
 
 class EntitySystem
@@ -81,7 +80,7 @@ class EntitySystem
 
         std::vector<entity_t> entities_active;
         std::queue<entity_t> entities_inactive;
-        std::unordered_map<size_t, SparseSetInterface*> components;
+        std::unordered_map<size_t, component_sparse_set_interface*> components;
 
 };
 
@@ -90,10 +89,10 @@ scratch_main()
 {
 
     auto& entity_system = EntitySystem::Get();
-    entity_system.register_component<Metadata>();
-    entity_system.register_component<Transform>();
-    entity_system.register_component<Mesh>();
-    entity_system.register_component<Material>();
+    entity_system.register_component<spx::metadata>();
+    entity_system.register_component<spx::transform>();
+    entity_system.register_component<spx::mesh>();
+    entity_system.register_component<spx::material>();
 
     return 0;
 }
