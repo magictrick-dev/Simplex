@@ -5,6 +5,14 @@
 namespace spx
 {
 
+    /// @brief A stack-storage fixed-but-dynamic array.
+    /// @tparam type_t The type of elements.
+    /// @tparam capacity The capacity of elements.
+    ///
+    /// Unlike an array, a static_array only initializes elements when elements are emplaced
+    /// or pushed into the array, so you can have non-trivially constructable elements
+    /// inside the array. It is functionally more efficient than a vector if you know you
+    /// have an upper-bound on the elements.
     template <typename type_t, size_t capacity>
     class static_array
     {
@@ -178,8 +186,8 @@ namespace spx
             }
 
         private:
-            inline type_t* get_ptr(size_t index) { return reinterpret_cast<type_t*>(&buffer[index * sizeof(type_t)]); }
-            inline const type_t* get_ptr(size_t index) const { return reinterpret_cast<type_t*>(&buffer[index * sizeof(type_t)]); }
+            inline type_t* get_ptr(size_t index) { return (type_t*)(&buffer[index * sizeof(type_t)]); }
+            inline const type_t* get_ptr(size_t index) const { return (type_t*)(&buffer[index * sizeof(type_t)]); }
 
         private:
             alignas(type_t) std::byte buffer[capacity * sizeof(type_t)];

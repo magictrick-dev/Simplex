@@ -8,6 +8,13 @@
 namespace spx
 {
 
+    /// @brief A dynamically resizing array which provides STL-like behaviors equivalent to std::vector.
+    /// @tparam type_t The type of elements for the array.
+    ///
+    /// The dynamic array grows in multiples of two and does not automatically shrink.
+    /// The user of this datastructure is responsible for shrink-to-fit calls when pop_back()
+    /// is invoked. This is to ensure that there is optimal memory efficiency when this is used
+    /// as a stack. Although, just use a dynamic_stack or static_stack in that case.
     template <typename type_t>
     class dynamic_array
     {

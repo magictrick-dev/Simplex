@@ -4,7 +4,6 @@
 namespace spx
 {
 
-    // TODO(Chris): Incomplete implementation.
     class string
     {
 
