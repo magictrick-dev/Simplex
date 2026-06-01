@@ -5,6 +5,22 @@
 namespace spx::package
 {
 
+    // NOTE(Chris): The Simplex package format is designed to tightly package and compress
+    //              streamable assets into a uniform file.
+    //
+    //  [SPX_PACKAGE_HEADER][SPX_PACKAGE_DESCRIPTOR ...][ Data 1 ...][ Data 2 ...]...
+    //  [ Data n-1 ...][ Data n ...]
+    //
+    //  There is no rules as to what is contained in the package; generally it will be
+    //  textures, meshes, and such. For advances cases, (eg. custom game engines) you can
+    //  package in-memory DLL files. The main advantage of this format is that you can isolate
+    //  certain sections of your scenes (or one scene to another).
+    //
+    //  The package format compresses individual data sections, not the entire package itself.
+    //  Move the read pointer to the head of the data you wish to stream and then begin to pull
+    //  compressed blocks out with LZ4.
+    //
+
 #   pragma pack(push, 1)
     struct spx_package_header_v1
     {
@@ -16,8 +32,7 @@ namespace spx::package
             struct
             {
                 char magic_bytes[3];
-                char magic_pad;
-                char text_format[4]; // Always 'JSON', until a new format is made.
+                char magic_always_zero[7];
             };
 
         };
@@ -58,6 +73,7 @@ namespace spx::package
     };
 #   pragma pack(pop)
 
+#   pragma pack(push, 1)
     struct spx_package_binary_v1
     {
 
@@ -66,5 +82,6 @@ namespace spx::package
         size_t relative_offset;
 
     };
+#   pragma pop
 
 }
