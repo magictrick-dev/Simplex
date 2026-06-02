@@ -163,7 +163,7 @@ namespace spx
             inline void shrink_to_fit()
             {
 
-                constexpr size_t new_capacity = get_minimum_reserved();
+                size_t new_capacity = get_minimum_reserved();
                 while (new_capacity < this->count) new_capacity *= 2;
 
                 type_t *new_elements = (type_t*)simplex_memory_alloc(new_capacity * sizeof(type_t));
@@ -182,16 +182,14 @@ namespace spx
 
             }
 
-            inline constexpr size_t get_minimum_reserved()
+            inline constexpr size_t get_minimum_reserved() const
             {
-                size_t minimum = 1;
-                if constexpr (sizeof(type_t) < 4)       initial_count = 64;
-                else if constexpr (sizeof(type_t) < 8)  initial_count = 32;
-                else if constexpr (sizeof(type_t) < 16) initial_count = 16;
-                else if constexpr (sizeof(type_t) < 32) initial_count = 8;
-                else if constexpr (sizeof(type_t) < 64) initial_count = 4;
-                else                                    initial_count = 1;
-                return minimum;
+                if constexpr (sizeof(type_t) < 4)       return 64;
+                else if constexpr (sizeof(type_t) < 8)  return 32;
+                else if constexpr (sizeof(type_t) < 16) return 16;
+                else if constexpr (sizeof(type_t) < 32) return 8;
+                else if constexpr (sizeof(type_t) < 64) return 4;
+                else                                    return 1;
             }
 
         private:
@@ -220,8 +218,9 @@ namespace spx
                 if (elements == nullptr)
                 {
 
-                    this->elements = (type_t*)simplex_memory_alloc(sizeof(type_t) * get_minimum_reserved());
-                    reserved = initial_count;
+                    const size_t minimum = get_minimum_reserved();
+                    this->elements = (type_t*)simplex_memory_alloc(sizeof(type_t) * minimum);
+                    reserved = minimum;
                     return;
 
                 }
