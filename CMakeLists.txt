@@ -31,6 +31,8 @@ SET(PROJECT_SOURCES
     "source/parsers/rdview/rdview_node_types.cpp"
     "source/parsers/rdview/rdview_parser.cpp"
 
+    "extern/vendor/lz4/lz4.c"
+
     "source/scratch/scratch.cpp"
 )
 

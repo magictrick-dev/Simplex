@@ -4,6 +4,13 @@
 namespace spx
 {
 
+    /// @brief A c-style array wrapper that provides STL-like functionality.
+    /// @tparam type_t The type of element for the array.
+    /// @tparam capacity The capacity of the array.
+    ///
+    /// The array class requires trivially constructable objects similar to c-style
+    /// arrays. For non-trivially construct objects or for an "in-place" vector, use
+    /// static_array instead.
     template <typename type_t, size_t capacity>
     class array
     {
