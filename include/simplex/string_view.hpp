@@ -161,7 +161,4 @@ namespace spx
 
     };
 
-    /// UTF-8 / ANSI string view. Preserves the spx::string name for the char view.
-    using string = string_view<char>;
-
 }
