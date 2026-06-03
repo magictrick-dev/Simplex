@@ -308,6 +308,30 @@ class EntitySystem
 
 };
 
+struct header
+{
+
+    static_assert(std::endian::native == std::endian::little, 
+        "Platform must be little-endian");
+
+    char magic[4];
+
+    union
+    {
+        uint32_t version_packed;
+        struct
+        {
+            uint8_t _padding;
+            uint8_t major;
+            uint8_t minor;
+            uint8_t patch;
+        };
+    };
+
+    // ... etc.
+
+};
+
 int 
 scratch_main()
 {
