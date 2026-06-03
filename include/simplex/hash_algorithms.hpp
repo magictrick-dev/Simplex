@@ -2,6 +2,7 @@
 #include <utils/defs.hpp>
 #include <concepts>
 #include <type_traits>
+#include <cstring>
 
 #if defined(_MSC_VER)
 #   include <intrin.h>
