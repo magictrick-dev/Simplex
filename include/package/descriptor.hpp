@@ -1,87 +1,77 @@
 #pragma once
 #include <utils/defs.hpp>
-#include <vendor/nlohmann/json.hpp>
 
 namespace spx::package
 {
 
-    // NOTE(Chris): The Simplex package format is designed to tightly package and compress
-    //              streamable assets into a uniform file.
-    //
-    //  [SPX_PACKAGE_HEADER][SPX_PACKAGE_DESCRIPTOR ...][ Data 1 ...][ Data 2 ...]...
-    //  [ Data n-1 ...][ Data n ...]
-    //
-    //  There is no rules as to what is contained in the package; generally it will be
-    //  textures, meshes, and such. For advances cases, (eg. custom game engines) you can
-    //  package in-memory DLL files. The main advantage of this format is that you can isolate
-    //  certain sections of your scenes (or one scene to another).
-    //
-    //  The package format compresses individual data sections, not the entire package itself.
-    //  Move the read pointer to the head of the data you wish to stream and then begin to pull
-    //  compressed blocks out with LZ4.
-    //
-
-#   pragma pack(push, 1)
-    struct spx_package_header_v1
+    /// @brief The package type describes what exists in the package.
+    enum SimplexPackageDataType : uint64_t
     {
 
-        union
-        {
-            uint64_t magic_packed;
+        SimplexPackageDataType_V1_Invalid,             /// Invalid entry, application should throw error.
+        SimplexPackageDataType_V1_PNG,                 /// PNG image file.
+        SimplexPackageDataType_V1_JPG,                 /// JPG/JPEG image file.
+        SimplexPackageDataType_V1_BMP,                 /// BMP image file.
+        SimplexPackageDataType_V1_PNM,                 /// PNM image file.
+        SimplexPackageDataType_V1_WAV,                 /// Wave audio file.
+        SimplexPackageDataType_V1_MP3,                 /// MP3 audio file.
+        SimplexPackageDataType_V1_OGG,                 /// OGG audio file.
+        SimplexPackageDataType_V1_FLAC,                /// FLAC loss-less audio file.
+        SimplexPackageDataType_V1_OBJ,                 /// Wavefront OBJ mesh file.
+        SimplexPackageDataType_V1_MTL,                 /// Wavefront MTL material file.
+        
 
-            struct
-            {
-                char magic_bytes[3];
-                char magic_always_zero[7];
-            };
-
-        };
-
-        union
-        {
-
-            uint32_t format_version;
-            struct
-            {
-                uint16_t format_version_always_zero;
-                uint8_t minor;
-                uint8_t major;
-            };
-
-        };
-
-        union
-        {
-
-            uint32_t package_version;
-            struct
-            {
-                uint8_t version_always_zero;
-                uint8_t build;
-                uint8_t minor;
-                uint8_t major;
-            };
-
-        };
-
-        uint64_t package_size;      // File size, should mirror literal file size.
-        uint64_t descriptor_size;   // JSON descriptor size.
-        uint64_t data_size;         // Total packed data size.
-        uint64_t descriptor_offset; // The JSON descriptor offset, in bytes from head-of-file. 
-        uint64_t data_offset;       // The data offset, in bytes from head-of-file.
-
+        SimplexPackageDataType_Count,                  /// Used to determine how many package data types there is.
     };
-#   pragma pack(pop)
 
-#   pragma pack(push, 1)
-    struct spx_package_binary_v1
+    /// @brief The package header of a simplex package.
+    struct simplex_package_header_v1
     {
 
-        char name[128];
-        size_t binary_size;
-        size_t relative_offset;
+        char magic[3];
+
+        uint8_t flags;
+
+        union
+        {
+            uint32_t version_packed;
+            struct
+            {
+                uint8_t _version_padding;
+                uint8_t major;
+                uint8_t minor;
+                uint8_t patch;
+            };
+        };
+
+        uint64_t identifier;                /// Package identifier.
+        uint64_t size;                      /// Total file size, dummy-check.
+        uint64_t header_size;               /// Header size, matches sizeof(simplex_package_header_v1)
+        uint64_t data_entry_size;           /// Data entry size, matches sizeof(simplex_package_data_v1)
+        uint32_t data_entry_count;          /// Number of data entries to process.
+        uint32_t data_entry_offset;         /// Offset to the first data entry, contiguously.
 
     };
-#   pragma pop
+
+    /// @brief A package data entry descriptor.
+    struct simplex_package_data_v1
+    {
+
+        uint64_t compressed_checksum;       /// xxHash3
+        uint64_t uncompressed_checksum;     /// xxHash3
+        uint64_t package_identifier;        /// Origin location of asset, if different from this, it is
+                                            /// in another package file. In most cases it is local to the
+                                            /// package itself.
+        uint64_t package_type;              /// Package type, generally just the file format. Internal formats
+                                            /// such as pre-formatted meshes are also marked here. This is for
+                                            /// the asset management system for registration.
+        uint64_t size_compressed;           /// Compressed size. This value is zero if it isn't 
+                                            /// local to this package.
+        uint64_t size_uncompressed;         /// Uncompressed size. This value is zero if it isn't
+                                            /// local to this package.
+        uint64_t offset;                    /// Data offset in file. This value is zero if it isn't local
+                                            /// to this package.
+
+    };
 
 }

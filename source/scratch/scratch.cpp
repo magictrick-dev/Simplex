@@ -15,6 +15,13 @@
 
 #include <simplex/array.hpp>
 #include <simplex/static_array.hpp>
+#include <simplex/string_view.hpp>
+#include <simplex/array_view.hpp>
+#include <simplex/dynamic_string.hpp>
+#include <simplex/static_string.hpp>
+#include <simplex/static_queue.hpp>
+#include <simplex/hashed_sparse_map.hpp>
+
 #include <simplex/components/metadata.hpp>
 #include <simplex/components/transform.hpp>
 #include <simplex/components/mesh.hpp>
@@ -30,8 +37,7 @@ union entity_t
     {
 
         uint32_t identifier;
-        uint16_t generation;
-        uint16_t flags;
+        uint32_t generation;
 
     };
 
@@ -55,7 +61,7 @@ class component_sparse_set_interface
         virtual const entity_t* begin() const = 0;
         virtual const entity_t* end() const = 0;
         virtual bool contains(const entity_t &e) const = 0;
-        virtual size_t load_factor() const = 0;
+        virtual size_t count() const = 0;
 
 };
 
@@ -83,7 +89,7 @@ class component_sparse_set : public component_sparse_set_interface
         virtual inline entity_t* end() override                 { return this->dense_to_sparse.end();   }
         virtual inline const entity_t* begin() const override   { return this->dense_to_sparse.begin(); }
         virtual inline const entity_t* end() const override     { return this->dense_to_sparse.end();   }
-        virtual inline size_t load_factor() const override      { return this->elements.size();         }
+        virtual inline size_t count() const override            { return this->elements.size();         }
 
         template <typename... Args> inline void 
         insert(const entity_t& e, Args&&... args)
@@ -128,6 +134,7 @@ class component_sparse_set : public component_sparse_set_interface
             {
 
                 this->elements.pop_back();
+                this->dense_to_sparse.pop_back();
                 this->sparse_to_dense[sparse_index] = invalid_index;
 
             }
@@ -135,7 +142,7 @@ class component_sparse_set : public component_sparse_set_interface
             else
             {
 
-                this->elements[dense_index] = this->elements[last_dense_index];
+                this->elements[dense_index] = std::move(this->elements[last_dense_index]);
                 this->dense_to_sparse[dense_index] = last_entity;
                 this->sparse_to_dense[last_sparse_index] = dense_index;
                 this->elements.pop_back();
@@ -147,7 +154,7 @@ class component_sparse_set : public component_sparse_set_interface
         }
 
         virtual inline bool
-        contains(const entity_t& e) const
+        contains(const entity_t& e) const override
         {
 
             const size_t sparse_index = e.identifier;
@@ -167,8 +174,8 @@ class component_sparse_set : public component_sparse_set_interface
             const size_t sparse_index = e.identifier;
             SIMPLEX_ASSERT(sparse_index < capacity);
 
-            const size_t dense_index = this->sparse_to_dense[sparse_index];
-            SIMPLEX_ASSERT(dense_index != -1);
+            const int32_t dense_index = this->sparse_to_dense[sparse_index];
+            SIMPLEX_ASSERT(dense_index != invalid_index);
             SIMPLEX_ASSERT(this->dense_to_sparse[dense_index] == e);
             return this->elements[dense_index];
 
@@ -181,8 +188,8 @@ class component_sparse_set : public component_sparse_set_interface
             const size_t sparse_index = e.identifier;
             SIMPLEX_ASSERT(sparse_index < capacity);
 
-            const size_t dense_index = this->sparse_to_dense[sparse_index];
-            SIMPLEX_ASSERT(dense_index != -1);
+            const int32_t dense_index = this->sparse_to_dense[sparse_index];
+            SIMPLEX_ASSERT(dense_index != invalid_index);
             SIMPLEX_ASSERT(this->dense_to_sparse[dense_index] == e);
             return this->elements[dense_index];
 
@@ -204,6 +211,8 @@ class component_sparse_set : public component_sparse_set_interface
         to_sparse_index(const int32_t dense_index) const
         {
 
+            if (dense_index >= this->dense_to_sparse.size()) 
+                return { .identifier = 0, .generation = 0 };
             return this->dense_to_sparse[dense_index];
 
         }
@@ -218,93 +227,129 @@ class component_sparse_set : public component_sparse_set_interface
 
 };
 
-class EntitySystem
+template <typename type_t, size_t capacity> static inline void
+dump_sparse_set(component_sparse_set<type_t, capacity> &set)
 {
 
+    for (const entity_t &e : set)
+    {
+
+        const size_t supposed_sparse = e.identifier;
+        const size_t actual_dense = set.to_dense_index(e);
+        const size_t actual_sparse = set.to_sparse_index(actual_dense);
+        const spx::string_view<char> message = set.get(e);
+
+        std::cout << message.data() << "(" << supposed_sparse << ") Sparse: " << actual_sparse << " Dense: " << actual_dense << "\n";
+
+    }
+
+    std::cout << std::endl;
+
+}
+
+/// @brief A captured group of entities mapped by type-hashes.
+/// @tparam capacity The maximum number of entities allowed.
+class entity_system
+{
+
+    constexpr static inline size_t capacity = 4096;
+
     public:
-        static inline EntitySystem& Get()
+        static inline entity_system& get_system()
         {
-            static EntitySystem system = {};
+            static entity_system system = {};
             return system;
-        }
-
-        template <typename type_t> inline void 
-        register_component()
-        {
-
-            constexpr size_t type_hash = TypeID<type_t>::Hash;
-            if (this->components.find(type_hash) != this->components.end()) return;
-            
-
-            //this->attach_component<type_t>(this->entity_placeholder);
-            //this->attach_component<type_t>(this->entity_trap);
-
         }
 
         inline entity_t 
         create_entity()
         {
 
-            entity_t result_entity = { };
+            SIMPLEX_ASSERT(entities_active.size() < capacity); // Oops, too many entities.
+            // TODO
 
-            if (!entities_inactive.empty())
-            {
-                result_entity = entities_inactive.front();
-                entities_inactive.pop();
-            }
-            else
-            {
-                const size_t entity_identifier = entities_active.size();
-                entities_active.emplace_back();
-                result_entity = entities_active.back();
-                result_entity.identifier = entity_identifier;
-                result_entity.generation = 0;
-            }
-
-            result_entity.flags = 0;
-            return result_entity;
+            return {};
 
         }
 
+        inline void 
+        destroy_entity(const entity_t &entity)
+        {
+
+            // TODO
+
+        }
+
+        template <typename component_type_t> inline void
+        register_component()
+        {
+
+            if (get_component_sparse_set<component_type_t>() != nullptr) return;
+
+            constexpr uint64_t component_hash = TypeID<component_type_t>::Hash;
+            component_sparse_set<component_type_t, capacity> *component_set = 
+                simplex_memory_new<component_sparse_set<component_type_t, capacity>>();
+
+            components[component_hash] = component_set;
+
+        }
+
+        template <typename component_type_t, typename... Args> inline component_type_t&
+        attach_component_to(entity_t entity, Args&&... args)
+        {
+
+            // TODO
+
+            
+        }
+
+        template <typename... Components> inline spx::array_view<entity_t>
+        view()
+        {
+
+            // TODO
+
+        }
+
+    private:
+        inline  entity_system() = default;
+        inline  entity_system(const entity_system& other) = delete;
+        inline  entity_system(entity_system&& other) = delete;
+        inline ~entity_system()
+        {
+            // TODO(Chris): Delete the component sets... or do we? Application is exitting anyway.
+        }
+
+        inline entity_system& operator=(const entity_system& other) = delete;
+        inline entity_system& operator=(entity_system&& other) = delete;
+
+    private:
         inline void
-        destroy_entity(const entity_t &e)
+        initialize_entity(const entity_t &entity)
         {
 
-            const size_t entity_index = e.identifier;
-            if (this->entities_active[entity_index] != e) return;
-            this->entities_active[entity_index].generation++;
-            this->entities_inactive.push(e);
+            // Enforce certain component attachments, like metadata.
 
         }
 
-        template <typename type_t, typename... Args> type_t& 
-        attach_component(const entity_t &e, Args&&... args)
+        template <typename component_type_t> inline component_sparse_set<component_type_t, capacity>*
+        get_component_sparse_set()
         {
+
+            constexpr uint64_t component_hash = TypeID<component_type_t>::Hash;
+            if (components.contains(component_hash))
+            {
+                return dynamic_cast<component_sparse_set<component_type_t, capacity>*>(components[component_hash]);
+            }
+
+            return nullptr;
 
         }
 
     private:
-        EntitySystem()
-        {
-            entity_placeholder = this->create_entity();
-            entity_trap = this->create_entity();
-        }
-
-        ~EntitySystem()
-        {
-
-            return;
-        }
-
-        inline EntitySystem(EntitySystem &copy) = delete;
-        inline EntitySystem& operator==(EntitySystem &&other) = delete;
-
-    private:
-        entity_t entity_placeholder;
-        entity_t entity_trap;
-        std::vector<entity_t> entities_active;
-        std::queue<entity_t> entities_inactive;
-        std::unordered_map<size_t, component_sparse_set_interface*> components;
+        spx::static_array<entity_t, capacity> entities_active;
+        spx::static_queue<entity_t, capacity> entities_inactive;
+        spx::hashed_sparse_map<uint64_t, component_sparse_set_interface*> components;
 
 };
 
@@ -312,18 +357,11 @@ int
 scratch_main()
 {
 
-    auto& entity_system = EntitySystem::Get();
-    entity_system.register_component<spx::metadata>();
-    entity_system.register_component<spx::transform>();
-    entity_system.register_component<spx::mesh>();
-    entity_system.register_component<spx::material>();
-
-    entity_t entity_a = { .identifier = 5,      .generation = 0 };
-    entity_t entity_b = { .identifier = 97,     .generation = 0 };
-    entity_t entity_c = { .identifier = 13,     .generation = 0 };
-    entity_t entity_d = { .identifier = 31,     .generation = 0 };
-    entity_t entity_e = { .identifier = 17,     .generation = 0 };
-
+    entity_system &system = entity_system::get_system();
+    system.register_component<spx::metadata>();
+    system.register_component<spx::transform>();
+    system.register_component<spx::material>();
+    system.register_component<spx::mesh>();
 
     return 0;
 }
