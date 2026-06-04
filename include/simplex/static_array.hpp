@@ -49,7 +49,7 @@ namespace spx
 
             }
 
-            virtual inline ~static_array()
+            inline ~static_array()
             {
 
                 for (size_t i = 0; i < this->count; ++i)
