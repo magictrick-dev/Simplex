@@ -3,6 +3,8 @@
 #include <simplex/string_view.hpp>
 #include <simplex/dynamic_string.hpp>
 
+#include <scratch/renderer/vulkan/instance.hpp>
+
 namespace spx::vk
 {
 
@@ -10,9 +12,12 @@ namespace spx::vk
     {
 
         public:
+            inline  vulkan_physical_device() = default;
+            inline ~vulkan_physical_device() = default;
+
             inline 
             vulkan_physical_device(VkInstance vulkan_instance, VkPhysicalDevice physical_device) 
-                : device(physical_device), instance(vulkan_instance)
+                : device(physical_device)
             {
 
 
@@ -24,12 +29,6 @@ namespace spx::vk
                 this->device_properties_2.pNext = &this->driver_properties;
 
                 vkGetPhysicalDeviceProperties2(this->device, &this->device_properties_2);
-
-            }
-
-            inline 
-            ~vulkan_physical_device()
-            {
 
             }
 
@@ -75,7 +74,23 @@ namespace spx::vk
                 
             }
 
-            VkInstance instance = NULL;
+        public:
+            static inline spx::array_view<spx::vk::vulkan_physical_device>
+            get_physical_devices(spx::vk::vulkan_instance instance)
+            {
+
+                static bool initialized = false;
+                static spx::dynamic_array<spx::vk::vulkan_physical_device> physical_devices;
+                if (initialized == true) return physical_devices;
+                initialized = true;
+
+                uint32_t device_count = 0;
+                vkEnumeratePhysicalDevices(instance, &device_count, NULL);
+
+
+            }
+
+        public:
             VkPhysicalDevice device = NULL;
             VkPhysicalDeviceProperties device_properties_1 = {};
             VkPhysicalDeviceProperties2 device_properties_2 = {};

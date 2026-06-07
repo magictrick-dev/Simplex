@@ -192,6 +192,22 @@ namespace spx
             }
 
             inline void
+            clear()
+            {
+
+                // NOTE(Chris): Destroys every element but retains the reserved buffer; use
+                //              shrink_to_fit() to reclaim memory afterwards.
+                for (size_t i = 0; i < this->count; ++i)
+                {
+                    type_t *current = this->elements + i;
+                    current->~type_t();
+                }
+
+                this->count = 0;
+
+            }
+
+            inline void
             reserve_to(size_t new_reserve)
             {
 
