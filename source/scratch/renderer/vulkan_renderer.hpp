@@ -1,6 +1,7 @@
 #pragma once
 #include <glfw/glfw3.h>
 #include <stdexcept>
+#include <utils/system/logging_manager.hpp>
 #include <simplex/dynamic_array.hpp>
 #include <simplex/static_array.hpp>
 #include <simplex/array.hpp>
@@ -75,6 +76,13 @@ class vulkan_renderer
 
             spx::dynamic_array<VkExtensionProperties> extensions(extension_count);
             vkEnumerateInstanceExtensionProperties(nullptr, &extension_count, extensions.begin());
+
+            for (const auto &extension : extensions)
+            {
+                LoggingManager::DispatchDiagnostic(
+                    "Vulkan Instance Extension {} is available.",
+                    extension.extensionName);
+            }
 
             for (const auto &current_check_extension : check_extensions)
             {
