@@ -24,7 +24,7 @@
 
 // Window setup.
 static GLFWwindow *window;
-static vulkan_renderer renderer;
+static spx::vk::vulkan_renderer renderer;
 
 static inline void 
 init_window(spx::string_view<char> window_name, const int32_t width, const int32_t height)

@@ -115,6 +115,18 @@ namespace spx
             inline const type_t* begin() const                  { return elements;                  }
             inline const type_t* end() const                    { return elements + count;          }
 
+            inline type_t& back()
+            { 
+                SIMPLEX_ASSERT(count > 0);
+                return elements[count-1];         
+            }
+
+            inline const type_t& back() const
+            { 
+                SIMPLEX_ASSERT(count > 0);
+                return elements[count-1];         
+            }
+
             template <typename... Args> inline void
             emplace_back(Args&&... args)
             {

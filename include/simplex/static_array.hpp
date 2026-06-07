@@ -20,6 +20,23 @@ namespace spx
         public:
             inline static_array() = default;
 
+            inline static_array(size_t initial_count)
+            {
+
+                SIMPLEX_ASSERT(initial_count <= capacity);
+
+                // NOTE(Chris): Mirror std::vector(n) -- size becomes initial_count and each
+                //              element is value-initialized (zeroed for trivial types).
+                for (size_t i = 0; i < initial_count; ++i)
+                {
+                    type_t *current = this->get_ptr(i);
+                    new (current) type_t();
+                }
+
+                this->count = initial_count;
+
+            }
+
             inline static_array(const static_array<type_t, capacity>& other)
             {
 
@@ -126,6 +143,18 @@ namespace spx
             inline const type_t& operator[](size_t index) const { return this->get(index);          }
             inline const type_t* begin() const                  { return this->get_ptr(0);          }
             inline const type_t* end() const                    { return this->get_ptr(count);      }
+
+            inline type_t& back()
+            { 
+                SIMPLEX_ASSERT(count > 0);
+                return this->get(count - 1);
+            }
+
+            inline const type_t& back() const
+            { 
+                SIMPLEX_ASSERT(count > 0);
+                return this->get(count - 1);
+            }
 
             template <typename... Args> inline void
             emplace_back(Args&&... args)

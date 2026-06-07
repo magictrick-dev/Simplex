@@ -1,6 +1,8 @@
 #pragma once
 #include <utils/defs.hpp>
 #include <utils/system/memory_alloc.hpp>
+#include <simplex/string_view.hpp>
+#include <simplex/static_string.hpp>
 #include <utility>
 #include <cstddef>
 
@@ -45,6 +47,25 @@ namespace spx
             {
                 this->ensure_capacity(length);
                 for (size_t i = 0; i < length; ++i) this->elements[i] = data[i];
+                this->count = length;
+                this->terminate();
+            }
+
+            inline dynamic_string(const string_view<char_t>& view) : elements(NULL), reserved(0), count(0)
+            {
+                const size_t length = view.size();
+                this->ensure_capacity(length);
+                for (size_t i = 0; i < length; ++i) this->elements[i] = view[i];
+                this->count = length;
+                this->terminate();
+            }
+
+            template <size_t capacity>
+            inline dynamic_string(const static_string<char_t, capacity>& other) : elements(NULL), reserved(0), count(0)
+            {
+                const size_t length = other.size();
+                this->ensure_capacity(length);
+                for (size_t i = 0; i < length; ++i) this->elements[i] = other[i];
                 this->count = length;
                 this->terminate();
             }
@@ -180,9 +201,26 @@ namespace spx
                 return this->append(other.elements, other.count);
             }
 
+            inline dynamic_string<char_t>&
+            append(const string_view<char_t>& view)
+            {
+                return this->append(view.data(), view.size());
+            }
+
+            template <size_t capacity>
+            inline dynamic_string<char_t>&
+            append(const static_string<char_t, capacity>& other)
+            {
+                return this->append(other.data(), other.size());
+            }
+
             inline dynamic_string<char_t>& operator+=(const char_t *cstr)                { return this->append(cstr);    }
             inline dynamic_string<char_t>& operator+=(const dynamic_string<char_t>& o)   { return this->append(o);       }
+            inline dynamic_string<char_t>& operator+=(const string_view<char_t>& view)   { return this->append(view);    }
             inline dynamic_string<char_t>& operator+=(char_t value)                      { this->push_back(value); return *this; }
+
+            template <size_t capacity>
+            inline dynamic_string<char_t>& operator+=(const static_string<char_t, capacity>& o) { return this->append(o); }
 
             inline bool
             operator==(const dynamic_string<char_t>& other) const
