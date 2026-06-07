@@ -23,6 +23,15 @@ namespace spx
             inline dynamic_array() : elements(NULL), reserved(0), count(0) { this->increase_reserves();    }
             inline virtual ~dynamic_array()                                { this->release_memory();       }
 
+            inline dynamic_array(size_t reserve_count) : elements(NULL), reserved(0), count(0)
+            {
+
+                size_t target = round_up_power_of_two(reserve_count);
+                if (target == 0) target = get_minimum_reserved();
+                this->set_reserves(target);
+
+            }
+
             inline dynamic_array(const dynamic_array<type_t>& other) : elements(NULL), reserved(0), count(0)
             {
 
@@ -160,6 +169,32 @@ namespace spx
 
             }
 
+            inline void
+            reserve_to(size_t new_reserve)
+            {
+
+                size_t target = round_up_power_of_two(new_reserve);
+
+                // NOTE(Chris): reserve_to() only ever grows; use shrink_to_fit() to reclaim.
+                if (target <= this->reserved) return;
+
+                type_t *new_elements = (type_t*)simplex_memory_alloc(target * sizeof(type_t));
+
+                for (size_t i = 0; i < this->count; ++i)
+                {
+                    type_t *previous = elements + i;
+                    type_t *current = new_elements + i;
+                    new (current) type_t(std::move(this->elements[i]));
+                    previous->~type_t();
+                }
+
+                if (this->elements != NULL) simplex_memory_free(elements);
+
+                elements = new_elements;
+                reserved = target;
+
+            }
+
             inline void shrink_to_fit()
             {
 
@@ -193,6 +228,20 @@ namespace spx
             }
 
         private:
+
+            // NOTE(Chris): Rounds value up to the nearest power of two (31 -> 32, 11 -> 16).
+            //              A value that is already a power of two is returned unchanged.
+            inline static constexpr size_t
+            round_up_power_of_two(size_t value)
+            {
+
+                if (value == 0) return 0;
+
+                size_t result = 1;
+                while (result < value) result *= 2;
+                return result;
+
+            }
 
             inline void
             set_reserves(size_t size)
