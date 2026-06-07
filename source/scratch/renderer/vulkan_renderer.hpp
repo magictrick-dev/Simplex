@@ -95,13 +95,16 @@ class vulkan_renderer
                     spx::string_view<char> current(extension.extensionName);
                     if (current == checking)
                     {
-                        has_extension == true;
+                        has_extension = true;
                         break;
                     }
                 }
 
                 if (!has_extension)
                 {
+                    LoggingManager::DispatchCritical(
+                        "Failed to find instance extension {}.",
+                        checking.data());
                     return false;
                 }
 

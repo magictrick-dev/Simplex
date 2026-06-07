@@ -50,6 +50,9 @@ scratch_main()
     if (renderer.initialize(window) != EngineResultType_OK)
     {
         LoggingManager::DispatchError("Failed to properly initialize the vulkan renderer.");
+        LoggingManager::ProcessMessageQueue();
+        glfwDestroyWindow(window);
+        glfwTerminate();
         return 0;
     }
 

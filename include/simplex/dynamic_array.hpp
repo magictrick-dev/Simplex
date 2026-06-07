@@ -30,6 +30,16 @@ namespace spx
                 if (target == 0) target = get_minimum_reserved();
                 this->set_reserves(target);
 
+                // NOTE(Chris): Mirror std::vector(n) -- size becomes reserve_count and each
+                //              element is value-initialized (zeroed for trivial types).
+                for (size_t i = 0; i < reserve_count; ++i)
+                {
+                    type_t *current = this->elements + i;
+                    new (current) type_t();
+                }
+
+                this->count = reserve_count;
+
             }
 
             inline dynamic_array(const dynamic_array<type_t>& other) : elements(NULL), reserved(0), count(0)
