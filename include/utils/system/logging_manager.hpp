@@ -240,10 +240,7 @@ class LoggingManager
 
             auto thread_id_awkward = std::this_thread::get_id();
             size_t thread_id = std::hash<std::thread::id>{}(thread_id_awkward);
-            if (Threadnames.find(thread_id) == Threadnames.end())
-            {
-                Threadnames[thread_id] = name;
-            }
+            Threadnames[thread_id] = name; // Allows for overwrites.
 
         }
 

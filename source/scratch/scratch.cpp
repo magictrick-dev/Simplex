@@ -1,18 +1,15 @@
-#include <iostream>
-#include <limits>
-#include <vector>
-#include <unordered_map>
-#include <queue>
-#include <string>
-#include <tuple>
-
 #include <scratch/scratch.hpp>
+
+#define GLFW_INCLUDE_VULKAN
+#include <glfw/glfw3.h>
+#include <vulkan/vulkan.h>
 
 #include <utils/defs.hpp>
 #include <utils/typeid.hpp>
 #include <utils/linear.hpp>
 #include <utils/system/resource_manager.hpp>
 #include <utils/system/memory_alloc.hpp>
+#include <utils/system/logging_manager.hpp>
 
 #include <simplex/array.hpp>
 #include <simplex/static_array.hpp>
@@ -23,11 +20,59 @@
 #include <simplex/static_queue.hpp>
 #include <simplex/hashed_sparse_map.hpp>
 
+#include <scratch/renderer/vulkan_renderer.hpp>
+
+// Window setup.
+static GLFWwindow *window;
+static vulkan_renderer renderer;
+
+static inline void 
+init_window(spx::string_view<char> window_name, const int32_t width, const int32_t height)
+{
+
+    glfwInit();
+
+    glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+    glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);     // Will address later.
+
+    window = glfwCreateWindow(width, height, window_name.data(), NULL, NULL);
+
+}
 
 int 
 scratch_main()
 {
 
+    // Hijack the thread name for the logging manager.
+    LoggingManager::ClassifyThreadname("SCRATCH");
+
+    init_window("Vulkan Scratch", 1280, 720);
+    if (renderer.initialize(window) != EngineResultType_OK)
+    {
+        LoggingManager::DispatchError("Failed to properly initialize the vulkan renderer.");
+        return 0;
+    }
+
+    LoggingManager::DispatchInformation("Initialized Vulkan scratch renderer.");
+
+    while (!glfwWindowShouldClose(window))
+    {
+
+        glfwPollEvents();
+        LoggingManager::ProcessMessageQueue();
+
+    }
+
+    renderer.deinitialize();
+    LoggingManager::DispatchInformation("Deinitialized Vulkan scratch renderer.");
+    LoggingManager::ProcessMessageQueue();
+
+    glfwDestroyWindow(window);
+    glfwTerminate();
+
+    LoggingManager::DispatchInformation("Scratch Vulkan renderer shutdown successfully.");
+    LoggingManager::ProcessMessageQueue();
 
     return 0;
+
 }

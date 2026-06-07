@@ -39,6 +39,7 @@ SET(PROJECT_SOURCES
 IF (WIN32)
 
     FIND_PACKAGE(OpenGL REQUIRED)
+    FIND_PACKAGE(Vulkan REQUIRED)
     ADD_EXECUTABLE(Simplex WIN32
         "extern/vendor/glad/glad.c"
         "extern/vendor/imgui/backends/imgui_impl_glfw.cpp"
@@ -56,6 +57,7 @@ IF (WIN32)
 
         ${PROJECT_SOURCES}
     )
+
 
     SET_PROPERTY(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT Simplex)
 ENDIF (WIN32)
@@ -93,10 +95,12 @@ TARGET_INCLUDE_DIRECTORIES(Simplex PUBLIC
     "vendor/glfw/include"
     "source/"
     "include/"
+
+    ${Vulkan_INCLUDE_DIRS}
 )
 
 IF (WIN32)
-    TARGET_LINK_LIBRARIES(Simplex OpenGL::GL glfw shell32)
+    TARGET_LINK_LIBRARIES(Simplex OpenGL::GL glfw shell32 ${Vulkan_LIBRARIES})
 ENDIF (WIN32)
 
 IF (APPLE)
