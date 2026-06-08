@@ -1,7 +1,7 @@
 #pragma once
 #include <GLFW/glfw3.h>
 #include <stdexcept>
-#include <utils/system/logging_manager.hpp>
+#include <utils/logging.hpp>
 #include <simplex/dynamic_array.hpp>
 #include <simplex/static_array.hpp>
 #include <simplex/array_view.hpp>
@@ -69,7 +69,7 @@ namespace spx::vk
                 }
                 catch (const std::runtime_error& error)
                 {
-                    LoggingManager::DispatchError("Vulkan Error: {}", error.what());
+                    spx::logger::dispatch_error_log("Vulkan Error: {}", error.what());
                     return EngineResultType_InitializationFailed;
                 }
 
@@ -113,7 +113,7 @@ namespace spx::vk
                 {
 
                     const spx::vk::vulkan_physical_device current { this->instance, device };
-                    LoggingManager::DispatchInformation("Vulkan physical device found: {}", current.get_qualified_name().data());
+                    spx::logger::dispatch_diagnostic_log("Vulkan physical device found: {}", current.get_qualified_name().data());
 
                     const size_t current_score = current.get_device_score();
                     if (current_score > max_device_score)

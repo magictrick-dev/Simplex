@@ -25,7 +25,7 @@
 #include <cli/cli.hpp>
 #include <utils/test_registry.hpp>
 #include <utils/system/resource_manager.hpp>
-#include <utils/system/logging_manager.hpp>
+#include <utils/logging.hpp>
 #include <parsers/rdview/rdview_parser.hpp>
 #include <parsers/rdview/rdview_ref_visitor.hpp>
 #include <scratch/scratch.hpp>
@@ -74,9 +74,8 @@ entry(int argc, char **argv)
     //              setup the time-since information (how many seconds since startup).
     // TODO(Chris): Defer our logs to a file rather than to standard-output.
     // TODO(Chris): GUI-based logging window?
-    auto &logger = LoggingManager::Get();
-    LoggingManager::ClassifyThreadname("MAIN");
-    LoggingManager::DispatchLog<LoggingLevel::Diagnostic, LoggingClassification::Internal>(
+    spx::logger::set_thread_name("MAIN");
+    spx::logger::dispatch_message<spx::logging_level::diagnostic, spx::logging_classification::internal>(
         "Simplex Version    : {}\n"
         "Simplex Platform   : {}\n"
         "Simplex Frontend   : {}\n", 
@@ -111,7 +110,7 @@ entry(int argc, char **argv)
     if (cli.has_argument("--run-tests")) 
     {
         TestRegistry::RunEverything();
-        LoggingManager::ProcessMessageQueue();
+        spx::logger::process_message_queue();
         return 0;
     }
 
@@ -204,7 +203,7 @@ entry(int argc, char **argv)
         glfwSwapBuffers(window);
         glfwPollEvents();
 
-        LoggingManager::ProcessMessageQueue(); // Spit logs to console.
+        spx::logger::process_message_queue();
         if (glfwWindowShouldClose(window)) runtime_flag = false;
 
     }

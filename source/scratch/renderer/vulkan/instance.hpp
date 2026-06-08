@@ -7,7 +7,7 @@
 #include <simplex/dynamic_array.hpp>
 #include <simplex/array_view.hpp>
 
-#include <utils/system/logging_manager.hpp>
+#include <utils/logging.hpp>
 
 namespace spx::vk
 {
@@ -47,7 +47,7 @@ namespace spx::vk
                 // NOTE(Chris): Prints out available extensions.
                 for (auto extension : extensions)
                 {
-                    LoggingManager::DispatchDiagnostic(
+                    spx::logger::dispatch_diagnostic_log(
                         "Available Vulkan instance extension: {}",
                         extension.extensionName);
                 }
@@ -72,7 +72,7 @@ namespace spx::vk
 
                     if (!extension_exists) 
                     {
-                        LoggingManager::DispatchCritical(
+                        spx::logger::dispatch_error_log(
                             "Failed to find required instance extension: {}",
                             required_extension
                         );
@@ -102,8 +102,7 @@ namespace spx::vk
                 VkResult result = vkCreateInstance(&instance_create_info, NULL, &this->handle);
                 if (result != VK_SUCCESS)
                 {
-                    LoggingManager::DispatchCritical("Failed to initialize vulkan instance (VkResult: {}).",
-                        static_cast<int>(result));
+                    spx::logger::dispatch_error_log("Failed to initialize vulkan instance (VkResult: {}).", static_cast<int>(result));
                     return false;
                 }
 
