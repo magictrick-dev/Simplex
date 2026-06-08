@@ -31,7 +31,7 @@
 #   define SIMPLEX_MAX_PATH 4096
 #endif
 
-namespace spx::filesystem
+namespace spx::fs
 {
 
     inline spx::string_view<char>
