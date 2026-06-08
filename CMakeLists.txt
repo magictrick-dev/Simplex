@@ -63,6 +63,7 @@ IF (WIN32)
 ENDIF (WIN32)
 
 IF (APPLE)
+    FIND_PACKAGE(Vulkan REQUIRED)
     FIND_PACKAGE(OpenGL REQUIRED)
     ADD_EXECUTABLE(Simplex
         "extern/vendor/glad/glad.c"
@@ -104,5 +105,5 @@ IF (WIN32)
 ENDIF (WIN32)
 
 IF (APPLE)
-    TARGET_LINK_LIBRARIES(Simplex OpenGL::GL glfw)
+    TARGET_LINK_LIBRARIES(Simplex OpenGL::GL glfw ${Vulkan_LIBRARIES})
 ENDIF(APPLE)

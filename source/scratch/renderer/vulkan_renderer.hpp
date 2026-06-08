@@ -1,5 +1,5 @@
 #pragma once
-#include <glfw/glfw3.h>
+#include <GLFW/glfw3.h>
 #include <stdexcept>
 #include <utils/system/logging_manager.hpp>
 #include <simplex/dynamic_array.hpp>
@@ -60,6 +60,7 @@ namespace spx::vk
                     uint32_t glfw_extension_count = 0;
                     const char **glfw_extensions_list = glfwGetRequiredInstanceExtensions(&glfw_extension_count);
                     spx::array_view<const char *> glfw_required_extensions { glfw_extensions_list, glfw_extension_count };
+
                     this->instance.create(glfw_required_extensions);
 
                     // Now get the physical device.
@@ -112,7 +113,7 @@ namespace spx::vk
                 {
 
                     const spx::vk::vulkan_physical_device current { this->instance, device };
-                    LoggingManager::DispatchInformation("Vulkan physical device found: {}", current.get_qualified_name());
+                    LoggingManager::DispatchInformation("Vulkan physical device found: {}", current.get_qualified_name().data());
 
                     const size_t current_score = current.get_device_score();
                     if (current_score > max_device_score)

@@ -72,6 +72,7 @@ namespace spx::vk
                 int64_t device_score = 0;
                 device_score += memory_properties.memoryHeaps[0].size;
                 
+                return device_score;
             }
 
         public:
@@ -87,6 +88,7 @@ namespace spx::vk
                 uint32_t device_count = 0;
                 vkEnumeratePhysicalDevices(instance, &device_count, NULL);
 
+                return physical_devices;
 
             }
 
