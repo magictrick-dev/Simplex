@@ -9,6 +9,7 @@
 #include <simplex/array.hpp>
 #include <simplex/static_queue.hpp>
 #include <simplex/static_stack.hpp>
+#include <simplex/static_deque.hpp>
 #include <simplex/hashed_sparse_map.hpp>
 
 #include <iostream>
@@ -54,7 +55,9 @@ namespace spx
     class logger
     {
 
-        using time_point_t = std::chrono::time_point<std::chrono::high_resolution_clock>;
+        public:
+            static inline constexpr size_t max_messages = 4096;
+            using time_point_t = std::chrono::time_point<std::chrono::high_resolution_clock>;
 
         public:
 
@@ -234,19 +237,31 @@ namespace spx
                 return get_logging_classifications_array()[static_cast<size_t>(classification)];
             }
 
+
+            /// @brief Provides a way for retrieving the rolling message queue for displaying in a GUI.
+            /// @return A static double-ended queue of the messages.
+            static inline spx::static_deque<message, max_messages>
+            get_messages()
+            {
+                std::shared_lock lock(mutex);
+                return rolling_messages;
+            }
+
         private:
             static inline void
             push_message_log(message& log)
             {
                 std::unique_lock lock(mutex);
                 if (messages.size() >= max_messages) messages.pop(); // Oops, too many in queue. 
-                messages.push(log);
+                if (rolling_messages.size() >= max_messages) rolling_messages.pop_back();
+                messages.emplace(log);
+                rolling_messages.emplace_front(log);
             }
 
         private:
-            static inline constexpr size_t max_messages = 4096;
             static inline std::shared_mutex mutex;
             static inline spx::static_queue<message, max_messages> messages;
+            static inline spx::static_deque<message, max_messages> rolling_messages;
             static inline time_point_t begin = std::chrono::high_resolution_clock::now();
             static inline spx::hashed_sparse_map<std::thread::id, std::string> thread_names;
 
