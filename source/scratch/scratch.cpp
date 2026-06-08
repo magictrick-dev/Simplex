@@ -1,7 +1,7 @@
 #include <scratch/scratch.hpp>
 
 #define GLFW_INCLUDE_VULKAN
-#include <glfw/glfw3.h>
+#include <GLFW/glfw3.h>
 #include <vulkan/vulkan.h>
 
 #include <utils/defs.hpp>
@@ -24,7 +24,7 @@
 
 // Window setup.
 static GLFWwindow *window;
-static vulkan_renderer renderer;
+static spx::vk::vulkan_renderer renderer;
 
 static inline void 
 init_window(spx::string_view<char> window_name, const int32_t width, const int32_t height)
@@ -50,6 +50,9 @@ scratch_main()
     if (renderer.initialize(window) != EngineResultType_OK)
     {
         LoggingManager::DispatchError("Failed to properly initialize the vulkan renderer.");
+        LoggingManager::ProcessMessageQueue();
+        glfwDestroyWindow(window);
+        glfwTerminate();
         return 0;
     }
 

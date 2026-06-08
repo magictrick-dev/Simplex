@@ -30,6 +30,16 @@ namespace spx
                 if (target == 0) target = get_minimum_reserved();
                 this->set_reserves(target);
 
+                // NOTE(Chris): Mirror std::vector(n) -- size becomes reserve_count and each
+                //              element is value-initialized (zeroed for trivial types).
+                for (size_t i = 0; i < reserve_count; ++i)
+                {
+                    type_t *current = this->elements + i;
+                    new (current) type_t();
+                }
+
+                this->count = reserve_count;
+
             }
 
             inline dynamic_array(const dynamic_array<type_t>& other) : elements(NULL), reserved(0), count(0)
@@ -105,6 +115,18 @@ namespace spx
             inline const type_t* begin() const                  { return elements;                  }
             inline const type_t* end() const                    { return elements + count;          }
 
+            inline type_t& back()
+            { 
+                SIMPLEX_ASSERT(count > 0);
+                return elements[count-1];         
+            }
+
+            inline const type_t& back() const
+            { 
+                SIMPLEX_ASSERT(count > 0);
+                return elements[count-1];         
+            }
+
             template <typename... Args> inline void
             emplace_back(Args&&... args)
             {
@@ -166,6 +188,22 @@ namespace spx
                 const size_t index = this->count;
                 type_t *current = this->elements + index;
                 current->~type_t();
+
+            }
+
+            inline void
+            clear()
+            {
+
+                // NOTE(Chris): Destroys every element but retains the reserved buffer; use
+                //              shrink_to_fit() to reclaim memory afterwards.
+                for (size_t i = 0; i < this->count; ++i)
+                {
+                    type_t *current = this->elements + i;
+                    current->~type_t();
+                }
+
+                this->count = 0;
 
             }
 

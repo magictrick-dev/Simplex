@@ -1,5 +1,6 @@
 #pragma once
 #include <utils/defs.hpp>
+#include <type_traits>
 
 namespace spx
 {
@@ -16,22 +17,36 @@ namespace spx
     {
 
         public:
-            inline array() = default;
+            constexpr array() = default;
             inline ~array() = default;
 
-            inline type_t& get(size_t index)                    { return elements[index];           }
-            inline type_t& operator[](size_t index)             { return this->get(index);          }
-            inline type_t* begin()                              { return elements;                  }
-            inline type_t* end()                                { return elements + capacity;       }
-            inline size_t size() const                          { return capacity;                  }
-            inline const type_t& get(size_t index) const        { return elements[index];           }
-            inline const type_t& operator[](size_t index) const { return this->get(index);          }
-            inline const type_t* begin() const                  { return elements;                  }
-            inline const type_t* end() const                    { return elements + capacity;       }
+            /// @brief Constructs the array directly from a list of elements,
+            /// enabling CTAD (e.g. spx::array{1, 2, 3}). Guarded so it never
+            /// shadows the copy/move constructors with a single array argument.
+            template <typename... args_t, typename = std::enable_if_t<
+                !(sizeof...(args_t) == 1 &&
+                  (std::is_same_v<array, std::decay_t<args_t>> && ...))>>
+            constexpr array(args_t&&... args)
+                : elements{ std::forward<args_t>(args)... } {}
+
+            constexpr type_t& get(size_t index)                    { return elements[index];           }
+            constexpr type_t& operator[](size_t index)             { return this->get(index);          }
+            constexpr type_t* begin()                              { return elements;                  }
+            constexpr type_t* end()                                { return elements + capacity;       }
+            constexpr size_t size() const                          { return capacity;                  }
+            constexpr const type_t& get(size_t index) const        { return elements[index];           }
+            constexpr const type_t& operator[](size_t index) const { return this->get(index);          }
+            constexpr const type_t* begin() const                  { return elements;                  }
+            constexpr const type_t* end() const                    { return elements + capacity;       }
 
         private:
             type_t elements[capacity];
 
     };
+
+    /// @brief CTAD guide for array, deduces both element type and count from
+    /// the braced initializer list (e.g. spx::array{1, 2, 3} -> array<int, 3>).
+    template <typename type_t, typename... rest_t>
+    array(type_t, rest_t...) -> array<std::decay_t<type_t>, 1 + sizeof...(rest_t)>;
 
 }
