@@ -1,9 +1,15 @@
 #pragma once
 #include <vulkan/vulkan.h>
+
+#include <utils/defs.hpp>
+#include <utils/logging.hpp>
+
 #include <simplex/string_view.hpp>
 #include <simplex/dynamic_string.hpp>
 
+
 #include <scratch/renderer/vulkan/instance.hpp>
+#include <scratch/renderer/vulkan/queue_family.hpp>
 
 namespace spx::vk
 {
@@ -31,15 +37,17 @@ namespace spx::vk
 
                 vkGetPhysicalDeviceProperties2(this->device, &this->device_properties_2);
 
-                // Gets the queue families.
+                // Gets the queue families and stores them in a neat structure.
                 uint32_t queue_families_count = 0;
                 vkGetPhysicalDeviceQueueFamilyProperties(this->device, &queue_families_count, NULL);
 
-                this->queue_family_properties.resize(queue_families_count);
-                vkGetPhysicalDeviceQueueFamilyProperties(this->device, &queue_families_count, 
-                    this->queue_family_properties.begin());
+                spx::dynamic_array<VkQueueFamilyProperties> queue_family_properties(queue_families_count);
+                vkGetPhysicalDeviceQueueFamilyProperties(this->device, &queue_families_count, queue_family_properties.begin());
 
-
+                for (size_t i = 0; i < queue_family_properties.size(); ++i)
+                {
+                    this->queue_families.emplace_back(i, queue_family_properties[i]);
+                }
 
             }
 
@@ -90,6 +98,25 @@ namespace spx::vk
             { 
                 return this->device; 
             }
+
+            inline uint32_t
+            get_queue_family_index_with(VkQueueFlags flags) const
+            {
+
+                for (const auto& family : this->queue_families)
+                {
+                    if (family.has_flags(flags))
+                    {
+                        return family.index;
+                    }
+                }
+
+                throw std::runtime_error("Failed to find queue family with required flags.");
+                return 0;
+
+            }
+
+
 
         public:
             static inline spx::array_view<spx::vk::physical_device>
@@ -143,7 +170,7 @@ namespace spx::vk
             VkPhysicalDeviceProperties2 device_properties_2 = {};
             VkPhysicalDeviceDriverProperties driver_properties = {};
             VkPhysicalDeviceMemoryProperties memory_properties = {};
-            spx::dynamic_array<VkQueueFamilyProperties> queue_family_properties;
+            spx::dynamic_array<spx::vk::queue_family> queue_families;
 
     };
 

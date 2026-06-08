@@ -9,6 +9,7 @@
 
 #include <scratch/renderer/vulkan/instance.hpp>
 #include <scratch/renderer/vulkan/physical_device.hpp>
+#include <scratch/renderer/vulkan/logical_device.hpp>
 
 enum EngineResultType
 {
@@ -76,6 +77,8 @@ namespace spx::vk
                     // physical device we should use.
                     this->physical_device = spx::vk::physical_device::get_optimal_device(this->instance);
 
+                    // Create the logical device now.
+                    this->logical_device.create(this->instance, this->physical_device);
 
 
                 }
@@ -93,6 +96,7 @@ namespace spx::vk
             deinitialize()
             {
 
+                this->logical_device.destroy();
                 this->instance.destroy();
 
             }
@@ -100,6 +104,7 @@ namespace spx::vk
         private:
             spx::vk::instance instance;
             spx::vk::physical_device physical_device;
+            spx::vk::logical_device logical_device;
 
             struct
             {
