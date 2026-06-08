@@ -8,7 +8,7 @@
 #include <simplex/array.hpp>
 
 #include <scratch/renderer/vulkan/instance.hpp>
-#include <scratch/renderer/vulkan/physical_devices.hpp>
+#include <scratch/renderer/vulkan/physical_device.hpp>
 
 enum EngineResultType
 {
@@ -56,15 +56,27 @@ namespace spx::vk
                 try
                 {
 
-                    // Create the instance.
+                    // Set our required extensions and create the vulkan instance.
                     uint32_t glfw_extension_count = 0;
                     const char **glfw_extensions_list = glfwGetRequiredInstanceExtensions(&glfw_extension_count);
-                    spx::array_view<const char *> glfw_required_extensions { glfw_extensions_list, glfw_extension_count };
 
-                    this->instance.create(glfw_required_extensions);
+                    spx::dynamic_array<const char*> required_extensions;
+                    for (uint32_t index = 0; index < glfw_extension_count; ++index)
+                    {
+                        required_extensions.emplace_back(glfw_extensions_list[index]);
+                    }
 
-                    // Now get the physical device.
-                    this->get_physical_device();
+#                   if defined(__APPLE__)
+                        required_extensions.emplace_back(VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME);
+#                   endif
+
+                    this->instance.create(required_extensions);
+
+                    // Select the physical device, we will let the "get_optimal_device" determine which
+                    // physical device we should use.
+                    this->physical_device = spx::vk::physical_device::get_optimal_device(this->instance);
+
+
 
                 }
                 catch (const std::runtime_error& error)
@@ -86,54 +98,8 @@ namespace spx::vk
             }
 
         private:
-            inline void 
-            get_physical_device()
-            {
-
-                uint32_t device_count = 0;
-                vkEnumeratePhysicalDevices(this->instance, &device_count, NULL);
-
-                if (device_count == 0)
-                {
-                    throw std::runtime_error("Failed to get a viable physical device.");
-                }
-
-                if (device_count > 32)
-                {
-                    // TODO(Chris): Fall back to a dynamic_array instead.
-                    //              Fairly unlikely that there is more than 32 physical devices on a system.
-                    throw std::runtime_error("Way too many physical devices!");
-                }
-
-                spx::static_array<VkPhysicalDevice, 32> devices { device_count };
-                vkEnumeratePhysicalDevices(this->instance, &device_count, devices.begin());
-
-                int64_t max_device_score = 0;
-                for (auto &device : devices)
-                {
-
-                    const spx::vk::vulkan_physical_device current { this->instance, device };
-                    spx::logger::dispatch_diagnostic_log("Vulkan physical device found: {}", current.get_qualified_name().data());
-
-                    const size_t current_score = current.get_device_score();
-                    if (current_score > max_device_score)
-                    {
-                        max_device_score = current_score;
-                        this->physical_device = current;
-                    }
-
-                }
-
-                if (max_device_score < 0)
-                {
-                    throw std::runtime_error("No suitable vulkan physical device found.");
-                }
-
-            }
-
-        private:
-            spx::vk::vulkan_instance instance;
-            spx::vk::vulkan_physical_device physical_device;
+            spx::vk::instance instance;
+            spx::vk::physical_device physical_device;
 
             struct
             {
