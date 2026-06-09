@@ -34,11 +34,33 @@ namespace spx::vk
                 this->device_12_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
                 this->device_13_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
                 this->device_14_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_4_FEATURES;
-                this->device_features.pNext = &device_11_features;
-                this->device_11_features.pNext = &device_12_features;
-                this->device_12_features.pNext = &device_13_features;
-                this->device_13_features.pNext = &device_14_features;
-                this->device_14_features.pNext = NULL;
+
+                void *features_chain = NULL;
+                if (physical_device.supports_version(VK_API_VERSION_1_4))
+                {
+                    this->device_14_features.pNext = features_chain;
+                    features_chain = &this->device_14_features;
+                }
+
+                if (physical_device.supports_version(VK_API_VERSION_1_3))
+                {
+                    this->device_13_features.pNext = features_chain;
+                    features_chain = &this->device_13_features;
+                }
+
+                if (physical_device.supports_version(VK_API_VERSION_1_2))
+                {
+                    this->device_12_features.pNext = features_chain;
+                    features_chain = &this->device_12_features;
+                }
+
+                if (physical_device.supports_version(VK_API_VERSION_1_1))
+                {
+                    this->device_11_features.pNext = features_chain;
+                    features_chain = &this->device_11_features;
+                }
+
+                this->device_features.pNext = features_chain;
 
                 // NOTE(Chris): We opt-in to only what we need as the validation layers catch it
                 //              rather than what is actually available.
