@@ -9,6 +9,39 @@
 
 #include <utils/logging.hpp>
 
+inline VkResult 
+CreateDebugUtilsMessengerEXT(
+    VkInstance instance, 
+    const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo, 
+    const VkAllocationCallbacks* pAllocator, 
+    VkDebugUtilsMessengerEXT* pDebugMessenger) 
+{
+
+    auto func = (PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT");
+    if (func != nullptr) 
+    {
+        return func(instance, pCreateInfo, pAllocator, pDebugMessenger);
+    } 
+    else 
+    {
+        return VK_ERROR_EXTENSION_NOT_PRESENT;
+    }
+
+}
+
+inline void 
+DestroyDebugUtilsMessengerEXT(
+    VkInstance instance, 
+    VkDebugUtilsMessengerEXT debugMessenger, 
+    const VkAllocationCallbacks* pAllocator) 
+{
+    auto func = (PFN_vkDestroyDebugUtilsMessengerEXT) vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT");
+    if (func != nullptr) 
+    {
+        func(instance, debugMessenger, pAllocator);
+    }
+}
+
 namespace spx::vk
 {
 
@@ -121,6 +154,25 @@ namespace spx::vk
                     return false;
                 }
 
+                VkDebugUtilsMessengerCreateInfoEXT create_info = {};
+                create_info.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
+                create_info.messageSeverity = 
+                    VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | 
+                    VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | 
+                    VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
+                create_info.messageType = 
+                    VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | 
+                    VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | 
+                    VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
+                create_info.pfnUserCallback = debug_callback;
+                create_info.pUserData = nullptr;
+
+                result = CreateDebugUtilsMessengerEXT(this->handle, &create_info, NULL, &this->debug_messenger);
+                if (result != VK_SUCCESS)
+                {
+                    throw std::runtime_error("Failed to create vulkan debug messenger.");
+                }
+
                 return true;
                 
             }
@@ -129,8 +181,10 @@ namespace spx::vk
             destroy()
             {
 
+                DestroyDebugUtilsMessengerEXT(this->handle, this->debug_messenger, NULL);
                 vkDestroyInstance(this->handle, NULL);
-                this->handle= NULL;
+                this->debug_messenger = NULL;
+                this->handle = NULL;
 
             }
 
@@ -147,7 +201,49 @@ namespace spx::vk
             }
         
         public:
+            static inline VKAPI_ATTR VkBool32 VKAPI_CALL
+            debug_callback(
+                VkDebugUtilsMessageSeverityFlagBitsEXT severity,
+                VkDebugUtilsMessageTypeFlagsEXT type,
+                const VkDebugUtilsMessengerCallbackDataEXT *callback_data,
+                void *user_data)
+            {
+                
+                switch (severity)
+                {
+                    case VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT:
+                    {
+                        spx::logger::dispatch_diagnostic_log("{}", callback_data->pMessage);
+                    } break;
+
+                    case VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT:
+                    {
+                        spx::logger::dispatch_information_log("{}" , callback_data->pMessage);
+                    } break;
+
+                    case VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT:
+                    {
+                        spx::logger::dispatch_critical_log("{}", callback_data->pMessage);
+                    } break;
+
+                    case VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT:
+                    {
+                        spx::logger::dispatch_error_log("{}", callback_data->pMessage);
+                    } break;
+
+                    default:
+                    {
+                        spx::logger::dispatch_information_log("{}", callback_data->pMessage);
+                    } break;
+                }
+
+                return VK_FALSE;
+                
+            }
+        
+        public:
             VkInstance handle = NULL;
+            VkDebugUtilsMessengerEXT debug_messenger = NULL;
             VkApplicationInfo application_info = {};
             VkInstanceCreateInfo instance_create_info = {};
 
