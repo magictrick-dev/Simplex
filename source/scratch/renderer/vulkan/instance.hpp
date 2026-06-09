@@ -20,9 +20,38 @@ namespace spx::vk
             inline ~instance() = default;
         
             inline bool
-            create(spx::array_view<const char *> required_extensions)
+            create(spx::array_view<const char *> required_extensions, spx::array_view<const char *> required_layers)
             {
                 
+                // Get the layers.
+                uint32_t layers_count = 0;
+                vkEnumerateInstanceLayerProperties(&layers_count, NULL);
+
+                spx::dynamic_array<VkLayerProperties> layer_properties(layers_count);
+                vkEnumerateInstanceLayerProperties(&layers_count, layer_properties.begin());
+
+                for (spx::string_view<char> required_layer : required_layers)
+                {
+
+                    bool layer_exists = false;
+                    for (const auto &layer : layer_properties)
+                    {
+                        spx::string_view<char> current_layer(layer.layerName);
+                        if (current_layer == required_layer)
+                        {
+                            layer_exists = true;
+                            break;
+                        }
+                    }
+
+                    if (layer_exists == false)
+                    {
+                        throw std::runtime_error("Failed to find required validation layer!");
+                    }
+
+                }
+                
+                // Get extensions.
                 uint32_t extension_count = 0;
                 vkEnumerateInstanceExtensionProperties(NULL, &extension_count, NULL);
 
@@ -77,8 +106,8 @@ namespace spx::vk
                 this->instance_create_info.pApplicationInfo = &application_info;
                 this->instance_create_info.enabledExtensionCount = static_cast<uint32_t>(required_extensions.size());
                 this->instance_create_info.ppEnabledExtensionNames = required_extensions.begin();
-                this->instance_create_info.enabledLayerCount = 0;
-                this->instance_create_info.ppEnabledLayerNames = NULL;
+                this->instance_create_info.enabledLayerCount = static_cast<uint32_t>(required_layers.size());
+                this->instance_create_info.ppEnabledLayerNames = required_layers.begin();
 
 #               if defined(__APPLE__)
                     this->instance_create_info.flags |= VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR;
