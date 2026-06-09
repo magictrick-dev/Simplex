@@ -76,6 +76,10 @@ namespace spx::vk
                     // Select the physical device, we will let the "get_optimal_device" determine which
                     // physical device we should use.
                     this->physical_device = spx::vk::physical_device::get_optimal_device(this->instance);
+                    spx::logger::dispatch_diagnostic_log(
+                        "Selected {} as the physical device.",
+                        this->physical_device.get_qualified_name().c_str()
+                    );
 
                     // Create the logical device now.
                     this->logical_device.create(this->instance, this->physical_device);

@@ -70,7 +70,7 @@ namespace spx::vk
 
                 // Setting up application info.
                 this->application_info.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
-                this->application_info.apiVersion = VK_API_VERSION_1_3;
+                this->application_info.apiVersion = VK_API_VERSION_1_4;
                 
                 // Setting up instance create info.
                 this->instance_create_info.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;

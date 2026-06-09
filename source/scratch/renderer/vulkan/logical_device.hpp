@@ -29,8 +29,20 @@ namespace spx::vk
                 queue_create_info.queueCount = 1;
                 queue_create_info.pQueuePriorities = &priority;
 
-                // NOTE(Chris): We should query the features so we can get access to them.
-                VkPhysicalDeviceFeatures device_features = {};
+                this->device_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+                this->device_11_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES;
+                this->device_12_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
+                this->device_13_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
+                this->device_14_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_4_FEATURES;
+                this->device_features.pNext = &device_11_features;
+                this->device_11_features.pNext = &device_12_features;
+                this->device_12_features.pNext = &device_13_features;
+                this->device_13_features.pNext = &device_14_features;
+                this->device_14_features.pNext = NULL;
+
+                // NOTE(Chris): We opt-in to only what we need as the validation layers catch it
+                //              rather than what is actually available.
+                //vkGetPhysicalDeviceFeatures2(physical_device, &device_features);
 
                 VkDeviceCreateInfo device_create_info = {};
                 device_create_info.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
@@ -40,7 +52,8 @@ namespace spx::vk
                 device_create_info.ppEnabledExtensionNames = NULL;
                 device_create_info.enabledLayerCount = 0;
                 device_create_info.ppEnabledLayerNames = NULL;
-                device_create_info.pEnabledFeatures = &device_features;
+                device_create_info.pEnabledFeatures = NULL;
+                device_create_info.pNext = &this->device_features;
 
                 // Create the device now.
                 VkResult result = vkCreateDevice(physical_device, &device_create_info, NULL, &this->device);
@@ -68,6 +81,11 @@ namespace spx::vk
         public:
             VkDevice device = NULL;
             VkQueue graphics_queue = NULL;
+            VkPhysicalDeviceFeatures2 device_features = {};
+            VkPhysicalDeviceVulkan11Features device_11_features = {};
+            VkPhysicalDeviceVulkan12Features device_12_features = {};
+            VkPhysicalDeviceVulkan13Features device_13_features = {};
+            VkPhysicalDeviceVulkan14Features device_14_features = {};
 
     };
 
