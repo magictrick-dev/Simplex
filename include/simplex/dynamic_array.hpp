@@ -208,6 +208,62 @@ namespace spx
             }
 
             inline void
+            resize(size_t new_count)
+            {
+
+                // NOTE(Chris): Shrinking destroys the tail; growing value-initializes the new
+                //              elements (zeroed for trivial types), mirroring std::vector::resize.
+                if (new_count < this->count)
+                {
+                    for (size_t i = new_count; i < this->count; ++i)
+                    {
+                        type_t *current = this->elements + i;
+                        current->~type_t();
+                    }
+                }
+                else if (new_count > this->count)
+                {
+                    this->reserve_to(new_count);
+                    for (size_t i = this->count; i < new_count; ++i)
+                    {
+                        type_t *current = this->elements + i;
+                        new (current) type_t();
+                    }
+                }
+
+                this->count = new_count;
+
+            }
+
+            inline void
+            resize(size_t new_count, const type_t &value)
+            {
+
+                // NOTE(Chris): Same as resize(new_count) but copy-constructs new elements
+                //              from `value` instead of value-initializing them.
+                if (new_count < this->count)
+                {
+                    for (size_t i = new_count; i < this->count; ++i)
+                    {
+                        type_t *current = this->elements + i;
+                        current->~type_t();
+                    }
+                }
+                else if (new_count > this->count)
+                {
+                    this->reserve_to(new_count);
+                    for (size_t i = this->count; i < new_count; ++i)
+                    {
+                        type_t *current = this->elements + i;
+                        new (current) type_t(value);
+                    }
+                }
+
+                this->count = new_count;
+
+            }
+
+            inline void
             reserve_to(size_t new_reserve)
             {
 

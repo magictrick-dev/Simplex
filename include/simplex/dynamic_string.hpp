@@ -5,6 +5,7 @@
 #include <simplex/static_string.hpp>
 #include <utility>
 #include <cstddef>
+#include <ostream>
 
 namespace spx
 {
@@ -358,5 +359,13 @@ namespace spx
             size_t count;
 
     };
+
+    /// @brief Streams the string's code units to an ostream of matching char type.
+    template <typename char_t, typename traits_t>
+    inline std::basic_ostream<char_t, traits_t>&
+    operator<<(std::basic_ostream<char_t, traits_t>& os, const dynamic_string<char_t>& str)
+    {
+        return os.write(str.data(), static_cast<std::streamsize>(str.size()));
+    }
 
 }

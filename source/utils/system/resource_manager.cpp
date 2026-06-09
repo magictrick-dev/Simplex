@@ -1,7 +1,7 @@
 #include <utils/defs.hpp>
 #include <utils/system/resource_manager.hpp>
 #include <utils/system/memory_alloc.hpp>
-#include <utils/system/logging_manager.hpp>
+#include <utils/logging.hpp>
 
 #include <cstdio>
 #include <cstring>
@@ -100,7 +100,7 @@ load()
     (void)read;
 
     std::fclose(file);
-    LoggingManager::DispatchInformation("Successfully loaded: {}", this->path.string());
+    spx::logger::dispatch_information_log("Successfully loaded: {}", this->path.string());
 
 }
 
@@ -112,7 +112,7 @@ unload()
     {
         simplex_memory_free(this->data);
         this->data = NULL;
-        LoggingManager::DispatchInformation("Successfully unloaded: {}", this->path.string());
+        spx::logger::dispatch_information_log("Successfully unloaded: {}", this->path.string());
     }
 
 }
@@ -172,7 +172,7 @@ load()
     this->text[this->length] = '\0';
 
     std::fclose(file);
-    LoggingManager::DispatchInformation("Successfully loaded: {}", this->path.string());
+    spx::logger::dispatch_information_log("Successfully loaded: {}", this->path.string());
 
 }
 
@@ -184,7 +184,7 @@ unload()
     {
         simplex_memory_free(this->text);
         this->text = NULL;
-    LoggingManager::DispatchInformation("Successfully unloaded: {}", this->path.string());
+        spx::logger::dispatch_information_log("Successfully unloaded: {}", this->path.string());
     }
 
 }
@@ -234,7 +234,7 @@ load()
     SIMPLEX_ASSERT(decoded_height == this->height);
 
     this->pixels = reinterpret_cast<uint32_t*>(decoded);
-    LoggingManager::DispatchInformation("Successfully loaded: {}", this->path.string());
+    spx::logger::dispatch_information_log("Successfully loaded: {}", this->path.string());
 
 }
 
@@ -247,7 +247,7 @@ unload()
         // stbi_image_free routes through STBI_FREE -> simplex_memory_free.
         stbi_image_free(this->pixels);
         this->pixels = NULL;
-        LoggingManager::DispatchInformation("Successfully unloaded: {}", this->path.string());
+        spx::logger::dispatch_information_log("Successfully unloaded: {}", this->path.string());
     }
 
 }
@@ -365,8 +365,8 @@ thread_pool_runtime(size_t index)
 {
 
     std::string worker_name = "RMW" + std::to_string(index);
-    LoggingManager::ClassifyThreadname(worker_name);
-    LoggingManager::DispatchLog<LoggingLevel::Information, LoggingClassification::Engine>("Resource worker has deployed.");
+    spx::logger::set_thread_name(worker_name);
+    spx::logger::dispatch_information_log("Resource worker has deployed.");
 
     while (true)
     {
@@ -407,7 +407,7 @@ thread_pool_runtime(size_t index)
 
     }
 
-    LoggingManager::DispatchLog<LoggingLevel::Information, LoggingClassification::Engine>("Resource worker has shutdown.");
+    spx::logger::dispatch_information_log("Resource worker has shutdown.");
 
 }
 
@@ -496,7 +496,7 @@ register_binary_file_resource(const std::filesystem::path &path, ResourceHandle 
     BinaryFileResource *impl = simplex_memory_new<BinaryFileResource>(
         canonical, (size_t)file_size);
 
-    LoggingManager::DispatchInformation("Registered binary source: {}", path.string());
+    spx::logger::dispatch_information_log("Registered binary source: {}", path.string());
 
     return publish_resource_locked(this->slots, &this->slot_count,
                                    &this->discarded_identifiers, &this->file_mapping,
@@ -532,7 +532,7 @@ register_text_file_resource(const std::filesystem::path &path, ResourceHandle *h
     TextFileResource *impl = simplex_memory_new<TextFileResource>(
         canonical, (size_t)file_size);
 
-    LoggingManager::DispatchInformation("Registered text source: {}", path.string());
+    spx::logger::dispatch_information_log("Registered text source: {}", path.string());
 
     return publish_resource_locked(this->slots, &this->slot_count,
                                    &this->discarded_identifiers, &this->file_mapping,
@@ -574,7 +574,7 @@ register_image_file_resource(const std::filesystem::path &path, ResourceHandle *
     ImageRGBAResource *impl = simplex_memory_new<ImageRGBAResource>(
         canonical, (int32_t)header_width, (int32_t)header_height);
 
-    LoggingManager::DispatchInformation("Registered image source: {}", path.string());
+    spx::logger::dispatch_information_log("Registered image source: {}", path.string());
 
     return publish_resource_locked(this->slots, &this->slot_count,
                                    &this->discarded_identifiers, &this->file_mapping,
@@ -811,21 +811,21 @@ remove(const ResourceHandle &handle)
             case ResourceType_BinaryFile:
             {
                 auto source = static_cast<BinaryFileResource*>(slot->impl);
-                LoggingManager::DispatchInformation("Unregistered binary file resource: {}", source->get_path().string());
+                spx::logger::dispatch_information_log("Unregistered binary file resource: {}", source->get_path().string());
                 this->file_mapping.erase(source->get_path());
             } break;
 
             case ResourceType_TextFile:
             {
                 auto source = static_cast<TextFileResource*>(slot->impl);
-                LoggingManager::DispatchInformation("Unregistered text file resource: {}", source->get_path().string());
+                spx::logger::dispatch_information_log("Unregistered text file resource: {}", source->get_path().string());
                 this->file_mapping.erase(source->get_path());
             } break;
 
             case ResourceType_ImageFile:
             {
                 auto source = static_cast<ImageRGBAResource*>(slot->impl);
-                LoggingManager::DispatchInformation("Unregistered image file resource: {}", source->get_path().string());
+                spx::logger::dispatch_information_log("Unregistered image file resource: {}", source->get_path().string());
                 this->file_mapping.erase(source->get_path());
             } break;
 

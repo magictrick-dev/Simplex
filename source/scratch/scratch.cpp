@@ -9,7 +9,7 @@
 #include <utils/linear.hpp>
 #include <utils/system/resource_manager.hpp>
 #include <utils/system/memory_alloc.hpp>
-#include <utils/system/logging_manager.hpp>
+#include <utils/logging.hpp>
 
 #include <simplex/array.hpp>
 #include <simplex/static_array.hpp>
@@ -44,37 +44,37 @@ scratch_main()
 {
 
     // Hijack the thread name for the logging manager.
-    LoggingManager::ClassifyThreadname("SCRATCH");
+    spx::logger::set_thread_name("SCRATCH");
 
     init_window("Vulkan Scratch", 1280, 720);
     if (renderer.initialize(window) != EngineResultType_OK)
     {
-        LoggingManager::DispatchError("Failed to properly initialize the vulkan renderer.");
-        LoggingManager::ProcessMessageQueue();
+        spx::logger::dispatch_error_log("Failed to properly initialize the vulkan renderer.");
+        spx::logger::process_message_queue();
         glfwDestroyWindow(window);
         glfwTerminate();
         return 0;
     }
 
-    LoggingManager::DispatchInformation("Initialized Vulkan scratch renderer.");
+    spx::logger::dispatch_information_log("Initialized Vulkan scratch renderer.");
 
     while (!glfwWindowShouldClose(window))
     {
 
         glfwPollEvents();
-        LoggingManager::ProcessMessageQueue();
+        spx::logger::process_message_queue();
 
     }
 
     renderer.deinitialize();
-    LoggingManager::DispatchInformation("Deinitialized Vulkan scratch renderer.");
-    LoggingManager::ProcessMessageQueue();
+    spx::logger::dispatch_information_log("Deinitialized Vulkan scratch renderer.");
+    spx::logger::process_message_queue();
 
     glfwDestroyWindow(window);
     glfwTerminate();
 
-    LoggingManager::DispatchInformation("Scratch Vulkan renderer shutdown successfully.");
-    LoggingManager::ProcessMessageQueue();
+    spx::logger::dispatch_information_log("Scratch Vulkan renderer shutdown successfully.");
+    spx::logger::process_message_queue();
 
     return 0;
 

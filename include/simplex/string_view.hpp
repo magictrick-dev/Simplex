@@ -2,6 +2,7 @@
 #include <utils/defs.hpp>
 #include <utility>
 #include <cstddef>
+#include <ostream>
 
 namespace spx
 {
@@ -160,5 +161,14 @@ namespace spx
             size_t count;
 
     };
+
+    /// @brief Streams the view's code units to an ostream of matching char type.
+    /// The view is not guaranteed to be null-terminated, so size() bounds the write.
+    template <typename char_t, typename traits_t>
+    inline std::basic_ostream<char_t, traits_t>&
+    operator<<(std::basic_ostream<char_t, traits_t>& os, const string_view<char_t>& view)
+    {
+        return os.write(view.data(), static_cast<std::streamsize>(view.size()));
+    }
 
 }

@@ -1,6 +1,7 @@
 #pragma once
 #include <utils/defs.hpp>
 #include <cstddef>
+#include <ostream>
 
 namespace spx
 {
@@ -207,5 +208,13 @@ namespace spx
             size_t count = 0;
 
     };
+
+    /// @brief Streams the string's code units to an ostream of matching char type.
+    template <typename char_t, size_t capacity, typename traits_t>
+    inline std::basic_ostream<char_t, traits_t>&
+    operator<<(std::basic_ostream<char_t, traits_t>& os, const static_string<char_t, capacity>& str)
+    {
+        return os.write(str.data(), static_cast<std::streamsize>(str.size()));
+    }
 
 }
