@@ -44,15 +44,57 @@ namespace spx::vk
                 this->device_13_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
                 this->device_14_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_4_FEATURES;
 
-                // NOTE(Chris): We assume device is Vulkan 1.4 compatible here, but we will need to
-                //              eventually write code that determine compatibility.
-                this->device_10_features.pNext = &this->device_11_features;
-                this->device_11_features.pNext = &this->device_12_features;
-                this->device_12_features.pNext = &this->device_13_features;
-                this->device_13_features.pNext = &this->device_14_features;
-                this->device_14_features.pNext = NULL;
+                // NOTE(Chris): Only chain the version-specific feature structs that the device
+                //              actually supports. Querying a Vulkan1XFeatures struct on a device
+                //              that reports a lower apiVersion is undefined behavior, so we build
+                //              the pNext chain from the back, linking each struct only when its
+                //              version is supported.
+                void *features_chain = NULL;
+                if (this->supports_version(VK_API_VERSION_1_4))
+                {
+                    this->device_14_features.pNext = features_chain;
+                    features_chain = &this->device_14_features;
+                }
 
+                if (this->supports_version(VK_API_VERSION_1_3))
+                {
+                    this->device_13_features.pNext = features_chain;
+                    features_chain = &this->device_13_features;
+                }
+
+                if (this->supports_version(VK_API_VERSION_1_2))
+                {
+                    this->device_12_features.pNext = features_chain;
+                    features_chain = &this->device_12_features;
+                }
+
+                if (this->supports_version(VK_API_VERSION_1_1))
+                {
+                    this->device_11_features.pNext = features_chain;
+                    features_chain = &this->device_11_features;
+                }
+
+                this->device_10_features.pNext = features_chain;
                 vkGetPhysicalDeviceFeatures2(this->device, &this->device_10_features);
+                this->log_device_features_capabilities();
+
+                // Gets the queue families and stores them in a neat structure.
+                uint32_t queue_families_count = 0;
+                vkGetPhysicalDeviceQueueFamilyProperties(this->device, &queue_families_count, NULL);
+
+                spx::dynamic_array<VkQueueFamilyProperties> queue_family_properties(queue_families_count);
+                vkGetPhysicalDeviceQueueFamilyProperties(this->device, &queue_families_count, queue_family_properties.begin());
+
+                for (size_t i = 0; i < queue_family_properties.size(); ++i)
+                {
+                    this->queue_families.emplace_back(i, queue_family_properties[i]);
+                }
+
+            }
+
+            inline void
+            log_device_features_capabilities() const
+            {
 
                 // NOTE(Chris): Print what features are available for each struct here.
                 spx::logger::dispatch_diagnostic_log("Vulkan 1.0 Feature: {} : {}", "robustBufferAccess", this->device_10_features.features.robustBufferAccess);
@@ -112,127 +154,149 @@ namespace spx::vk
                 spx::logger::dispatch_diagnostic_log("Vulkan 1.0 Feature: {} : {}", "inheritedQueries", this->device_10_features.features.inheritedQueries);
                 spx::logger::process_message_queue(); // Quickly dump the available features.
 
-                spx::logger::dispatch_diagnostic_log("Vulkan 1.1 Feature: {} : {}", "storageBuffer16BitAccess", this->device_11_features.storageBuffer16BitAccess);
-                spx::logger::dispatch_diagnostic_log("Vulkan 1.1 Feature: {} : {}", "uniformAndStorageBuffer16BitAccess", this->device_11_features.uniformAndStorageBuffer16BitAccess);
-                spx::logger::dispatch_diagnostic_log("Vulkan 1.1 Feature: {} : {}", "storagePushConstant16", this->device_11_features.storagePushConstant16);
-                spx::logger::dispatch_diagnostic_log("Vulkan 1.1 Feature: {} : {}", "storageInputOutput16", this->device_11_features.storageInputOutput16);
-                spx::logger::dispatch_diagnostic_log("Vulkan 1.1 Feature: {} : {}", "multiview", this->device_11_features.multiview);
-                spx::logger::dispatch_diagnostic_log("Vulkan 1.1 Feature: {} : {}", "multiviewGeometryShader", this->device_11_features.multiviewGeometryShader);
-                spx::logger::dispatch_diagnostic_log("Vulkan 1.1 Feature: {} : {}", "multiviewTessellationShader", this->device_11_features.multiviewTessellationShader);
-                spx::logger::dispatch_diagnostic_log("Vulkan 1.1 Feature: {} : {}", "variablePointersStorageBuffer", this->device_11_features.variablePointersStorageBuffer);
-                spx::logger::dispatch_diagnostic_log("Vulkan 1.1 Feature: {} : {}", "variablePointers", this->device_11_features.variablePointers);
-                spx::logger::dispatch_diagnostic_log("Vulkan 1.1 Feature: {} : {}", "protectedMemory", this->device_11_features.protectedMemory);
-                spx::logger::dispatch_diagnostic_log("Vulkan 1.1 Feature: {} : {}", "samplerYcbcrConversion", this->device_11_features.samplerYcbcrConversion);
-                spx::logger::dispatch_diagnostic_log("Vulkan 1.1 Feature: {} : {}", "shaderDrawParameters", this->device_11_features.shaderDrawParameters);
-                spx::logger::process_message_queue(); // Quickly dump the available features.
-
-                spx::logger::dispatch_diagnostic_log("Vulkan 1.2 Feature: {} : {}", "samplerMirrorClampToEdge", this->device_12_features.samplerMirrorClampToEdge);
-                spx::logger::dispatch_diagnostic_log("Vulkan 1.2 Feature: {} : {}", "drawIndirectCount", this->device_12_features.drawIndirectCount);
-                spx::logger::dispatch_diagnostic_log("Vulkan 1.2 Feature: {} : {}", "storageBuffer8BitAccess", this->device_12_features.storageBuffer8BitAccess);
-                spx::logger::dispatch_diagnostic_log("Vulkan 1.2 Feature: {} : {}", "uniformAndStorageBuffer8BitAccess", this->device_12_features.uniformAndStorageBuffer8BitAccess);
-                spx::logger::dispatch_diagnostic_log("Vulkan 1.2 Feature: {} : {}", "storagePushConstant8", this->device_12_features.storagePushConstant8);
-                spx::logger::dispatch_diagnostic_log("Vulkan 1.2 Feature: {} : {}", "shaderBufferInt64Atomics", this->device_12_features.shaderBufferInt64Atomics);
-                spx::logger::dispatch_diagnostic_log("Vulkan 1.2 Feature: {} : {}", "shaderSharedInt64Atomics", this->device_12_features.shaderSharedInt64Atomics);
-                spx::logger::dispatch_diagnostic_log("Vulkan 1.2 Feature: {} : {}", "shaderFloat16", this->device_12_features.shaderFloat16);
-                spx::logger::dispatch_diagnostic_log("Vulkan 1.2 Feature: {} : {}", "shaderInt8", this->device_12_features.shaderInt8);
-                spx::logger::dispatch_diagnostic_log("Vulkan 1.2 Feature: {} : {}", "descriptorIndexing", this->device_12_features.descriptorIndexing);
-                spx::logger::dispatch_diagnostic_log("Vulkan 1.2 Feature: {} : {}", "shaderInputAttachmentArrayDynamicIndexing", this->device_12_features.shaderInputAttachmentArrayDynamicIndexing);
-                spx::logger::dispatch_diagnostic_log("Vulkan 1.2 Feature: {} : {}", "shaderUniformTexelBufferArrayDynamicIndexing", this->device_12_features.shaderUniformTexelBufferArrayDynamicIndexing);
-                spx::logger::dispatch_diagnostic_log("Vulkan 1.2 Feature: {} : {}", "shaderStorageTexelBufferArrayDynamicIndexing", this->device_12_features.shaderStorageTexelBufferArrayDynamicIndexing);
-                spx::logger::dispatch_diagnostic_log("Vulkan 1.2 Feature: {} : {}", "shaderUniformBufferArrayNonUniformIndexing", this->device_12_features.shaderUniformBufferArrayNonUniformIndexing);
-                spx::logger::dispatch_diagnostic_log("Vulkan 1.2 Feature: {} : {}", "shaderSampledImageArrayNonUniformIndexing", this->device_12_features.shaderSampledImageArrayNonUniformIndexing);
-                spx::logger::dispatch_diagnostic_log("Vulkan 1.2 Feature: {} : {}", "shaderStorageBufferArrayNonUniformIndexing", this->device_12_features.shaderStorageBufferArrayNonUniformIndexing);
-                spx::logger::dispatch_diagnostic_log("Vulkan 1.2 Feature: {} : {}", "shaderStorageImageArrayNonUniformIndexing", this->device_12_features.shaderStorageImageArrayNonUniformIndexing);
-                spx::logger::dispatch_diagnostic_log("Vulkan 1.2 Feature: {} : {}", "shaderInputAttachmentArrayNonUniformIndexing", this->device_12_features.shaderInputAttachmentArrayNonUniformIndexing);
-                spx::logger::dispatch_diagnostic_log("Vulkan 1.2 Feature: {} : {}", "shaderUniformTexelBufferArrayNonUniformIndexing", this->device_12_features.shaderUniformTexelBufferArrayNonUniformIndexing);
-                spx::logger::dispatch_diagnostic_log("Vulkan 1.2 Feature: {} : {}", "shaderStorageTexelBufferArrayNonUniformIndexing", this->device_12_features.shaderStorageTexelBufferArrayNonUniformIndexing);
-                spx::logger::dispatch_diagnostic_log("Vulkan 1.2 Feature: {} : {}", "descriptorBindingUniformBufferUpdateAfterBind", this->device_12_features.descriptorBindingUniformBufferUpdateAfterBind);
-                spx::logger::dispatch_diagnostic_log("Vulkan 1.2 Feature: {} : {}", "descriptorBindingSampledImageUpdateAfterBind", this->device_12_features.descriptorBindingSampledImageUpdateAfterBind);
-                spx::logger::dispatch_diagnostic_log("Vulkan 1.2 Feature: {} : {}", "descriptorBindingStorageImageUpdateAfterBind", this->device_12_features.descriptorBindingStorageImageUpdateAfterBind);
-                spx::logger::dispatch_diagnostic_log("Vulkan 1.2 Feature: {} : {}", "descriptorBindingStorageBufferUpdateAfterBind", this->device_12_features.descriptorBindingStorageBufferUpdateAfterBind);
-                spx::logger::dispatch_diagnostic_log("Vulkan 1.2 Feature: {} : {}", "descriptorBindingUniformTexelBufferUpdateAfterBind", this->device_12_features.descriptorBindingUniformTexelBufferUpdateAfterBind);
-                spx::logger::dispatch_diagnostic_log("Vulkan 1.2 Feature: {} : {}", "descriptorBindingStorageTexelBufferUpdateAfterBind", this->device_12_features.descriptorBindingStorageTexelBufferUpdateAfterBind);
-                spx::logger::dispatch_diagnostic_log("Vulkan 1.2 Feature: {} : {}", "descriptorBindingUpdateUnusedWhilePending", this->device_12_features.descriptorBindingUpdateUnusedWhilePending);
-                spx::logger::dispatch_diagnostic_log("Vulkan 1.2 Feature: {} : {}", "descriptorBindingPartiallyBound", this->device_12_features.descriptorBindingPartiallyBound);
-                spx::logger::dispatch_diagnostic_log("Vulkan 1.2 Feature: {} : {}", "descriptorBindingVariableDescriptorCount", this->device_12_features.descriptorBindingVariableDescriptorCount);
-                spx::logger::dispatch_diagnostic_log("Vulkan 1.2 Feature: {} : {}", "runtimeDescriptorArray", this->device_12_features.runtimeDescriptorArray);
-                spx::logger::dispatch_diagnostic_log("Vulkan 1.2 Feature: {} : {}", "samplerFilterMinmax", this->device_12_features.samplerFilterMinmax);
-                spx::logger::dispatch_diagnostic_log("Vulkan 1.2 Feature: {} : {}", "scalarBlockLayout", this->device_12_features.scalarBlockLayout);
-                spx::logger::dispatch_diagnostic_log("Vulkan 1.2 Feature: {} : {}", "imagelessFramebuffer", this->device_12_features.imagelessFramebuffer);
-                spx::logger::dispatch_diagnostic_log("Vulkan 1.2 Feature: {} : {}", "uniformBufferStandardLayout", this->device_12_features.uniformBufferStandardLayout);
-                spx::logger::dispatch_diagnostic_log("Vulkan 1.2 Feature: {} : {}", "shaderSubgroupExtendedTypes", this->device_12_features.shaderSubgroupExtendedTypes);
-                spx::logger::dispatch_diagnostic_log("Vulkan 1.2 Feature: {} : {}", "separateDepthStencilLayouts", this->device_12_features.separateDepthStencilLayouts);
-                spx::logger::dispatch_diagnostic_log("Vulkan 1.2 Feature: {} : {}", "hostQueryReset", this->device_12_features.hostQueryReset);
-                spx::logger::dispatch_diagnostic_log("Vulkan 1.2 Feature: {} : {}", "timelineSemaphore", this->device_12_features.timelineSemaphore);
-                spx::logger::dispatch_diagnostic_log("Vulkan 1.2 Feature: {} : {}", "bufferDeviceAddress", this->device_12_features.bufferDeviceAddress);
-                spx::logger::dispatch_diagnostic_log("Vulkan 1.2 Feature: {} : {}", "bufferDeviceAddressCaptureReplay", this->device_12_features.bufferDeviceAddressCaptureReplay);
-                spx::logger::dispatch_diagnostic_log("Vulkan 1.2 Feature: {} : {}", "bufferDeviceAddressMultiDevice", this->device_12_features.bufferDeviceAddressMultiDevice);
-                spx::logger::dispatch_diagnostic_log("Vulkan 1.2 Feature: {} : {}", "vulkanMemoryModel", this->device_12_features.vulkanMemoryModel);
-                spx::logger::dispatch_diagnostic_log("Vulkan 1.2 Feature: {} : {}", "vulkanMemoryModelDeviceScope", this->device_12_features.vulkanMemoryModelDeviceScope);
-                spx::logger::dispatch_diagnostic_log("Vulkan 1.2 Feature: {} : {}", "vulkanMemoryModelAvailabilityVisibilityChains", this->device_12_features.vulkanMemoryModelAvailabilityVisibilityChains);
-                spx::logger::dispatch_diagnostic_log("Vulkan 1.2 Feature: {} : {}", "shaderOutputViewportIndex", this->device_12_features.shaderOutputViewportIndex);
-                spx::logger::dispatch_diagnostic_log("Vulkan 1.2 Feature: {} : {}", "shaderOutputLayer", this->device_12_features.shaderOutputLayer);
-                spx::logger::dispatch_diagnostic_log("Vulkan 1.2 Feature: {} : {}", "subgroupBroadcastDynamicId", this->device_12_features.subgroupBroadcastDynamicId);
-                spx::logger::process_message_queue(); // Quickly dump the available features.
-
-                spx::logger::dispatch_diagnostic_log("Vulkan 1.3 Feature: {} : {}", "robustImageAccess", this->device_13_features.robustImageAccess);
-                spx::logger::dispatch_diagnostic_log("Vulkan 1.3 Feature: {} : {}", "inlineUniformBlock", this->device_13_features.inlineUniformBlock);
-                spx::logger::dispatch_diagnostic_log("Vulkan 1.3 Feature: {} : {}", "descriptorBindingInlineUniformBlockUpdateAfterBind", this->device_13_features.descriptorBindingInlineUniformBlockUpdateAfterBind);
-                spx::logger::dispatch_diagnostic_log("Vulkan 1.3 Feature: {} : {}", "pipelineCreationCacheControl", this->device_13_features.pipelineCreationCacheControl);
-                spx::logger::dispatch_diagnostic_log("Vulkan 1.3 Feature: {} : {}", "privateData", this->device_13_features.privateData);
-                spx::logger::dispatch_diagnostic_log("Vulkan 1.3 Feature: {} : {}", "shaderDemoteToHelperInvocation", this->device_13_features.shaderDemoteToHelperInvocation);
-                spx::logger::dispatch_diagnostic_log("Vulkan 1.3 Feature: {} : {}", "shaderTerminateInvocation", this->device_13_features.shaderTerminateInvocation);
-                spx::logger::dispatch_diagnostic_log("Vulkan 1.3 Feature: {} : {}", "subgroupSizeControl", this->device_13_features.subgroupSizeControl);
-                spx::logger::dispatch_diagnostic_log("Vulkan 1.3 Feature: {} : {}", "computeFullSubgroups", this->device_13_features.computeFullSubgroups);
-                spx::logger::dispatch_diagnostic_log("Vulkan 1.3 Feature: {} : {}", "synchronization2", this->device_13_features.synchronization2);
-                spx::logger::dispatch_diagnostic_log("Vulkan 1.3 Feature: {} : {}", "textureCompressionASTC_HDR", this->device_13_features.textureCompressionASTC_HDR);
-                spx::logger::dispatch_diagnostic_log("Vulkan 1.3 Feature: {} : {}", "shaderZeroInitializeWorkgroupMemory", this->device_13_features.shaderZeroInitializeWorkgroupMemory);
-                spx::logger::dispatch_diagnostic_log("Vulkan 1.3 Feature: {} : {}", "dynamicRendering", this->device_13_features.dynamicRendering);
-                spx::logger::dispatch_diagnostic_log("Vulkan 1.3 Feature: {} : {}", "shaderIntegerDotProduct", this->device_13_features.shaderIntegerDotProduct);
-                spx::logger::dispatch_diagnostic_log("Vulkan 1.3 Feature: {} : {}", "maintenance4", this->device_13_features.maintenance4);
-                spx::logger::process_message_queue(); // Quickly dump the available features.
-
-                spx::logger::dispatch_diagnostic_log("Vulkan 1.4 Feature: {} : {}", "globalPriorityQuery", this->device_14_features.globalPriorityQuery);
-                spx::logger::dispatch_diagnostic_log("Vulkan 1.4 Feature: {} : {}", "shaderSubgroupRotate", this->device_14_features.shaderSubgroupRotate);
-                spx::logger::dispatch_diagnostic_log("Vulkan 1.4 Feature: {} : {}", "shaderSubgroupRotateClustered", this->device_14_features.shaderSubgroupRotateClustered);
-                spx::logger::dispatch_diagnostic_log("Vulkan 1.4 Feature: {} : {}", "shaderFloatControls2", this->device_14_features.shaderFloatControls2);
-                spx::logger::dispatch_diagnostic_log("Vulkan 1.4 Feature: {} : {}", "shaderExpectAssume", this->device_14_features.shaderExpectAssume);
-                spx::logger::dispatch_diagnostic_log("Vulkan 1.4 Feature: {} : {}", "rectangularLines", this->device_14_features.rectangularLines);
-                spx::logger::dispatch_diagnostic_log("Vulkan 1.4 Feature: {} : {}", "bresenhamLines", this->device_14_features.bresenhamLines);
-                spx::logger::dispatch_diagnostic_log("Vulkan 1.4 Feature: {} : {}", "smoothLines", this->device_14_features.smoothLines);
-                spx::logger::dispatch_diagnostic_log("Vulkan 1.4 Feature: {} : {}", "stippledRectangularLines", this->device_14_features.stippledRectangularLines);
-                spx::logger::dispatch_diagnostic_log("Vulkan 1.4 Feature: {} : {}", "stippledBresenhamLines", this->device_14_features.stippledBresenhamLines);
-                spx::logger::dispatch_diagnostic_log("Vulkan 1.4 Feature: {} : {}", "stippledSmoothLines", this->device_14_features.stippledSmoothLines);
-                spx::logger::dispatch_diagnostic_log("Vulkan 1.4 Feature: {} : {}", "vertexAttributeInstanceRateDivisor", this->device_14_features.vertexAttributeInstanceRateDivisor);
-                spx::logger::dispatch_diagnostic_log("Vulkan 1.4 Feature: {} : {}", "vertexAttributeInstanceRateZeroDivisor", this->device_14_features.vertexAttributeInstanceRateZeroDivisor);
-                spx::logger::dispatch_diagnostic_log("Vulkan 1.4 Feature: {} : {}", "indexTypeUint8", this->device_14_features.indexTypeUint8);
-                spx::logger::dispatch_diagnostic_log("Vulkan 1.4 Feature: {} : {}", "dynamicRenderingLocalRead", this->device_14_features.dynamicRenderingLocalRead);
-                spx::logger::dispatch_diagnostic_log("Vulkan 1.4 Feature: {} : {}", "maintenance5", this->device_14_features.maintenance5);
-                spx::logger::dispatch_diagnostic_log("Vulkan 1.4 Feature: {} : {}", "maintenance6", this->device_14_features.maintenance6);
-                spx::logger::dispatch_diagnostic_log("Vulkan 1.4 Feature: {} : {}", "pipelineProtectedAccess", this->device_14_features.pipelineProtectedAccess);
-                spx::logger::dispatch_diagnostic_log("Vulkan 1.4 Feature: {} : {}", "pipelineRobustness", this->device_14_features.pipelineRobustness);
-                spx::logger::dispatch_diagnostic_log("Vulkan 1.4 Feature: {} : {}", "hostImageCopy", this->device_14_features.hostImageCopy);
-                spx::logger::dispatch_diagnostic_log("Vulkan 1.4 Feature: {} : {}", "pushDescriptor", this->device_14_features.pushDescriptor);
-                spx::logger::process_message_queue(); // Quickly dump the available features.
-
-                // Gets the queue families and stores them in a neat structure.
-                uint32_t queue_families_count = 0;
-                vkGetPhysicalDeviceQueueFamilyProperties(this->device, &queue_families_count, NULL);
-
-                spx::dynamic_array<VkQueueFamilyProperties> queue_family_properties(queue_families_count);
-                vkGetPhysicalDeviceQueueFamilyProperties(this->device, &queue_families_count, queue_family_properties.begin());
-
-                for (size_t i = 0; i < queue_family_properties.size(); ++i)
+                if (this->supports_version(VK_API_VERSION_1_1))
                 {
-                    this->queue_families.emplace_back(i, queue_family_properties[i]);
+                    spx::logger::dispatch_diagnostic_log("Vulkan 1.1 Feature: {} : {}", "storageBuffer16BitAccess", this->device_11_features.storageBuffer16BitAccess);
+                    spx::logger::dispatch_diagnostic_log("Vulkan 1.1 Feature: {} : {}", "uniformAndStorageBuffer16BitAccess", this->device_11_features.uniformAndStorageBuffer16BitAccess);
+                    spx::logger::dispatch_diagnostic_log("Vulkan 1.1 Feature: {} : {}", "storagePushConstant16", this->device_11_features.storagePushConstant16);
+                    spx::logger::dispatch_diagnostic_log("Vulkan 1.1 Feature: {} : {}", "storageInputOutput16", this->device_11_features.storageInputOutput16);
+                    spx::logger::dispatch_diagnostic_log("Vulkan 1.1 Feature: {} : {}", "multiview", this->device_11_features.multiview);
+                    spx::logger::dispatch_diagnostic_log("Vulkan 1.1 Feature: {} : {}", "multiviewGeometryShader", this->device_11_features.multiviewGeometryShader);
+                    spx::logger::dispatch_diagnostic_log("Vulkan 1.1 Feature: {} : {}", "multiviewTessellationShader", this->device_11_features.multiviewTessellationShader);
+                    spx::logger::dispatch_diagnostic_log("Vulkan 1.1 Feature: {} : {}", "variablePointersStorageBuffer", this->device_11_features.variablePointersStorageBuffer);
+                    spx::logger::dispatch_diagnostic_log("Vulkan 1.1 Feature: {} : {}", "variablePointers", this->device_11_features.variablePointers);
+                    spx::logger::dispatch_diagnostic_log("Vulkan 1.1 Feature: {} : {}", "protectedMemory", this->device_11_features.protectedMemory);
+                    spx::logger::dispatch_diagnostic_log("Vulkan 1.1 Feature: {} : {}", "samplerYcbcrConversion", this->device_11_features.samplerYcbcrConversion);
+                    spx::logger::dispatch_diagnostic_log("Vulkan 1.1 Feature: {} : {}", "shaderDrawParameters", this->device_11_features.shaderDrawParameters);
+                    spx::logger::process_message_queue(); // Quickly dump the available features.
+                }
+
+                if (this->supports_version(VK_API_VERSION_1_2))
+                {
+                    spx::logger::dispatch_diagnostic_log("Vulkan 1.2 Feature: {} : {}", "samplerMirrorClampToEdge", this->device_12_features.samplerMirrorClampToEdge);
+                    spx::logger::dispatch_diagnostic_log("Vulkan 1.2 Feature: {} : {}", "drawIndirectCount", this->device_12_features.drawIndirectCount);
+                    spx::logger::dispatch_diagnostic_log("Vulkan 1.2 Feature: {} : {}", "storageBuffer8BitAccess", this->device_12_features.storageBuffer8BitAccess);
+                    spx::logger::dispatch_diagnostic_log("Vulkan 1.2 Feature: {} : {}", "uniformAndStorageBuffer8BitAccess", this->device_12_features.uniformAndStorageBuffer8BitAccess);
+                    spx::logger::dispatch_diagnostic_log("Vulkan 1.2 Feature: {} : {}", "storagePushConstant8", this->device_12_features.storagePushConstant8);
+                    spx::logger::dispatch_diagnostic_log("Vulkan 1.2 Feature: {} : {}", "shaderBufferInt64Atomics", this->device_12_features.shaderBufferInt64Atomics);
+                    spx::logger::dispatch_diagnostic_log("Vulkan 1.2 Feature: {} : {}", "shaderSharedInt64Atomics", this->device_12_features.shaderSharedInt64Atomics);
+                    spx::logger::dispatch_diagnostic_log("Vulkan 1.2 Feature: {} : {}", "shaderFloat16", this->device_12_features.shaderFloat16);
+                    spx::logger::dispatch_diagnostic_log("Vulkan 1.2 Feature: {} : {}", "shaderInt8", this->device_12_features.shaderInt8);
+                    spx::logger::dispatch_diagnostic_log("Vulkan 1.2 Feature: {} : {}", "descriptorIndexing", this->device_12_features.descriptorIndexing);
+                    spx::logger::dispatch_diagnostic_log("Vulkan 1.2 Feature: {} : {}", "shaderInputAttachmentArrayDynamicIndexing", this->device_12_features.shaderInputAttachmentArrayDynamicIndexing);
+                    spx::logger::dispatch_diagnostic_log("Vulkan 1.2 Feature: {} : {}", "shaderUniformTexelBufferArrayDynamicIndexing", this->device_12_features.shaderUniformTexelBufferArrayDynamicIndexing);
+                    spx::logger::dispatch_diagnostic_log("Vulkan 1.2 Feature: {} : {}", "shaderStorageTexelBufferArrayDynamicIndexing", this->device_12_features.shaderStorageTexelBufferArrayDynamicIndexing);
+                    spx::logger::dispatch_diagnostic_log("Vulkan 1.2 Feature: {} : {}", "shaderUniformBufferArrayNonUniformIndexing", this->device_12_features.shaderUniformBufferArrayNonUniformIndexing);
+                    spx::logger::dispatch_diagnostic_log("Vulkan 1.2 Feature: {} : {}", "shaderSampledImageArrayNonUniformIndexing", this->device_12_features.shaderSampledImageArrayNonUniformIndexing);
+                    spx::logger::dispatch_diagnostic_log("Vulkan 1.2 Feature: {} : {}", "shaderStorageBufferArrayNonUniformIndexing", this->device_12_features.shaderStorageBufferArrayNonUniformIndexing);
+                    spx::logger::dispatch_diagnostic_log("Vulkan 1.2 Feature: {} : {}", "shaderStorageImageArrayNonUniformIndexing", this->device_12_features.shaderStorageImageArrayNonUniformIndexing);
+                    spx::logger::dispatch_diagnostic_log("Vulkan 1.2 Feature: {} : {}", "shaderInputAttachmentArrayNonUniformIndexing", this->device_12_features.shaderInputAttachmentArrayNonUniformIndexing);
+                    spx::logger::dispatch_diagnostic_log("Vulkan 1.2 Feature: {} : {}", "shaderUniformTexelBufferArrayNonUniformIndexing", this->device_12_features.shaderUniformTexelBufferArrayNonUniformIndexing);
+                    spx::logger::dispatch_diagnostic_log("Vulkan 1.2 Feature: {} : {}", "shaderStorageTexelBufferArrayNonUniformIndexing", this->device_12_features.shaderStorageTexelBufferArrayNonUniformIndexing);
+                    spx::logger::dispatch_diagnostic_log("Vulkan 1.2 Feature: {} : {}", "descriptorBindingUniformBufferUpdateAfterBind", this->device_12_features.descriptorBindingUniformBufferUpdateAfterBind);
+                    spx::logger::dispatch_diagnostic_log("Vulkan 1.2 Feature: {} : {}", "descriptorBindingSampledImageUpdateAfterBind", this->device_12_features.descriptorBindingSampledImageUpdateAfterBind);
+                    spx::logger::dispatch_diagnostic_log("Vulkan 1.2 Feature: {} : {}", "descriptorBindingStorageImageUpdateAfterBind", this->device_12_features.descriptorBindingStorageImageUpdateAfterBind);
+                    spx::logger::dispatch_diagnostic_log("Vulkan 1.2 Feature: {} : {}", "descriptorBindingStorageBufferUpdateAfterBind", this->device_12_features.descriptorBindingStorageBufferUpdateAfterBind);
+                    spx::logger::dispatch_diagnostic_log("Vulkan 1.2 Feature: {} : {}", "descriptorBindingUniformTexelBufferUpdateAfterBind", this->device_12_features.descriptorBindingUniformTexelBufferUpdateAfterBind);
+                    spx::logger::dispatch_diagnostic_log("Vulkan 1.2 Feature: {} : {}", "descriptorBindingStorageTexelBufferUpdateAfterBind", this->device_12_features.descriptorBindingStorageTexelBufferUpdateAfterBind);
+                    spx::logger::dispatch_diagnostic_log("Vulkan 1.2 Feature: {} : {}", "descriptorBindingUpdateUnusedWhilePending", this->device_12_features.descriptorBindingUpdateUnusedWhilePending);
+                    spx::logger::dispatch_diagnostic_log("Vulkan 1.2 Feature: {} : {}", "descriptorBindingPartiallyBound", this->device_12_features.descriptorBindingPartiallyBound);
+                    spx::logger::dispatch_diagnostic_log("Vulkan 1.2 Feature: {} : {}", "descriptorBindingVariableDescriptorCount", this->device_12_features.descriptorBindingVariableDescriptorCount);
+                    spx::logger::dispatch_diagnostic_log("Vulkan 1.2 Feature: {} : {}", "runtimeDescriptorArray", this->device_12_features.runtimeDescriptorArray);
+                    spx::logger::dispatch_diagnostic_log("Vulkan 1.2 Feature: {} : {}", "samplerFilterMinmax", this->device_12_features.samplerFilterMinmax);
+                    spx::logger::dispatch_diagnostic_log("Vulkan 1.2 Feature: {} : {}", "scalarBlockLayout", this->device_12_features.scalarBlockLayout);
+                    spx::logger::dispatch_diagnostic_log("Vulkan 1.2 Feature: {} : {}", "imagelessFramebuffer", this->device_12_features.imagelessFramebuffer);
+                    spx::logger::dispatch_diagnostic_log("Vulkan 1.2 Feature: {} : {}", "uniformBufferStandardLayout", this->device_12_features.uniformBufferStandardLayout);
+                    spx::logger::dispatch_diagnostic_log("Vulkan 1.2 Feature: {} : {}", "shaderSubgroupExtendedTypes", this->device_12_features.shaderSubgroupExtendedTypes);
+                    spx::logger::dispatch_diagnostic_log("Vulkan 1.2 Feature: {} : {}", "separateDepthStencilLayouts", this->device_12_features.separateDepthStencilLayouts);
+                    spx::logger::dispatch_diagnostic_log("Vulkan 1.2 Feature: {} : {}", "hostQueryReset", this->device_12_features.hostQueryReset);
+                    spx::logger::dispatch_diagnostic_log("Vulkan 1.2 Feature: {} : {}", "timelineSemaphore", this->device_12_features.timelineSemaphore);
+                    spx::logger::dispatch_diagnostic_log("Vulkan 1.2 Feature: {} : {}", "bufferDeviceAddress", this->device_12_features.bufferDeviceAddress);
+                    spx::logger::dispatch_diagnostic_log("Vulkan 1.2 Feature: {} : {}", "bufferDeviceAddressCaptureReplay", this->device_12_features.bufferDeviceAddressCaptureReplay);
+                    spx::logger::dispatch_diagnostic_log("Vulkan 1.2 Feature: {} : {}", "bufferDeviceAddressMultiDevice", this->device_12_features.bufferDeviceAddressMultiDevice);
+                    spx::logger::dispatch_diagnostic_log("Vulkan 1.2 Feature: {} : {}", "vulkanMemoryModel", this->device_12_features.vulkanMemoryModel);
+                    spx::logger::dispatch_diagnostic_log("Vulkan 1.2 Feature: {} : {}", "vulkanMemoryModelDeviceScope", this->device_12_features.vulkanMemoryModelDeviceScope);
+                    spx::logger::dispatch_diagnostic_log("Vulkan 1.2 Feature: {} : {}", "vulkanMemoryModelAvailabilityVisibilityChains", this->device_12_features.vulkanMemoryModelAvailabilityVisibilityChains);
+                    spx::logger::dispatch_diagnostic_log("Vulkan 1.2 Feature: {} : {}", "shaderOutputViewportIndex", this->device_12_features.shaderOutputViewportIndex);
+                    spx::logger::dispatch_diagnostic_log("Vulkan 1.2 Feature: {} : {}", "shaderOutputLayer", this->device_12_features.shaderOutputLayer);
+                    spx::logger::dispatch_diagnostic_log("Vulkan 1.2 Feature: {} : {}", "subgroupBroadcastDynamicId", this->device_12_features.subgroupBroadcastDynamicId);
+                    spx::logger::process_message_queue(); // Quickly dump the available features.
+                }
+
+                if (this->supports_version(VK_API_VERSION_1_3))
+                {
+                    spx::logger::dispatch_diagnostic_log("Vulkan 1.3 Feature: {} : {}", "robustImageAccess", this->device_13_features.robustImageAccess);
+                    spx::logger::dispatch_diagnostic_log("Vulkan 1.3 Feature: {} : {}", "inlineUniformBlock", this->device_13_features.inlineUniformBlock);
+                    spx::logger::dispatch_diagnostic_log("Vulkan 1.3 Feature: {} : {}", "descriptorBindingInlineUniformBlockUpdateAfterBind", this->device_13_features.descriptorBindingInlineUniformBlockUpdateAfterBind);
+                    spx::logger::dispatch_diagnostic_log("Vulkan 1.3 Feature: {} : {}", "pipelineCreationCacheControl", this->device_13_features.pipelineCreationCacheControl);
+                    spx::logger::dispatch_diagnostic_log("Vulkan 1.3 Feature: {} : {}", "privateData", this->device_13_features.privateData);
+                    spx::logger::dispatch_diagnostic_log("Vulkan 1.3 Feature: {} : {}", "shaderDemoteToHelperInvocation", this->device_13_features.shaderDemoteToHelperInvocation);
+                    spx::logger::dispatch_diagnostic_log("Vulkan 1.3 Feature: {} : {}", "shaderTerminateInvocation", this->device_13_features.shaderTerminateInvocation);
+                    spx::logger::dispatch_diagnostic_log("Vulkan 1.3 Feature: {} : {}", "subgroupSizeControl", this->device_13_features.subgroupSizeControl);
+                    spx::logger::dispatch_diagnostic_log("Vulkan 1.3 Feature: {} : {}", "computeFullSubgroups", this->device_13_features.computeFullSubgroups);
+                    spx::logger::dispatch_diagnostic_log("Vulkan 1.3 Feature: {} : {}", "synchronization2", this->device_13_features.synchronization2);
+                    spx::logger::dispatch_diagnostic_log("Vulkan 1.3 Feature: {} : {}", "textureCompressionASTC_HDR", this->device_13_features.textureCompressionASTC_HDR);
+                    spx::logger::dispatch_diagnostic_log("Vulkan 1.3 Feature: {} : {}", "shaderZeroInitializeWorkgroupMemory", this->device_13_features.shaderZeroInitializeWorkgroupMemory);
+                    spx::logger::dispatch_diagnostic_log("Vulkan 1.3 Feature: {} : {}", "dynamicRendering", this->device_13_features.dynamicRendering);
+                    spx::logger::dispatch_diagnostic_log("Vulkan 1.3 Feature: {} : {}", "shaderIntegerDotProduct", this->device_13_features.shaderIntegerDotProduct);
+                    spx::logger::dispatch_diagnostic_log("Vulkan 1.3 Feature: {} : {}", "maintenance4", this->device_13_features.maintenance4);
+                    spx::logger::process_message_queue(); // Quickly dump the available features.
+                }
+
+                if (this->supports_version(VK_API_VERSION_1_4))
+                {
+                    spx::logger::dispatch_diagnostic_log("Vulkan 1.4 Feature: {} : {}", "globalPriorityQuery", this->device_14_features.globalPriorityQuery);
+                    spx::logger::dispatch_diagnostic_log("Vulkan 1.4 Feature: {} : {}", "shaderSubgroupRotate", this->device_14_features.shaderSubgroupRotate);
+                    spx::logger::dispatch_diagnostic_log("Vulkan 1.4 Feature: {} : {}", "shaderSubgroupRotateClustered", this->device_14_features.shaderSubgroupRotateClustered);
+                    spx::logger::dispatch_diagnostic_log("Vulkan 1.4 Feature: {} : {}", "shaderFloatControls2", this->device_14_features.shaderFloatControls2);
+                    spx::logger::dispatch_diagnostic_log("Vulkan 1.4 Feature: {} : {}", "shaderExpectAssume", this->device_14_features.shaderExpectAssume);
+                    spx::logger::dispatch_diagnostic_log("Vulkan 1.4 Feature: {} : {}", "rectangularLines", this->device_14_features.rectangularLines);
+                    spx::logger::dispatch_diagnostic_log("Vulkan 1.4 Feature: {} : {}", "bresenhamLines", this->device_14_features.bresenhamLines);
+                    spx::logger::dispatch_diagnostic_log("Vulkan 1.4 Feature: {} : {}", "smoothLines", this->device_14_features.smoothLines);
+                    spx::logger::dispatch_diagnostic_log("Vulkan 1.4 Feature: {} : {}", "stippledRectangularLines", this->device_14_features.stippledRectangularLines);
+                    spx::logger::dispatch_diagnostic_log("Vulkan 1.4 Feature: {} : {}", "stippledBresenhamLines", this->device_14_features.stippledBresenhamLines);
+                    spx::logger::dispatch_diagnostic_log("Vulkan 1.4 Feature: {} : {}", "stippledSmoothLines", this->device_14_features.stippledSmoothLines);
+                    spx::logger::dispatch_diagnostic_log("Vulkan 1.4 Feature: {} : {}", "vertexAttributeInstanceRateDivisor", this->device_14_features.vertexAttributeInstanceRateDivisor);
+                    spx::logger::dispatch_diagnostic_log("Vulkan 1.4 Feature: {} : {}", "vertexAttributeInstanceRateZeroDivisor", this->device_14_features.vertexAttributeInstanceRateZeroDivisor);
+                    spx::logger::dispatch_diagnostic_log("Vulkan 1.4 Feature: {} : {}", "indexTypeUint8", this->device_14_features.indexTypeUint8);
+                    spx::logger::dispatch_diagnostic_log("Vulkan 1.4 Feature: {} : {}", "dynamicRenderingLocalRead", this->device_14_features.dynamicRenderingLocalRead);
+                    spx::logger::dispatch_diagnostic_log("Vulkan 1.4 Feature: {} : {}", "maintenance5", this->device_14_features.maintenance5);
+                    spx::logger::dispatch_diagnostic_log("Vulkan 1.4 Feature: {} : {}", "maintenance6", this->device_14_features.maintenance6);
+                    spx::logger::dispatch_diagnostic_log("Vulkan 1.4 Feature: {} : {}", "pipelineProtectedAccess", this->device_14_features.pipelineProtectedAccess);
+                    spx::logger::dispatch_diagnostic_log("Vulkan 1.4 Feature: {} : {}", "pipelineRobustness", this->device_14_features.pipelineRobustness);
+                    spx::logger::dispatch_diagnostic_log("Vulkan 1.4 Feature: {} : {}", "hostImageCopy", this->device_14_features.hostImageCopy);
+                    spx::logger::dispatch_diagnostic_log("Vulkan 1.4 Feature: {} : {}", "pushDescriptor", this->device_14_features.pushDescriptor);
+                    spx::logger::process_message_queue(); // Quickly dump the available features.
                 }
 
             }
 
-            inline spx::string_view<char> 
+            inline spx::string_view<char>
             get_device_name() const
             {
                 return this->device_properties_1.deviceName;
+            }
+
+            inline uint32_t
+            get_api_version() const
+            {
+                return this->device_properties_1.apiVersion;
+            }
+
+            inline bool
+            supports_version(uint32_t version) const
+            {
+
+                // NOTE(Chris): apiVersion packs an optional variant in its high bits; standard
+                //              Vulkan uses variant 0. Strip the variant from both sides so the
+                //              comparison only weighs major/minor/patch. Callers pass the
+                //              VK_API_VERSION_1_x constants directly.
+                uint32_t device_version = VK_API_VERSION_VARIANT(this->device_properties_1.apiVersion) == VK_API_VERSION_VARIANT(version)
+                    ? this->device_properties_1.apiVersion
+                    : 0;
+
+                return device_version >= version;
+
             }
 
             inline spx::string_view<char>
