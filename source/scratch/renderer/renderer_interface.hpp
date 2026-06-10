@@ -1,6 +1,9 @@
 #pragma once
 #include <utils/defs.hpp>
 #include <utils/logging.hpp>
+
+#include <scratch/window.hpp>
+
 #define SIMPLEX_RENDERER_EXCEPTIONS 1
 #if defined(SIMPLEX_RENDERER_EXCEPTIONS) && SIMPLEX_RENDERER_EXCEPTIONS == 1
 #   include <stdexcept>
@@ -8,6 +11,17 @@
 
 namespace spx
 {
+
+    /// @brief  Various return results for various stages of the renderer. Any value
+    ///         that isn't RendererResultType_OK is required to be inspected for further
+    ///         handling. Some non-OK results aren't necessarily errors.
+    enum RendererResultType : uint32_t
+    {
+        RendererResultType_OK,
+        RendererResultType_InitializationFailed,
+        RendererResultType_DeinitializationFailed,
+        RendererResultType_WindowInvalid,
+    };
 
     // NOTE(Chris): Exceptions are provided for debugging purposes and should be turned off
     //              and disabled so that they're not bogging up the performance pipeline.
@@ -34,28 +48,6 @@ namespace spx
 #       define END_CAPTURING_RENDER_EXCEPTIONS()
 #   endif
 
-    /// @brief  Various return results for various stages of the renderer. Any value
-    ///         that isn't RendererResultType_OK is required to be inspected for further
-    ///         handling. Some non-OK results aren't necessarily errors.
-    enum RendererResultType : uint32_t
-    {
-        RendererResultType_OK,
-        RendererResultType_InitializationFailed,
-        RendererResultType_DeinitializationFailed,
-    };
-
-    /// @brief 
-    enum RendererStepType : uint32_t
-    {
-        RendererStepType_Uninitialized,
-        RendererStepType_Initialization,
-        RendererStepType_FrameBegin,
-        RendererStepType_RenderBegin,
-        RendererStepType_RenderEnd,
-        RendererStepType_FrameEnd,
-        RendererStepType_Deinitialization,
-    };
-
     /// @brief      Provides the functionality necessary to interface with a specific renderer.
     ///
     ///             The renderer interface provides a front-end API which allows for layered inspection
@@ -71,12 +63,22 @@ namespace spx
 
         public:
             inline RendererResultType 
-            initialize()
+            initialize(spx::window window)
             {
 
+                this->window = window;
+                if (this->window.handle == NULL)
+                {
+                    return RendererResultType_WindowInvalid;
+                }
+
+                RendererResultType result { };
                 BEGIN_CAPTURING_RENDER_EXCEPTIONS();
-                const RendererResultType result = this->internal_initialize();
+                result = this->internal_initialize();
                 END_CAPTURING_RENDER_EXCEPTIONS();
+
+                spx::logger::dispatch_information_log("Renderer finished initialized.");
+                return result;
 
             }
 
@@ -84,53 +86,77 @@ namespace spx
             deinitialize()
             {
 
+                RendererResultType result { };
                 BEGIN_CAPTURING_RENDER_EXCEPTIONS();
-                const RendererResultType result = this->internal_deinitialize();
+
+                result = this->internal_deinitialize();
+
                 END_CAPTURING_RENDER_EXCEPTIONS();
 
+                spx::logger::dispatch_information_log("Renderer finished deinitialized.");
+                return result;
             }
 
             inline RendererResultType 
             frame_begin()
             {
 
+                RendererResultType result { };
                 BEGIN_CAPTURING_RENDER_EXCEPTIONS();
-                const RendererResultType result = this->internal_frame_begin();
+
+                result = this->internal_frame_begin();
+
                 END_CAPTURING_RENDER_EXCEPTIONS();
 
+                return result;
             }
 
             inline RendererResultType 
             frame_end()
             {
 
+                RendererResultType result { };
                 BEGIN_CAPTURING_RENDER_EXCEPTIONS();
-                const RendererResultType result = this->internal_frame_end();
+
+                result = this->internal_frame_end();
+
                 END_CAPTURING_RENDER_EXCEPTIONS();
 
+                return result;
             }
             
             inline RendererResultType 
             render_begin()
             {
 
+                RendererResultType result { };
                 BEGIN_CAPTURING_RENDER_EXCEPTIONS();
-                const RendererResultType result = this->internal_render_begin();
+
+                result = this->internal_render_begin();
+
                 END_CAPTURING_RENDER_EXCEPTIONS();
 
+                return result;
             }
 
             inline RendererResultType 
             render_end()
             {
                 
+                RendererResultType result { };
                 BEGIN_CAPTURING_RENDER_EXCEPTIONS();
-                const RendererResultType result = this->internal_render_end();
+
+                result = this->internal_render_end();
+
                 END_CAPTURING_RENDER_EXCEPTIONS();
 
+                return result;
             }
 
-        public:
+            inline spx::window get_window() { return this->window; }
+
+        private:
+            spx::window window;
 
         protected:
             inline virtual RendererResultType internal_initialize()     = 0;

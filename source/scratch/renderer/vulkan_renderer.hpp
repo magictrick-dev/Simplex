@@ -123,9 +123,6 @@ namespace spx::vk
             spx::vk::physical_device physical_device;
             spx::vk::logical_device logical_device;
 
-        private:
-            GLFWwindow *window;
-
     };
 
 }

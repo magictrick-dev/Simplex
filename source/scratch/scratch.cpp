@@ -20,11 +20,12 @@
 #include <simplex/static_queue.hpp>
 #include <simplex/hashed_sparse_map.hpp>
 
+#include <scratch/window.hpp>
 #include <scratch/renderer/vulkan_renderer.hpp>
 
 // Window setup.
-static GLFWwindow *window;
 static spx::vk::vulkan_renderer renderer;
+static spx::window window;
 
 static inline void 
 init_window(spx::string_view<char> window_name, const int32_t width, const int32_t height)
@@ -35,7 +36,7 @@ init_window(spx::string_view<char> window_name, const int32_t width, const int32
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
     glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);     // Will address later.
 
-    window = glfwCreateWindow(width, height, window_name.data(), NULL, NULL);
+    window.handle = glfwCreateWindow(width, height, window_name.data(), NULL, NULL);
 
 }
 
@@ -51,14 +52,12 @@ scratch_main()
     {
         spx::logger::dispatch_error_log("Failed to properly initialize the vulkan renderer.");
         spx::logger::process_message_queue();
-        glfwDestroyWindow(window);
+        glfwDestroyWindow(window.handle);
         glfwTerminate();
         return 0;
     }
 
-    spx::logger::dispatch_information_log("Initialized Vulkan scratch renderer.");
-
-    while (!glfwWindowShouldClose(window))
+    while (!glfwWindowShouldClose(window.handle))
     {
 
         glfwPollEvents();
@@ -67,13 +66,10 @@ scratch_main()
     }
 
     renderer.deinitialize();
-    spx::logger::dispatch_information_log("Deinitialized Vulkan scratch renderer.");
-    spx::logger::process_message_queue();
 
-    glfwDestroyWindow(window);
+    glfwDestroyWindow(window.handle);
     glfwTerminate();
 
-    spx::logger::dispatch_information_log("Scratch Vulkan renderer shutdown successfully.");
     spx::logger::process_message_queue();
 
     return 0;
