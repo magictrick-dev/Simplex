@@ -91,7 +91,12 @@ namespace spx::vk
                     );
 
                     // Create the logical device now.
-                    this->logical_device.create(this->instance, this->physical_device);
+                    spx::dynamic_array<const char*> required_device_extensions;
+#                   if defined(__APPLE__)
+                        required_device_extensions.emplace_back("VK_KHR_portability_subset");
+#                   endif
+
+                    this->logical_device.create(this->instance, this->physical_device, required_device_extensions);
 
 
                 }
