@@ -47,6 +47,7 @@ scratch_main()
     // Hijack the thread name for the logging manager.
     spx::logger::set_thread_name("SCRATCH");
 
+
     init_window("Vulkan Scratch", 1280, 720);
     if (renderer.initialize(window) != EngineResultType_OK)
     {
