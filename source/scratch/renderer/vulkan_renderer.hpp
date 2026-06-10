@@ -11,6 +11,10 @@
 #include <scratch/renderer/vulkan/physical_device.hpp>
 #include <scratch/renderer/vulkan/logical_device.hpp>
 
+#include <string>
+#include <iomanip>
+#include <sstream>
+
 enum EngineResultType
 {
     EngineResultType_OK,
@@ -67,11 +71,16 @@ namespace spx::vk
                         required_extensions.emplace_back(glfw_extensions_list[index]);
                     }
 
+                    required_extensions.emplace_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+
 #                   if defined(__APPLE__)
                         required_extensions.emplace_back(VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME);
 #                   endif
 
-                    this->instance.create(required_extensions);
+                    spx::dynamic_array<const char*> required_layers;
+                    required_layers.emplace_back("VK_LAYER_KHRONOS_validation");
+
+                    this->instance.create(required_extensions, required_layers);
 
                     // Select the physical device, we will let the "get_optimal_device" determine which
                     // physical device we should use.
@@ -82,7 +91,12 @@ namespace spx::vk
                     );
 
                     // Create the logical device now.
-                    this->logical_device.create(this->instance, this->physical_device);
+                    spx::dynamic_array<const char*> required_device_extensions;
+#                   if defined(__APPLE__)
+                        required_device_extensions.emplace_back("VK_KHR_portability_subset");
+#                   endif
+
+                    this->logical_device.create(this->instance, this->physical_device, required_device_extensions);
 
 
                 }
@@ -106,15 +120,11 @@ namespace spx::vk
             }
 
         private:
+
+        private:
             spx::vk::instance instance;
             spx::vk::physical_device physical_device;
             spx::vk::logical_device logical_device;
-
-            struct
-            {
-                VkPhysicalDevice physical;
-                VkDevice logical;
-            } main_device;
 
         private:
             GLFWwindow *window;
