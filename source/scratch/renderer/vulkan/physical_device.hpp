@@ -18,10 +18,6 @@ namespace spx::vk
     {
 
         public:
-            // Scoring constants for get_device_score(). Any negative score marks the
-            // device as completely undesirable. The device type tiers are spaced an
-            // order of magnitude apart so the soft bonuses (API version, memory in
-            // MiB) can never promote a device past a more desirable type.
             static constexpr int64_t disqualified_score     = -1;
             static constexpr int64_t discrete_gpu_score     = 1'000'000'000;
             static constexpr int64_t integrated_gpu_score   = 100'000'000;
@@ -194,20 +190,12 @@ namespace spx::vk
             get_device_score() const
             {
 
-                // Hard requirements come first; a device that fails any of them is
-                // completely undesirable and reports a negative score so the front-end
-                // never selects it. The renderer can not function without a graphics
-                // queue, so that is the only hard requirement for now.
                 if (!this->has_queue_family_with(VK_QUEUE_GRAPHICS_BIT))
                 {
                     return physical_device::disqualified_score;
                 }
 
                 int64_t device_score = 0;
-
-                // The device type is the dominant term; the tier constants are spaced
-                // far enough apart that no amount of memory or version bonuses lets a
-                // lower tier outrank a higher one.
                 switch (this->device_properties_1.deviceType)
                 {
                     case VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU:      device_score += physical_device::discrete_gpu_score;    break;
@@ -217,16 +205,12 @@ namespace spx::vk
                     default:                                                                                                break;
                 }
 
-                // Within a tier, prefer newer API support, then break remaining ties
-                // with the device-local memory budget (scored in MiB so it stays well
-                // below the gap between device type tiers).
                 if (this->supports_version(VK_API_VERSION_1_1)) device_score += physical_device::api_version_score;
                 if (this->supports_version(VK_API_VERSION_1_2)) device_score += physical_device::api_version_score;
                 if (this->supports_version(VK_API_VERSION_1_3)) device_score += physical_device::api_version_score;
                 if (this->supports_version(VK_API_VERSION_1_4)) device_score += physical_device::api_version_score;
 
                 device_score += this->get_device_local_memory_size() / (1024 * 1024);
-
                 return device_score;
 
             }
