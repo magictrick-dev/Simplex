@@ -64,6 +64,13 @@ poll_events()
 
 }
 
+bool spx::glfw_window::
+poll_event(spx::window_event *event)
+{
+
+    return false;
+}
+
 void spx::glfw_window::
 hide() 
 {

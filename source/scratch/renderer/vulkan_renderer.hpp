@@ -38,16 +38,21 @@ namespace spx::vk
             internal_initialize() override 
             {
 
-                // Set our required extensions and create the vulkan instance.
-                uint32_t glfw_extension_count = 0;
-                const char **glfw_extensions_list = glfwGetRequiredInstanceExtensions(&glfw_extension_count);
+                // Get the window and the required instance extensions for the window and
+                // append them as our default list of extensions.
+                spx::window_interface *window = this->get_window();
+
+                uint32_t instance_extensions_count = 0;
+                const char **instance_extensions = NULL;
+                window->get_vulkan_instance_extensions(&instance_extensions, &instance_extensions_count);
 
                 spx::dynamic_array<const char*> required_extensions;
-                for (uint32_t index = 0; index < glfw_extension_count; ++index)
+                for (uint32_t index = 0; index < instance_extensions_count; ++index)
                 {
-                    required_extensions.emplace_back(glfw_extensions_list[index]);
+                    required_extensions.emplace_back(instance_extensions[index]);
                 }
 
+                // Add additional instance extensions as needed.
                 required_extensions.emplace_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
 
 #               if defined(__APPLE__)

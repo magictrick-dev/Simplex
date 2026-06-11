@@ -23,6 +23,7 @@ namespace spx
             virtual bool create(spx::string_view<char> window_title, uint32_t width, uint32_t height) override;
             virtual void destroy() override;
             virtual void poll_events() override;
+            virtual bool poll_event(spx::window_event *event) override;
             virtual void hide() override;
             virtual void show() override;
             virtual void maximize() override;
