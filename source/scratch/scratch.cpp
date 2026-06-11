@@ -20,24 +20,13 @@
 #include <simplex/static_queue.hpp>
 #include <simplex/hashed_sparse_map.hpp>
 
+#include <simplex/platform/window.hpp>
+#include <simplex/platform/glfw_window.hpp>
 #include <scratch/renderer/vulkan_renderer.hpp>
 
 // Window setup.
-static GLFWwindow *window;
-static spx::vk::vulkan_renderer renderer;
-
-static inline void 
-init_window(spx::string_view<char> window_name, const int32_t width, const int32_t height)
-{
-
-    glfwInit();
-
-    glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-    glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);     // Will address later.
-
-    window = glfwCreateWindow(width, height, window_name.data(), NULL, NULL);
-
-}
+static spx::vk::vulkan_renderer renderer { };
+static spx::glfw_window glfw_window { };
 
 int 
 scratch_main()
@@ -46,36 +35,37 @@ scratch_main()
     // Hijack the thread name for the logging manager.
     spx::logger::set_thread_name("SCRATCH");
 
-    init_window("Vulkan Scratch", 1280, 720);
-    if (renderer.initialize(window) != EngineResultType_OK)
+    // Initialize the window.
+    if (!glfw_window.create("Simplex Engine", 1280, 720))
     {
-        spx::logger::dispatch_error_log("Failed to properly initialize the vulkan renderer.");
+        spx::logger::dispatch_error_log("Failed to initialize window.");
         spx::logger::process_message_queue();
-        glfwDestroyWindow(window);
-        glfwTerminate();
         return 0;
     }
 
-    spx::logger::dispatch_information_log("Initialized Vulkan scratch renderer.");
+    glfw_window.lock_resizing();
+    glfw_window.show();
 
-    while (!glfwWindowShouldClose(window))
+    if (renderer.initialize(&glfw_window) != RendererResultType_OK)
+    {
+        spx::logger::dispatch_error_log("Failed to properly initialize the vulkan renderer.");
+        spx::logger::process_message_queue();
+        glfw_window.destroy();
+        return 0;
+    }
+
+    while (!glfw_window.should_close())
     {
 
-        glfwPollEvents();
+        glfw_window.poll_events();
         spx::logger::process_message_queue();
 
     }
 
     renderer.deinitialize();
-    spx::logger::dispatch_information_log("Deinitialized Vulkan scratch renderer.");
-    spx::logger::process_message_queue();
+    glfw_window.destroy();
 
-    glfwDestroyWindow(window);
-    glfwTerminate();
-
-    spx::logger::dispatch_information_log("Scratch Vulkan renderer shutdown successfully.");
-    spx::logger::process_message_queue();
-
+    spx::logger::process_message_queue(); // Process the remaining windows.
     return 0;
 
 }
