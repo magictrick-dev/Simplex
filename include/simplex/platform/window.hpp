@@ -14,13 +14,14 @@
 #endif
 
 #include <utils/defs.hpp>
+#include <simplex/platform/input.hpp>
 #include <simplex/string_view.hpp>
 
 /// @brief  Status results for window helper operations that are not guaranteed
 ///         to succeed, such as Vulkan surface creation or native handle retrieval.
 ///         Any value that isn't WindowStatus_OK indicates the out-parameters were
 ///         not populated with usable values.
-enum WindowStatus
+enum WindowStatus : uint32_t
 {
     WindowStatus_OK,
     WindowStatus_InvalidArgument,
@@ -30,8 +31,49 @@ enum WindowStatus
     WindowStatus_NativeHandleUnavailable,
 };
 
+enum WindowEventType : uint32_t
+{
+
+    WindowEventType_WindowResize,
+    WindowEventType_WindowUnfocused,
+    WindowEventType_WindowFocused,
+    WindowEventType_WindowMinimized,
+    WindowEventType_WindowMaximized,
+    WindowEventType_WindowFullscreenBorderless,
+    WindowEventType_WindowNormalized,
+    WindowEventType_WindowClose,
+
+    WindowEventType_InputKeyPressed,
+    WindowEventType_InputKeyReleased,
+    WindowEventType_InputKeyCharacter,
+    WindowEventType_InputMousePressed,
+    WindowEventType_InputMouseReleased,
+
+};
+
 namespace spx
 {
+
+    /// @brief  Window events with trivial data for that event. Some event types are
+    ///         not associated to any additional data and may just represent a state change,
+    ///         such as focus or minimization.
+    struct window_event
+    {
+
+        WindowEventType type;
+
+        union
+        {
+            struct { int32_t width; int32_t height; } window_resize;
+            struct { int32_t width; int32_t height; } window_framebuffer_resize;
+            struct { EngineKeyCode key_code; } key_pressed;
+            struct { EngineKeyCode key_code; } key_released;
+            struct { int32_t char_code; } key_character;
+            struct { EngineMouseCode mouse_code; } mouse_pressed;
+            struct { EngineMouseCode mouse_code; } mouse_released;
+        };
+
+    };
 
     /// @brief  The window interface serves as the primary way to pass around a window
     ///         without knowing the underlying implementation. In the event that platform
@@ -62,6 +104,16 @@ namespace spx
 
             /// @brief Polls all the platform events for the window.
             inline virtual void poll_events() = 0;
+
+            /// @brief Polls an event from the event queue.
+            /// @param event The event structure to fill out.
+            /// @return Returns true if an event was polled succesfully.
+            ///
+            /// Events are stored internally by the implementation and are
+            /// fetched either by "poll_events()" which handle default dispatch
+            /// handling, or manually by the user by manually querying until
+            /// internal events in the queue are processed.
+            inline virtual bool poll_event(spx::window_event *event) = 0; 
 
             /// @brief Hides the window from the user.
             inline virtual void hide() = 0;
