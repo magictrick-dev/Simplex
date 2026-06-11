@@ -2,7 +2,7 @@
 #include <utils/defs.hpp>
 #include <utils/logging.hpp>
 
-#include <scratch/window.hpp>
+#include <simplex/platform/window.hpp>
 
 #define SIMPLEX_RENDERER_EXCEPTIONS 1
 #if defined(SIMPLEX_RENDERER_EXCEPTIONS) && SIMPLEX_RENDERER_EXCEPTIONS == 1

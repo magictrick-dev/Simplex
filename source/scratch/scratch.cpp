@@ -20,7 +20,7 @@
 #include <simplex/static_queue.hpp>
 #include <simplex/hashed_sparse_map.hpp>
 
-#include <scratch/window.hpp>
+#include <simplex/platform/window.hpp>
 #include <scratch/renderer/vulkan_renderer.hpp>
 
 // Window setup.
