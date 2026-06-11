@@ -21,6 +21,7 @@
 #include <simplex/hashed_sparse_map.hpp>
 
 #include <simplex/platform/window.hpp>
+#include <simplex/platform/glfw_window.hpp>
 #include <scratch/renderer/vulkan_renderer.hpp>
 
 // Window setup.
