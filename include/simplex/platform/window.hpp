@@ -1,7 +1,4 @@
 #pragma once
-
-// NOTE(Claude): Vulkan must be included ahead of glfw3.h, otherwise glfw3.h will not
-//               declare its Vulkan entry points (glfwCreateWindowSurface, et al.).
 #include <vulkan/vulkan.h>
 #include <GLFW/glfw3.h>
 
@@ -21,16 +18,6 @@
 
 namespace spx
 {
-
-    class window
-    {
-        public:
-            inline  window() { }
-            inline ~window() { }
-            GLFWwindow *handle = NULL;
-
-            inline operator GLFWwindow*() { return this->handle; }
-    };
 
     /// @brief  Status results for window helper operations that are not guaranteed
     ///         to succeed, such as Vulkan surface creation or native handle retrieval.
@@ -262,6 +249,10 @@ namespace spx
                 glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
 
                 this->window = glfwCreateWindow(static_cast<int>(width), static_cast<int>(height), title, NULL, NULL);
+                if (this->window == NULL)
+                {
+                    spx::logger::dispatch_critical_log("GLFW returned NULL on window creation.");
+                }
                 return this->window != NULL;
 
             }

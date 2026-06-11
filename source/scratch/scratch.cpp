@@ -24,21 +24,8 @@
 #include <scratch/renderer/vulkan_renderer.hpp>
 
 // Window setup.
-static spx::vk::vulkan_renderer renderer;
-static spx::window window;
-
-static inline void 
-init_window(spx::string_view<char> window_name, const int32_t width, const int32_t height)
-{
-
-    glfwInit();
-
-    glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-    glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);     // Will address later.
-
-    window.handle = glfwCreateWindow(width, height, window_name.data(), NULL, NULL);
-
-}
+static spx::vk::vulkan_renderer renderer { };
+static spx::glfw_window glfw_window { };
 
 int 
 scratch_main()
@@ -47,32 +34,37 @@ scratch_main()
     // Hijack the thread name for the logging manager.
     spx::logger::set_thread_name("SCRATCH");
 
-
-    init_window("Vulkan Scratch", 1280, 720);
-    if (renderer.initialize(window) != EngineResultType_OK)
+    // Initialize the window.
+    if (!glfw_window.create("Simplex Engine", 1280, 720))
     {
-        spx::logger::dispatch_error_log("Failed to properly initialize the vulkan renderer.");
+        spx::logger::dispatch_error_log("Failed to initialize window.");
         spx::logger::process_message_queue();
-        glfwDestroyWindow(window.handle);
-        glfwTerminate();
         return 0;
     }
 
-    while (!glfwWindowShouldClose(window.handle))
+    glfw_window.lock_resizing();
+    glfw_window.show();
+
+    if (renderer.initialize(&glfw_window) != RendererResultType_OK)
+    {
+        spx::logger::dispatch_error_log("Failed to properly initialize the vulkan renderer.");
+        spx::logger::process_message_queue();
+        glfw_window.destroy();
+        return 0;
+    }
+
+    while (!glfw_window.should_close())
     {
 
-        glfwPollEvents();
+        glfw_window.poll_events();
         spx::logger::process_message_queue();
 
     }
 
     renderer.deinitialize();
+    glfw_window.destroy();
 
-    glfwDestroyWindow(window.handle);
-    glfwTerminate();
-
-    spx::logger::process_message_queue();
-
+    spx::logger::process_message_queue(); // Process the remaining windows.
     return 0;
 
 }

@@ -9,19 +9,19 @@
 #   include <stdexcept>
 #endif
 
+/// @brief  Various return results for various stages of the renderer. Any value
+///         that isn't RendererResultType_OK is required to be inspected for further
+///         handling. Some non-OK results aren't necessarily errors.
+enum RendererResultType : uint32_t
+{
+    RendererResultType_OK,
+    RendererResultType_InitializationFailed,
+    RendererResultType_DeinitializationFailed,
+    RendererResultType_WindowInvalid,
+};
+
 namespace spx
 {
-
-    /// @brief  Various return results for various stages of the renderer. Any value
-    ///         that isn't RendererResultType_OK is required to be inspected for further
-    ///         handling. Some non-OK results aren't necessarily errors.
-    enum RendererResultType : uint32_t
-    {
-        RendererResultType_OK,
-        RendererResultType_InitializationFailed,
-        RendererResultType_DeinitializationFailed,
-        RendererResultType_WindowInvalid,
-    };
 
     // NOTE(Chris): Exceptions are provided for debugging purposes and should be turned off
     //              and disabled so that they're not bogging up the performance pipeline.
@@ -63,12 +63,15 @@ namespace spx
 
         public:
             inline RendererResultType 
-            initialize(spx::window window)
+            initialize(spx::window_interface* window_interface)
             {
 
-                this->window = window;
-                if (this->window.handle == NULL)
+                this->window = window_interface;
+
+                SIMPLEX_CHECK_PTR(window);
+                if (!this->window->is_valid())
                 {
+                    spx::logger::dispatch_error_log("GLFW Window instance is invalid. Did you initialize it?");
                     return RendererResultType_WindowInvalid;
                 }
 
@@ -153,10 +156,10 @@ namespace spx
                 return result;
             }
 
-            inline spx::window get_window() { return this->window; }
+            inline spx::window_interface* get_window() { return this->window; }
 
         private:
-            spx::window window;
+            spx::window_interface* window;
 
         protected:
             inline virtual RendererResultType internal_initialize()     = 0;
