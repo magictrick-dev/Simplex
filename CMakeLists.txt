@@ -4,6 +4,18 @@ PROJECT(Simplex)
 SET(CMAKE_CXX_STANDARD 23)
 SET(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+# The darwin window is Cocoa-backed Objective-C++; the language must be
+# enabled before any targets (including subdirectories) are processed, and
+# the CXX standard settings don't govern OBJCXX sources. OBJC is enabled
+# alongside it so GLFW's .m sources keep compiling as a C dialect rather
+# than falling back onto OBJCXX.
+IF (APPLE)
+    ENABLE_LANGUAGE(OBJC)
+    ENABLE_LANGUAGE(OBJCXX)
+    SET(CMAKE_OBJCXX_STANDARD 23)
+    SET(CMAKE_OBJCXX_STANDARD_REQUIRED ON)
+ENDIF (APPLE)
+
 #SET(CMAKE_CXX_COMPILER clang++)
 SET(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 SET(GLFW_BUILD_TESTS OFF CACHE BOOL "" FORCE)
@@ -31,6 +43,8 @@ SET(PROJECT_SOURCES
     "source/parsers/rdview/rdview_node_types.cpp"
     "source/parsers/rdview/rdview_parser.cpp"
 
+    "source/simplex/platform/glfw_window.cpp"
+
     "extern/vendor/lz4/lz4.c"
 
     "source/scratch/scratch.cpp"
@@ -54,6 +68,8 @@ IF (WIN32)
         "extern/vendor/imgui/implot_demo.cpp"
         "extern/vendor/imgui/implot_internal.h"
         "extern/vendor/imgui/implot_items.cpp"
+
+        "source/simplex/platform/win32/win32_window.cpp"
 
         ${PROJECT_SOURCES}
     )
@@ -80,9 +96,35 @@ IF (APPLE)
         "extern/vendor/imgui/implot_internal.h"
         "extern/vendor/imgui/implot_items.cpp"
 
+        "source/simplex/platform/darwin/darwin_window.mm"
+
         ${PROJECT_SOURCES}
     )
 ENDIF (APPLE)
+
+IF (LINUX)
+    FIND_PACKAGE(Vulkan REQUIRED)
+    FIND_PACKAGE(OpenGL REQUIRED)
+    ADD_EXECUTABLE(Simplex
+        "extern/vendor/glad/glad.c"
+        "extern/vendor/imgui/backends/imgui_impl_glfw.cpp"
+        "extern/vendor/imgui/backends/imgui_impl_opengl3.cpp"
+        "extern/vendor/imgui/imgui.cpp"
+        "extern/vendor/imgui/imgui_demo.cpp"
+        "extern/vendor/imgui/imgui_draw.cpp"
+        "extern/vendor/imgui/imgui_tables.cpp"
+        "extern/vendor/imgui/imgui_widgets.cpp"
+        "extern/vendor/imgui/implot.cpp"
+        "extern/vendor/imgui/implot.h"
+        "extern/vendor/imgui/implot_demo.cpp"
+        "extern/vendor/imgui/implot_internal.h"
+        "extern/vendor/imgui/implot_items.cpp"
+
+        "source/simplex/platform/unix/x11_window.cpp"
+
+        ${PROJECT_SOURCES}
+    )
+ENDIF (LINUX)
 
 TARGET_COMPILE_FEATURES(Simplex PRIVATE cxx_std_23)
 
@@ -105,5 +147,6 @@ IF (WIN32)
 ENDIF (WIN32)
 
 IF (APPLE)
-    TARGET_LINK_LIBRARIES(Simplex OpenGL::GL glfw ${Vulkan_LIBRARIES})
+    TARGET_LINK_LIBRARIES(Simplex OpenGL::GL glfw ${Vulkan_LIBRARIES}
+        "-framework Cocoa" "-framework QuartzCore")
 ENDIF(APPLE)

@@ -6,8 +6,12 @@
 #include <cstddef>
 #include <cstdio>
 
-typedef float real32_t;
-typedef double real64_t;
+typedef int8_t  bool8_t;
+typedef int16_t bool16_t;
+typedef int32_t bool32_t;
+typedef int64_t bool64_t;
+typedef float   real32_t;
+typedef double  real64_t;
 
 #ifndef SIMPLEX_PEDANTIC_ASSERTIONS
 #   define SIMPLEX_PEDANTIC_ASSERTIONS 1
