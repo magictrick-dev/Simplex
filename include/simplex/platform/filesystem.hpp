@@ -133,6 +133,50 @@ namespace spx::fs
     /// @return OK if the close was successful.
     PlatformFilesystemResult close_file(file_handle_t *handle);
 
+    /// @brief Reads from a file into a buffer.
+    /// @param handle The handle to read from.
+    /// @param buffer The buffer to read into.
+    /// @param read_size The amount of bytes to stream into the file.
+    /// @param amount_read The amount of bytes actually streamed out of the file. May be less than
+    ///                    what was requested if EOF. 
+    /// @return OK if the read succeeded.
+    ///
+    /// File reading can fail for a number of reasons; the user is expected to inspect the
+    /// result to see if the read failed because it was a partial read or not.
+    PlatformFilesystemResult read_file(file_handle_t *handle, void *buffer, size_t read_size, size_t *amount_read);
 
+    /// @brief Writes to a file from a buffer.
+    /// @param handle The handle to write to.
+    /// @param buffer The buffer to write from.
+    /// @param write_size The amount of bytes to write.
+    /// @param amount_written The amount of bytes actually written. Typically should be
+    ///                       one-to-one unless a failure occured.
+    /// @return OK if the write succeeded.
+    PlatformFilesystemResult write_file(file_handle_t *handle, void *buffer, size_t write_size, size_t *amount_written);
+
+    /// @brief Moves the internal file pointer.
+    /// @param handle The handle to adjust the file pointer to.
+    /// @param relative Positive/negative movement value.
+    /// @return OK if the movement was valid and within range.
+    ///
+    /// May fail if the movement went beyond the start or EOF for reading, or beyond the start
+    /// for writing. Moving beyond EOF during writing pads zero bytes when a write occurs.
+    PlatformFilesystemResult move_file_pointer(file_handle_t *handle, int64_t relative);
+
+    /// @brief Sets the file pointer to an absolute position.
+    /// @param handle The handle to adjust the file pointer.
+    /// @param absolute The absolute position to set the file pointer to.
+    /// @return OK if the position is within a valid range for a given read/write operation.
+    PlatformFilesystemResult set_file_pointer(file_handle_t *handle, uint64_t absolute);
+
+    /// @brief Sets the file pointer to the beginning of the file.
+    /// @param handle The handle to adjust the file pointer.
+    /// @return OK if the movement succeeded. (Usually does.)
+    PlatformFilesystemResult set_file_pointer_at_bof(file_handle_t *handle);
+
+    /// @brief Sets the file pointer to the end of the file.
+    /// @param handle The handle to adjust the file pointer.
+    /// @return OK if the movement succeeded. (Usually does.)
+    PlatformFilesystemResult set_file_pointer_at_eof(file_handle_t *handle);
 
 }
