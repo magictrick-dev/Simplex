@@ -1,9 +1,5 @@
 #include <scratch/scratch.hpp>
 
-#define GLFW_INCLUDE_VULKAN
-#include <GLFW/glfw3.h>
-#include <vulkan/vulkan.h>
-
 #include <utils/defs.hpp>
 #include <utils/typeid.hpp>
 #include <utils/linear.hpp>
@@ -28,6 +24,9 @@ static spx::vk::vulkan_renderer renderer { };
 #if defined(_WIN32)
 #   include <simplex/platform/win32/win32_window.hpp>
     static spx::win32_window window { };
+#elif defined(__APPLE__)
+#   include <simplex/platform/darwin/darwin_window.hpp>
+    static spx::darwin_window window { };
 #else
 #   include <simplex/platform/glfw_window.hpp>
     static spx::glfw_window window { };

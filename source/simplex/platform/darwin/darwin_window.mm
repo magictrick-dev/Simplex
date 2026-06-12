@@ -1,4 +1,5 @@
 #include <simplex/platform/darwin/darwin_window.hpp>
+#include <utils/logging.hpp>
 #if defined(__APPLE__)
 #include <vulkan/vulkan_metal.h>
 
@@ -553,6 +554,8 @@ create(spx::string_view<char> window_title, uint32_t width, uint32_t height)
         return false;
     }
 
+    spx::logger::dispatch_information_log("Initializing Darwin window for MacOSX.");
+
     if (darwin_window::initialize_application() == false)
     {
         spx::logger::dispatch_critical_log("Cocoa application initialization failed.");
@@ -627,6 +630,8 @@ create(spx::string_view<char> window_title, uint32_t width, uint32_t height)
 void spx::darwin_window::
 destroy()
 {
+
+    spx::logger::dispatch_information_log("Destroying Darwin window for MacOSX.");
 
     @autoreleasepool
     {
