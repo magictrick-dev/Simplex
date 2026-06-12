@@ -314,6 +314,8 @@ create(spx::string_view<char> window_title, uint32_t width, uint32_t height)
         return false;
     }
 
+    spx::logger::dispatch_diagnostic_log("Creating a Win32 window instance.");
+
     HINSTANCE module_instance = GetModuleHandleW(NULL);
     if (win32_window::register_window_class(module_instance) == false)
     {
@@ -388,6 +390,8 @@ destroy()
     {
         this->window_event_queue.pop();
     }
+
+    spx::logger::dispatch_diagnostic_log("Destroying a Win32 window instance.");
 
 }
 

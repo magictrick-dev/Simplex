@@ -21,12 +21,17 @@
 #include <simplex/hashed_sparse_map.hpp>
 
 #include <simplex/platform/window.hpp>
-#include <simplex/platform/glfw_window.hpp>
 #include <scratch/renderer/vulkan_renderer.hpp>
 
-// Window setup.
 static spx::vk::vulkan_renderer renderer { };
-static spx::glfw_window glfw_window { };
+
+#if defined(_WIN32)
+#   include <simplex/platform/win32/win32_window.hpp>
+    static spx::win32_window window { };
+#else
+#   include <simplex/platform/glfw_window.hpp>
+    static spx::glfw_window window { };
+#endif
 
 int 
 scratch_main()
@@ -36,34 +41,34 @@ scratch_main()
     spx::logger::set_thread_name("SCRATCH");
 
     // Initialize the window.
-    if (!glfw_window.create("Simplex Engine", 1280, 720))
+    if (!window.create("Simplex Engine", 1280, 720))
     {
         spx::logger::dispatch_error_log("Failed to initialize window.");
         spx::logger::process_message_queue();
         return 0;
     }
 
-    glfw_window.lock_resizing();
-    glfw_window.show();
+    window.lock_resizing();
+    window.show();
 
-    if (renderer.initialize(&glfw_window) != RendererResultType_OK)
+    if (renderer.initialize(&window) != RendererResultType_OK)
     {
         spx::logger::dispatch_error_log("Failed to properly initialize the vulkan renderer.");
         spx::logger::process_message_queue();
-        glfw_window.destroy();
+        window.destroy();
         return 0;
     }
 
-    while (!glfw_window.should_close())
+    while (!window.should_close())
     {
 
-        glfw_window.poll_events();
+        window.poll_events();
         spx::logger::process_message_queue();
 
     }
 
     renderer.deinitialize();
-    glfw_window.destroy();
+    window.destroy();
 
     spx::logger::process_message_queue(); // Process the remaining windows.
     return 0;
