@@ -64,8 +64,24 @@ poll_events()
 
 }
 
+bool spx::glfw_window::
+poll_event(spx::window_event *event)
+{
+
+    if (event == NULL)
+    {
+        return false;
+    }
+
+    // GLFW dispatches through callbacks rather than a pollable queue;
+    // translating callbacks into queued window_events is not yet implemented,
+    // so there is never an event to report.
+    return false;
+
+}
+
 void spx::glfw_window::
-hide() 
+hide()
 {
 
     if (this->window == NULL)
