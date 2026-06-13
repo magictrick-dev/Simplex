@@ -70,6 +70,7 @@ IF (WIN32)
         "extern/vendor/imgui/implot_items.cpp"
 
         "source/simplex/platform/win32/win32_window.cpp"
+        "source/simplex/platform/win32/win32_filesystem.cpp"
 
         ${PROJECT_SOURCES}
     )
