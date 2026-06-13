@@ -1,7 +1,5 @@
 #pragma once
 #include <utils/defs.hpp>
-#include <utils/logging.hpp>
-
 #include <simplex/platform/window.hpp>
 
 #define SIMPLEX_RENDERER_EXCEPTIONS 1
@@ -62,104 +60,17 @@ namespace spx
             inline virtual ~renderer_interface() = default;
 
         public:
-            inline RendererResultType 
-            initialize(spx::window_interface* window_interface)
-            {
-
-                this->window = window_interface;
-
-                SIMPLEX_CHECK_PTR(window);
-                if (!this->window->is_valid())
-                {
-                    spx::logger::dispatch_error_log("GLFW Window instance is invalid. Did you initialize it?");
-                    return RendererResultType_WindowInvalid;
-                }
-
-                RendererResultType result { };
-                BEGIN_CAPTURING_RENDER_EXCEPTIONS();
-                result = this->internal_initialize();
-                END_CAPTURING_RENDER_EXCEPTIONS();
-
-                spx::logger::dispatch_information_log("Renderer finished initialized.");
-                return result;
-
-            }
-
-            inline RendererResultType 
-            deinitialize()
-            {
-
-                RendererResultType result { };
-                BEGIN_CAPTURING_RENDER_EXCEPTIONS();
-
-                result = this->internal_deinitialize();
-
-                END_CAPTURING_RENDER_EXCEPTIONS();
-
-                spx::logger::dispatch_information_log("Renderer finished deinitialized.");
-                return result;
-            }
-
-            inline RendererResultType 
-            frame_begin()
-            {
-
-                RendererResultType result { };
-                BEGIN_CAPTURING_RENDER_EXCEPTIONS();
-
-                result = this->internal_frame_begin();
-
-                END_CAPTURING_RENDER_EXCEPTIONS();
-
-                return result;
-            }
-
-            inline RendererResultType 
-            frame_end()
-            {
-
-                RendererResultType result { };
-                BEGIN_CAPTURING_RENDER_EXCEPTIONS();
-
-                result = this->internal_frame_end();
-
-                END_CAPTURING_RENDER_EXCEPTIONS();
-
-                return result;
-            }
-            
-            inline RendererResultType 
-            render_begin()
-            {
-
-                RendererResultType result { };
-                BEGIN_CAPTURING_RENDER_EXCEPTIONS();
-
-                result = this->internal_render_begin();
-
-                END_CAPTURING_RENDER_EXCEPTIONS();
-
-                return result;
-            }
-
-            inline RendererResultType 
-            render_end()
-            {
-                
-                RendererResultType result { };
-                BEGIN_CAPTURING_RENDER_EXCEPTIONS();
-
-                result = this->internal_render_end();
-
-                END_CAPTURING_RENDER_EXCEPTIONS();
-
-                return result;
-            }
+            RendererResultType initialize(spx::window_interface* window_interface);
+            RendererResultType deinitialize();
+            RendererResultType frame_begin();
+            RendererResultType frame_end();
+            RendererResultType render_begin();
+            RendererResultType render_end();
 
             inline spx::window_interface* get_window() { return this->window; }
 
         private:
-            spx::window_interface* window;
+            spx::window_interface* window = NULL;
 
         protected:
             inline virtual RendererResultType internal_initialize()     = 0;

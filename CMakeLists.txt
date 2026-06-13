@@ -70,6 +70,13 @@ IF (WIN32)
         "extern/vendor/imgui/implot_items.cpp"
 
         "source/simplex/platform/win32/win32_window.cpp"
+        "source/simplex/platform/win32/win32_filesystem.cpp"
+
+        "source/simplex/renderer/renderer_interface.cpp"
+        "source/simplex/renderer/vulkan/vulkan_renderer.cpp"
+        "source/simplex/renderer/vulkan/instance.cpp"
+        "source/simplex/renderer/vulkan/physical_device.cpp"
+        "source/simplex/renderer/vulkan/logical_device.cpp"
 
         ${PROJECT_SOURCES}
     )
@@ -97,6 +104,7 @@ IF (APPLE)
         "extern/vendor/imgui/implot_items.cpp"
 
         "source/simplex/platform/darwin/darwin_window.mm"
+        "source/simplex/platform/darwin/darwin_filesystem.cpp"
 
         ${PROJECT_SOURCES}
     )
@@ -121,6 +129,7 @@ IF (LINUX)
         "extern/vendor/imgui/implot_items.cpp"
 
         "source/simplex/platform/unix/x11_window.cpp"
+        "source/simplex/platform/unix/unix_filesystem.cpp"
 
         ${PROJECT_SOURCES}
     )

@@ -1,0 +1,266 @@
+#include <simplex/renderer/vulkan/physical_device.hpp>
+
+
+spx::vk::physical_device::
+physical_device(VkInstance vulkan_instance, VkPhysicalDevice physical_device) 
+    : device(physical_device)
+{
+
+
+    // Gets the physical device properties.
+    vkGetPhysicalDeviceProperties(this->device, &this->device_properties_1);
+    vkGetPhysicalDeviceMemoryProperties(this->device, &this->memory_properties);
+
+    this->driver_properties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DRIVER_PROPERTIES;
+    this->device_properties_2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
+    this->device_properties_2.pNext = &this->driver_properties;
+
+    vkGetPhysicalDeviceProperties2(this->device, &this->device_properties_2);
+
+    // Get the physical device features available.
+    this->device_10_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+    this->device_11_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES;
+    this->device_12_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
+    this->device_13_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
+    this->device_14_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_4_FEATURES;
+
+    // NOTE(Chris): Only chain the version-specific feature structs that the device
+    //              actually supports. Querying a Vulkan1XFeatures struct on a device
+    //              that reports a lower apiVersion is undefined behavior, so we build
+    //              the pNext chain from the back, linking each struct only when its
+    //              version is supported.
+    void *features_chain = NULL;
+    if (this->supports_version(VK_API_VERSION_1_4))
+    {
+        this->device_14_features.pNext = features_chain;
+        features_chain = &this->device_14_features;
+    }
+
+    if (this->supports_version(VK_API_VERSION_1_3))
+    {
+        this->device_13_features.pNext = features_chain;
+        features_chain = &this->device_13_features;
+    }
+
+    if (this->supports_version(VK_API_VERSION_1_2))
+    {
+        this->device_12_features.pNext = features_chain;
+        features_chain = &this->device_12_features;
+    }
+
+    if (this->supports_version(VK_API_VERSION_1_1))
+    {
+        this->device_11_features.pNext = features_chain;
+        features_chain = &this->device_11_features;
+    }
+
+    this->device_10_features.pNext = features_chain;
+    vkGetPhysicalDeviceFeatures2(this->device, &this->device_10_features);
+
+    // Gets the queue families and stores them in a neat structure.
+    uint32_t queue_families_count = 0;
+    vkGetPhysicalDeviceQueueFamilyProperties(this->device, &queue_families_count, NULL);
+
+    spx::dynamic_array<VkQueueFamilyProperties> queue_family_properties(queue_families_count);
+    vkGetPhysicalDeviceQueueFamilyProperties(this->device, &queue_families_count, queue_family_properties.begin());
+
+    for (size_t i = 0; i < queue_family_properties.size(); ++i)
+    {
+        this->queue_families.emplace_back(i, queue_family_properties[i]);
+    }
+
+}
+
+spx::string_view<char> spx::vk::physical_device::
+get_device_name() const
+{
+    return this->device_properties_1.deviceName;
+}
+
+uint32_t spx::vk::physical_device::
+get_api_version() const
+{
+    return this->device_properties_1.apiVersion;
+}
+
+bool spx::vk::physical_device::
+supports_version(uint32_t version) const
+{
+
+    // NOTE(Chris): apiVersion packs an optional variant in its high bits; standard
+    //              Vulkan uses variant 0. Strip the variant from both sides so the
+    //              comparison only weighs major/minor/patch. Callers pass the
+    //              VK_API_VERSION_1_x constants directly.
+    uint32_t device_version = VK_API_VERSION_VARIANT(this->device_properties_1.apiVersion) == VK_API_VERSION_VARIANT(version)
+        ? this->device_properties_1.apiVersion
+        : 0;
+
+    return device_version >= version;
+
+}
+
+spx::string_view<char> spx::vk::physical_device::
+get_driver_name() const
+{
+    return this->driver_properties.driverName;
+}
+
+spx::string_view<char> spx::vk::physical_device::
+get_driver_version() const
+{
+    return this->driver_properties.driverInfo;
+}
+
+spx::dynamic_string<char> spx::vk::physical_device::
+get_qualified_name() const
+{
+    spx::dynamic_string<char> result;
+    result += this->get_device_name();
+    result += " ";
+    result += this->get_driver_name();
+    result += " ";
+    result += this->get_driver_version();
+    return std::move(result);
+}
+
+bool spx::vk::physical_device::
+has_queue_family_with(VkQueueFlags flags) const
+{
+
+    for (const auto &family : this->queue_families)
+    {
+        if (family.has_flags(flags))
+        {
+            return true;
+        }
+    }
+
+    return false;
+
+}
+
+int64_t spx::vk::physical_device::
+get_device_local_memory_size() const
+{
+
+    // Heap 0 is not guaranteed to be the device-local heap, so sum every
+    // heap flagged as device-local to get the real on-device memory budget.
+    int64_t total_size = 0;
+    for (uint32_t i = 0; i < this->memory_properties.memoryHeapCount; ++i)
+    {
+        if (this->memory_properties.memoryHeaps[i].flags & VK_MEMORY_HEAP_DEVICE_LOCAL_BIT)
+        {
+            total_size += this->memory_properties.memoryHeaps[i].size;
+        }
+    }
+
+    return total_size;
+
+}
+
+int64_t spx::vk::physical_device::
+get_device_score() const
+{
+
+    if (!this->has_queue_family_with(VK_QUEUE_GRAPHICS_BIT))
+    {
+        return physical_device::disqualified_score;
+    }
+
+    int64_t device_score = 0;
+    switch (this->device_properties_1.deviceType)
+    {
+        case VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU:      device_score += physical_device::discrete_gpu_score;    break;
+        case VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU:    device_score += physical_device::integrated_gpu_score;  break;
+        case VK_PHYSICAL_DEVICE_TYPE_VIRTUAL_GPU:       device_score += physical_device::virtual_gpu_score;     break;
+        case VK_PHYSICAL_DEVICE_TYPE_CPU:               device_score += physical_device::cpu_device_score;      break;
+        default:                                                                                                break;
+    }
+
+    if (this->supports_version(VK_API_VERSION_1_1)) device_score += physical_device::api_version_score;
+    if (this->supports_version(VK_API_VERSION_1_2)) device_score += physical_device::api_version_score;
+    if (this->supports_version(VK_API_VERSION_1_3)) device_score += physical_device::api_version_score;
+    if (this->supports_version(VK_API_VERSION_1_4)) device_score += physical_device::api_version_score;
+
+    device_score += this->get_device_local_memory_size() / (1024 * 1024);
+    return device_score;
+
+}
+
+
+uint32_t spx::vk::physical_device::
+get_queue_family_index_with(VkQueueFlags flags) const
+{
+
+    for (const auto& family : this->queue_families)
+    {
+        if (family.has_flags(flags))
+        {
+            return family.index;
+        }
+    }
+
+    throw std::runtime_error("Failed to find queue family with required flags.");
+    return 0;
+
+}
+
+
+spx::array_view<spx::vk::physical_device> spx::vk::physical_device::
+get_physical_devices(spx::vk::instance instance)
+{
+
+    static bool initialized = false;
+    static spx::dynamic_array<spx::vk::physical_device> physical_devices;
+    if (initialized == true) return physical_devices;
+    initialized = true;
+
+    uint32_t device_count = 0;
+    vkEnumeratePhysicalDevices(instance, &device_count, NULL);
+
+    spx::dynamic_array<VkPhysicalDevice> devices(device_count);
+    vkEnumeratePhysicalDevices(instance, &device_count, devices.begin());
+    for (auto device : devices)
+    {
+        physical_devices.emplace_back(instance, device);
+    }
+
+    return physical_devices;
+
+}
+
+spx::vk::physical_device spx::vk::physical_device::
+get_optimal_device(spx::vk::instance instance)
+{
+
+    auto physical_devices = spx::vk::physical_device::get_physical_devices(instance);
+
+    spx::vk::physical_device optimal_device;
+    int64_t maximum_score = -1;
+    for (auto &device : physical_devices)
+    {
+
+        const int64_t device_score = device.get_device_score();
+        spx::logger::dispatch_diagnostic_log("Physical device {} scored {}.", device.get_qualified_name().c_str(), device_score);
+
+        // Negative scores are completely undesirable devices and are never
+        // eligible for selection, regardless of what else is available.
+        if (device_score < 0) continue;
+
+        if (device_score > maximum_score)
+        {
+            maximum_score = device_score;
+            optimal_device = device;
+        }
+
+    }
+
+    if (optimal_device.device == NULL)
+    {
+        throw std::runtime_error("Failed to find a suitable physical device.");
+    }
+
+    return optimal_device;
+
+}
+
