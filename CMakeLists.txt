@@ -98,6 +98,7 @@ IF (APPLE)
         "extern/vendor/imgui/implot_items.cpp"
 
         "source/simplex/platform/darwin/darwin_window.mm"
+        "source/simplex/platform/darwin/darwin_filesystem.cpp"
 
         ${PROJECT_SOURCES}
     )
