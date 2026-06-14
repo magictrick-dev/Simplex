@@ -8,6 +8,7 @@
 #include <simplex/dynamic_string.hpp>
 
 #include <simplex/renderer/vulkan/instance.hpp>
+#include <simplex/renderer/vulkan/surface.hpp>
 #include <simplex/renderer/vulkan/queue_family.hpp>
 
 namespace spx::vk
@@ -28,8 +29,9 @@ namespace spx::vk
             inline  physical_device() = default;
             inline ~physical_device() = default;
 
-            physical_device(VkInstance vulkan_instance, VkPhysicalDevice physical_device) ;
-
+            physical_device(VkInstance vulkan_instance, 
+                            VkSurfaceKHR surface, 
+                            VkPhysicalDevice physical_device);
 
             uint32_t get_api_version() const;
 
@@ -40,17 +42,21 @@ namespace spx::vk
             spx::string_view<char> get_driver_version() const;
             spx::dynamic_string<char> get_qualified_name() const;
 
-            bool has_queue_family_with(VkQueueFlags flags) const;
+            bool has_queue_family_with(VkQueueFlags flags, bool require_presentation = false) const;
 
             int64_t get_device_local_memory_size() const;
             int64_t get_device_score() const;
-            uint32_t get_queue_family_index_with(VkQueueFlags flags) const;
+            uint32_t get_queue_family_index_with(VkQueueFlags flags, bool require_presentation = false) const;
 
             inline operator VkPhysicalDevice() { return this->device; };
 
         public:
-            static spx::array_view<spx::vk::physical_device> get_physical_devices(spx::vk::instance instance);
-            static spx::vk::physical_device get_optimal_device(spx::vk::instance instance);
+            static spx::array_view<spx::vk::physical_device> get_physical_devices(
+                spx::vk::instance instance,
+                spx::vk::surface surface);
+            static spx::vk::physical_device get_optimal_device(
+                spx::vk::instance instance,
+                spx::vk::surface surface);
 
         public:
             VkPhysicalDevice device = NULL;

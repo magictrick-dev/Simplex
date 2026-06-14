@@ -7,8 +7,8 @@ create(spx::vk::instance instance,
 {
 
     uint32_t flags_needed = VK_QUEUE_GRAPHICS_BIT; // Just graphics bit for now.
-    uint32_t queue_index = physical_device.get_queue_family_index_with(flags_needed);
-    real32_t priority = 1.0f; // Normalized queue priority, 1.0f is highest.
+    uint32_t queue_index = physical_device.get_queue_family_index_with(flags_needed, true);
+    real32_t priority = 0.5f; // Normalized queue priority, 1.0f is highest.
 
     VkDeviceQueueCreateInfo queue_create_info = {};
     queue_create_info.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;

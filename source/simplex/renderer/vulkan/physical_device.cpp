@@ -2,7 +2,7 @@
 
 
 spx::vk::physical_device::
-physical_device(VkInstance vulkan_instance, VkPhysicalDevice physical_device) 
+physical_device(VkInstance vulkan_instance, VkSurfaceKHR surface, VkPhysicalDevice physical_device) 
     : device(physical_device)
 {
 
@@ -66,7 +66,14 @@ physical_device(VkInstance vulkan_instance, VkPhysicalDevice physical_device)
 
     for (size_t i = 0; i < queue_family_properties.size(); ++i)
     {
-        this->queue_families.emplace_back(i, queue_family_properties[i]);
+
+        spx::vk::queue_family family(i, queue_family_properties[i]);
+
+        VkBool32 supported = false;
+        vkGetPhysicalDeviceSurfaceSupportKHR(this->device, i, surface, &supported);
+        family.supports_presentation = supported;
+
+        this->queue_families.emplace_back(family);
     }
 
 }
@@ -124,12 +131,12 @@ get_qualified_name() const
 }
 
 bool spx::vk::physical_device::
-has_queue_family_with(VkQueueFlags flags) const
+has_queue_family_with(VkQueueFlags flags, bool require_presentation) const
 {
 
     for (const auto &family : this->queue_families)
     {
-        if (family.has_flags(flags))
+        if (family.has_flags(flags, require_presentation))
         {
             return true;
         }
@@ -189,12 +196,12 @@ get_device_score() const
 
 
 uint32_t spx::vk::physical_device::
-get_queue_family_index_with(VkQueueFlags flags) const
+get_queue_family_index_with(VkQueueFlags flags, bool require_presentation) const
 {
 
     for (const auto& family : this->queue_families)
     {
-        if (family.has_flags(flags))
+        if (family.has_flags(flags, require_presentation))
         {
             return family.index;
         }
@@ -207,7 +214,7 @@ get_queue_family_index_with(VkQueueFlags flags) const
 
 
 spx::array_view<spx::vk::physical_device> spx::vk::physical_device::
-get_physical_devices(spx::vk::instance instance)
+get_physical_devices(spx::vk::instance instance, spx::vk::surface surface)
 {
 
     static bool initialized = false;
@@ -222,7 +229,7 @@ get_physical_devices(spx::vk::instance instance)
     vkEnumeratePhysicalDevices(instance, &device_count, devices.begin());
     for (auto device : devices)
     {
-        physical_devices.emplace_back(instance, device);
+        physical_devices.emplace_back(instance, surface, device);
     }
 
     return physical_devices;
@@ -230,10 +237,10 @@ get_physical_devices(spx::vk::instance instance)
 }
 
 spx::vk::physical_device spx::vk::physical_device::
-get_optimal_device(spx::vk::instance instance)
+get_optimal_device(spx::vk::instance instance, spx::vk::surface surface)
 {
 
-    auto physical_devices = spx::vk::physical_device::get_physical_devices(instance);
+    auto physical_devices = spx::vk::physical_device::get_physical_devices(instance, surface);
 
     spx::vk::physical_device optimal_device;
     int64_t maximum_score = -1;

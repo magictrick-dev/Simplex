@@ -18,6 +18,7 @@
 
 #include <simplex/platform/window.hpp>
 #include <simplex/renderer/vulkan/vulkan_renderer.hpp>
+#include <simplex/renderer/vulkan/structures.hpp>
 
 static spx::vk::vulkan_renderer renderer { };
 
@@ -35,6 +36,14 @@ static spx::vk::vulkan_renderer renderer { };
 int 
 scratch_main()
 {
+
+    spx::vk::instance_create_info create_info { };
+    create_info.set_flags(0)
+               .set_next(NULL);
+
+    VkInstance instance;
+    vkCreateInstance(create_info, NULL, &instance);
+
 
     // Hijack the thread name for the logging manager.
     spx::logger::set_thread_name("SCRATCH");

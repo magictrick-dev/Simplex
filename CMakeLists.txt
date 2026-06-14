@@ -77,6 +77,7 @@ IF (WIN32)
         "source/simplex/renderer/vulkan/instance.cpp"
         "source/simplex/renderer/vulkan/physical_device.cpp"
         "source/simplex/renderer/vulkan/logical_device.cpp"
+        "source/simplex/renderer/vulkan/surface.cpp"
 
         ${PROJECT_SOURCES}
     )
