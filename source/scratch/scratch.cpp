@@ -17,10 +17,11 @@
 #include <simplex/hashed_sparse_map.hpp>
 
 #include <simplex/platform/window.hpp>
-#include <simplex/renderer/vulkan/vulkan_renderer.hpp>
+//#include <simplex/renderer/vulkan/vulkan_renderer.hpp>
 #include <simplex/renderer/vulkan/structures.hpp>
+#include <simplex/renderer/vulkan/handles.hpp>
 
-static spx::vk::vulkan_renderer renderer { };
+//static spx::vk::vulkan_renderer renderer { };
 
 #if defined(_WIN32)
 #   include <simplex/platform/win32/win32_window.hpp>
@@ -38,12 +39,16 @@ scratch_main()
 {
 
     spx::vk::instance_create_info create_info { };
-    create_info.set_flags(0)
-               .set_next(NULL);
+    spx::logger::dispatch_debug_log("Sizeof spx instance create info: {}", sizeof(create_info));
+    spx::logger::dispatch_debug_log("Sizeof vk  instance create info: {}", sizeof(VkInstanceCreateInfo));
 
-    VkInstance instance;
-    vkCreateInstance(create_info, NULL, &instance);
+    auto list = spx::vk::instance::get_available_instance_layers();
+    for (auto l : list)
+    {
+        spx::logger::dispatch_debug_log("Instance layer available is: {}", l.c_str());
+    }
 
+#if 0
 
     // Hijack the thread name for the logging manager.
     spx::logger::set_thread_name("SCRATCH");
@@ -77,6 +82,7 @@ scratch_main()
 
     renderer.deinitialize();
     window.destroy();
+#endif
 
     spx::logger::process_message_queue(); // Process the remaining windows.
     return 0;
