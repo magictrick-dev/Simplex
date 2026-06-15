@@ -18,6 +18,9 @@
 
 #include <simplex/platform/window.hpp>
 #include <simplex/renderer/vulkan/vulkan_renderer.hpp>
+#include <simplex/renderer/vulkan/structures.hpp>
+#include <simplex/renderer/vulkan/handles.hpp>
+#include <simplex/renderer/vulkan/functions.hpp>
 
 static spx::vk::vulkan_renderer renderer { };
 
@@ -35,6 +38,25 @@ static spx::vk::vulkan_renderer renderer { };
 int 
 scratch_main()
 {
+
+    spx::vk::instance_create_info create_info { };
+    spx::vk::instance instance { };
+
+    spx::vk::create_instance(create_info, nullptr, instance);
+
+    spx::logger::dispatch_information_log("Extensions {}", create_info.enabledExtensionCount);
+    
+    spx::logger::dispatch_debug_log("Sizeof spx instance create info: {}", sizeof(create_info));
+    spx::logger::dispatch_debug_log("Sizeof vk  instance create info: {}", sizeof(VkInstanceCreateInfo));
+
+    auto list = spx::vk::instance::get_available_instance_layers();
+    for (auto l : list)
+    {
+        spx::logger::dispatch_debug_log("Instance layer available is: {}", l.c_str());
+    }
+
+#   define SIMPLEX_SCRATCH_RUN_LOOP 1
+#   if defined(SIMPLEX_SCRATCH_RUN_LOOP) && SIMPLEX_SCRATCH_RUN_LOOP == 1
 
     // Hijack the thread name for the logging manager.
     spx::logger::set_thread_name("SCRATCH");
@@ -68,6 +90,8 @@ scratch_main()
 
     renderer.deinitialize();
     window.destroy();
+
+#   endif
 
     spx::logger::process_message_queue(); // Process the remaining windows.
     return 0;

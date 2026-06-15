@@ -45,6 +45,9 @@ SET(PROJECT_SOURCES
 
     "source/simplex/platform/glfw_window.cpp"
 
+    "source/simplex/renderer/renderer_interface.cpp"
+    "source/simplex/renderer/vulkan/vulkan_renderer.cpp"
+
     "extern/vendor/lz4/lz4.c"
 
     "source/scratch/scratch.cpp"
@@ -71,12 +74,6 @@ IF (WIN32)
 
         "source/simplex/platform/win32/win32_window.cpp"
         "source/simplex/platform/win32/win32_filesystem.cpp"
-
-        "source/simplex/renderer/renderer_interface.cpp"
-        "source/simplex/renderer/vulkan/vulkan_renderer.cpp"
-        "source/simplex/renderer/vulkan/instance.cpp"
-        "source/simplex/renderer/vulkan/physical_device.cpp"
-        "source/simplex/renderer/vulkan/logical_device.cpp"
 
         ${PROJECT_SOURCES}
     )
