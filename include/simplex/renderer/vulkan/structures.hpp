@@ -122,6 +122,41 @@ namespace spx::vk
 
     };
 
+    /// @brief VkDebugUtilsMessengerCreateInfoEXT mixin (debug_utils_messenger_create_info_t).
+    ///
+    /// The pfnUserCallback is left for the caller to supply (set_user_callback); the actual callback
+    /// implementation lives outside this layer so it can be wired into the logging system.
+    template <typename derived_t>
+    struct vk_struct_ext<derived_t, VkDebugUtilsMessengerCreateInfoEXT>
+    {
+
+        VkStructureType                         sType            { VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT };
+        const void*                             pNext            { nullptr };
+        VkDebugUtilsMessengerCreateFlagsEXT     flags            {         };
+        VkDebugUtilsMessageSeverityFlagsEXT     messageSeverity  {         };
+        VkDebugUtilsMessageTypeFlagsEXT         messageType      {         };
+        PFN_vkDebugUtilsMessengerCallbackEXT    pfnUserCallback  { nullptr };
+        void*                                   pUserData        { nullptr };
+
+        inline const void*                          get_next() const            { return this->pNext;            }
+        inline VkDebugUtilsMessengerCreateFlagsEXT  get_flags() const           { return this->flags;            }
+        inline VkDebugUtilsMessageSeverityFlagsEXT  get_message_severity() const{ return this->messageSeverity;  }
+        inline VkDebugUtilsMessageTypeFlagsEXT      get_message_type() const    { return this->messageType;      }
+        inline PFN_vkDebugUtilsMessengerCallbackEXT get_user_callback() const   { return this->pfnUserCallback;  }
+        inline void*                                get_user_data() const       { return this->pUserData;        }
+
+        inline derived_t& set_next(const void* next)                                    { this->pNext = next; return *s();                  }
+        inline derived_t& set_flags(VkDebugUtilsMessengerCreateFlagsEXT flags)          { this->flags = flags; return *s();                 }
+        inline derived_t& set_message_severity(VkDebugUtilsMessageSeverityFlagsEXT severity) { this->messageSeverity = severity; return *s();    }
+        inline derived_t& set_message_type(VkDebugUtilsMessageTypeFlagsEXT type)        { this->messageType = type; return *s();            }
+        inline derived_t& set_user_callback(PFN_vkDebugUtilsMessengerCallbackEXT cb)    { this->pfnUserCallback = cb; return *s();          }
+        inline derived_t& set_user_data(void* data)                                     { this->pUserData = data; return *s();              }
+
+        private:
+            inline derived_t* s() { return reinterpret_cast<derived_t*>(this); }
+
+    };
+
     /// @brief VkPhysicalDeviceFeatures mixin (physical_device_features).
     ///
     /// The non-sType base feature set. These are toggled/read by name, so the bool members are left
@@ -777,6 +812,7 @@ namespace spx::vk
 
     using application_info_t                    = vk_struct_base<VkApplicationInfo>;
     using instance_create_info_t                = vk_struct_base<VkInstanceCreateInfo>;
+    using debug_utils_messenger_create_info_t   = vk_struct_base<VkDebugUtilsMessengerCreateInfoEXT>;
 
     using physical_device_features_t            = vk_struct_base<VkPhysicalDeviceFeatures>;
     using physical_device_10_features_t         = vk_struct_base<VkPhysicalDeviceFeatures2>;
@@ -828,6 +864,17 @@ namespace spx::vk
     static_assert(offsetof(instance_create_info_t, ppEnabledLayerNames) == offsetof(VkInstanceCreateInfo, ppEnabledLayerNames));
     static_assert(offsetof(instance_create_info_t, enabledExtensionCount) == offsetof(VkInstanceCreateInfo, enabledExtensionCount));
     static_assert(offsetof(instance_create_info_t, ppEnabledExtensionNames) == offsetof(VkInstanceCreateInfo, ppEnabledExtensionNames));
+
+    // VkDebugUtilsMessengerCreateInfoEXT checks.
+    static_assert(std::is_standard_layout_v<debug_utils_messenger_create_info_t>, "debug_utils_messenger_create_info_t must be standard-layout for native interop.");
+    static_assert(sizeof(debug_utils_messenger_create_info_t) == sizeof(VkDebugUtilsMessengerCreateInfoEXT), "debug_utils_messenger_create_info_t layout diverged from VkDebugUtilsMessengerCreateInfoEXT.");
+    static_assert(offsetof(debug_utils_messenger_create_info_t, sType) == offsetof(VkDebugUtilsMessengerCreateInfoEXT, sType));
+    static_assert(offsetof(debug_utils_messenger_create_info_t, pNext) == offsetof(VkDebugUtilsMessengerCreateInfoEXT, pNext));
+    static_assert(offsetof(debug_utils_messenger_create_info_t, flags) == offsetof(VkDebugUtilsMessengerCreateInfoEXT, flags));
+    static_assert(offsetof(debug_utils_messenger_create_info_t, messageSeverity) == offsetof(VkDebugUtilsMessengerCreateInfoEXT, messageSeverity));
+    static_assert(offsetof(debug_utils_messenger_create_info_t, messageType) == offsetof(VkDebugUtilsMessengerCreateInfoEXT, messageType));
+    static_assert(offsetof(debug_utils_messenger_create_info_t, pfnUserCallback) == offsetof(VkDebugUtilsMessengerCreateInfoEXT, pfnUserCallback));
+    static_assert(offsetof(debug_utils_messenger_create_info_t, pUserData) == offsetof(VkDebugUtilsMessengerCreateInfoEXT, pUserData));
 
     // Physical device feature/property checks. The version-specific structs are large, so beyond
     // sType/pNext these probe the first and last data members: any reorder, retype, or SDK bump

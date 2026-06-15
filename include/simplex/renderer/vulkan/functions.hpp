@@ -83,4 +83,50 @@ namespace spx::vk
         vkGetPhysicalDeviceFeatures2(device.native, &native_features);
     }
 
+    /// @brief Wraps vkCreateDebugUtilsMessengerEXT.
+    ///
+    /// This is an instance extension entry point and is not statically exported by the loader, so it
+    /// is resolved through vkGetInstanceProcAddr at call time. If the VK_EXT_debug_utils extension is
+    /// not enabled/present the lookup fails and VK_ERROR_EXTENSION_NOT_PRESENT is returned.
+    /// @param inst          The instance the messenger is created against.
+    /// @param create_info   The messenger create info (severity/type/callback).
+    /// @param allocator     Optional allocation callbacks (may be nullptr).
+    /// @param out_messenger The handle to populate on success.
+    /// @return VK_ERROR_EXTENSION_NOT_PRESENT if the entry point is unavailable, otherwise the
+    ///         native VkResult from vkCreateDebugUtilsMessengerEXT.
+    inline VkResult
+    create_debug_utils_messenger(instance_t& inst,
+                                 const debug_utils_messenger_create_info_t& create_info,
+                                 const VkAllocationCallbacks* allocator,
+                                 debug_utils_messenger_t& out_messenger)
+    {
+        auto fn = (PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(
+            inst.native, "vkCreateDebugUtilsMessengerEXT");
+        if (fn == nullptr) return VK_ERROR_EXTENSION_NOT_PRESENT;
+
+        const VkDebugUtilsMessengerCreateInfoEXT& native_create_info = create_info;
+        return fn(inst.native, &native_create_info, allocator, &out_messenger.native);
+    }
+
+    /// @brief Wraps vkDestroyDebugUtilsMessengerEXT.
+    ///
+    /// Resolved through vkGetInstanceProcAddr like its create counterpart. Safe to call on a null
+    /// messenger; the handle is nulled afterward either way.
+    /// @param inst      The instance the messenger was created against.
+    /// @param messenger The messenger to destroy.
+    /// @param allocator Optional allocation callbacks (must match create_debug_utils_messenger).
+    inline void
+    destroy_debug_utils_messenger(instance_t& inst,
+                                  debug_utils_messenger_t& messenger,
+                                  const VkAllocationCallbacks* allocator = nullptr)
+    {
+        if (messenger.native != nullptr)
+        {
+            auto fn = (PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(
+                inst.native, "vkDestroyDebugUtilsMessengerEXT");
+            if (fn != nullptr) fn(inst.native, messenger.native, allocator);
+        }
+        messenger.native = nullptr;
+    }
+
 }

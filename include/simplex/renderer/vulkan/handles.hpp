@@ -42,8 +42,9 @@ namespace spx::vk
     // Using statements.
     // ---------------------------------------------------------------------------------------------
 
-    using instance_t        = vk_handle<VkInstance>;
-    using physical_device_t = vk_handle<VkPhysicalDevice>;
+    using instance_t                = vk_handle<VkInstance>;
+    using physical_device_t         = vk_handle<VkPhysicalDevice>;
+    using debug_utils_messenger_t   = vk_handle<VkDebugUtilsMessengerEXT>;
 
     // ---------------------------------------------------------------------------------------------
     // Handle mixins.
