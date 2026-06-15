@@ -6,10 +6,10 @@ RendererResultType spx::vk::vulkan_renderer::
 internal_initialize()
 {
 
-    this->create_instance();
-    this->create_surface();
-    this->select_physical_device();
-    this->create_logical_device();
+    if (this->create_instance() == false)           return RendererResultType_VulkanInstanceCreationFailed;
+    if (this->create_surface() == false)            return RendererResultType_VulkanSurfaceCreationFailed;
+    if (this->select_physical_device() == false)    return RendererResultType_VulkanPhysicalDeviceSelectionFailed;
+    if (this->create_logical_device() == false)     return RendererResultType_VulkanLogicalDeviceCreationFailed;
 
     return RendererResultType_OK;
 
@@ -26,7 +26,7 @@ internal_deinitialize()
 
 }
 
-void spx::vk::vulkan_renderer::
+bool32_t spx::vk::vulkan_renderer::
 create_instance()
 {
 
@@ -55,17 +55,27 @@ create_instance()
 
     // Add additional layers as we need them.
     spx::dynamic_array<const char*> required_layers;
+
     if constexpr (enable_validation)
+    {
         required_layers.emplace_back("VK_LAYER_KHRONOS_validation");
+    }
 
     // Verify our extensions.
     if (!spx::vk::instance_t::validate_instance_extensions(required_extensions))
+    {
         THROW_SIMPLEX_RENDERER_EXCEPTION("Failed to validate instance extensions.");
+        return false;
+    }
+
     spx::logger::dispatch_diagnostic_log("Validated instance extensions successfully.");
 
     // Verify our layers.
     if (!spx::vk::instance_t::validate_instance_layers(required_layers))
+    {
         THROW_SIMPLEX_RENDERER_EXCEPTION("Failed to validate instance layers.");
+        return false;
+    }
     spx::logger::dispatch_diagnostic_log("Validated instance layers successfully.");
 
     // Set application info.
@@ -120,6 +130,8 @@ create_instance()
         spx::logger::dispatch_diagnostic_log("Created the vulkan debug messenger successfully.");
     }
 
+    return true;
+
 }
 
 VKAPI_ATTR VkBool32 VKAPI_CALL spx::vk::vulkan_renderer::
@@ -143,13 +155,14 @@ debug_callback(
 
 }
 
-void spx::vk::vulkan_renderer::
+bool32_t spx::vk::vulkan_renderer::
 select_physical_device()
 {
 
+    return true;
 }
 
-void spx::vk::vulkan_renderer::
+bool32_t spx::vk::vulkan_renderer::
 create_logical_device()
 {
 
@@ -162,9 +175,11 @@ create_logical_device()
 
     // TODO(Chris): Actually create the logical device.
 
+    return true;
+
 }
 
-void spx::vk::vulkan_renderer::
+bool32_t spx::vk::vulkan_renderer::
 create_surface()
 {
 
@@ -173,6 +188,7 @@ create_surface()
 
     // TODO(Chris): Actually create the surface.
 
+    return true;
 }
 
 RendererResultType spx::vk::vulkan_renderer::

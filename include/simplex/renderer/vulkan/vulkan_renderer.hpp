@@ -17,10 +17,10 @@ namespace spx::vk
             inline ~vulkan_renderer() = default;
 
         protected:
-            void create_instance();
-            void select_physical_device();
-            void create_logical_device();
-            void create_surface();
+            bool32_t create_instance();
+            bool32_t select_physical_device();
+            bool32_t create_logical_device();
+            bool32_t create_surface();
 
             /// @brief Debug messenger callback. Implemented separately so it can be wired into the
             ///        logging system; matches PFN_vkDebugUtilsMessengerCallbackEXT.
