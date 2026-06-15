@@ -1,3 +1,5 @@
+#include <utils/about.hpp>
+
 #include <simplex/renderer/vulkan/vulkan_renderer.hpp>
 #include <simplex/platform/window.hpp>
 #include <simplex/dynamic_array.hpp>
@@ -81,9 +83,11 @@ create_instance()
     // Set application info.
     spx::vk::application_info_t application_info { };
     application_info.apiVersion         = VK_MAKE_VERSION(1, 3, 0);
-    application_info.engineVersion      = VK_MAKE_VERSION(1, 0, 0);
-    application_info.pApplicationName   = "Simplex";
-    application_info.pEngineName        = "SimplexVK";
+    application_info.engineVersion      = VK_MAKE_VERSION(SIMPLEX_ABOUT_VERSION_MAJOR,
+                                                          SIMPLEX_ABOUT_VERSION_MINOR,
+                                                          SIMPLEX_ABOUT_VERSION_PATCH);
+    application_info.pApplicationName   = SIMPLEX_ABOUT_PROJECT_NAME;
+    application_info.pEngineName        = SIMPLEX_ABOUT_ENGINE_NAME;
 
     // Instance creation.
     spx::vk::instance_create_info_t instance_create_info { };
