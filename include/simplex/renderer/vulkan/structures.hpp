@@ -133,6 +133,406 @@ namespace spx::vk
 
     };
 
+    /// @brief VkPhysicalDeviceFeatures mixin (physical_device_features).
+    ///
+    /// The non-sType base feature set. These are toggled/read by name, so the bool members are left
+    /// public for direct access (e.g. feats.samplerAnisotropy = VK_TRUE) rather than carrying a
+    /// fluent setter per field. Reused as the nested member of physical_device_10_features below.
+    template <typename derived_t>
+    struct vk_struct_ext<derived_t, VkPhysicalDeviceFeatures>
+    {
+
+        VkBool32    robustBufferAccess                          {         };
+        VkBool32    fullDrawIndexUint32                         {         };
+        VkBool32    imageCubeArray                              {         };
+        VkBool32    independentBlend                            {         };
+        VkBool32    geometryShader                              {         };
+        VkBool32    tessellationShader                          {         };
+        VkBool32    sampleRateShading                           {         };
+        VkBool32    dualSrcBlend                                {         };
+        VkBool32    logicOp                                     {         };
+        VkBool32    multiDrawIndirect                           {         };
+        VkBool32    drawIndirectFirstInstance                   {         };
+        VkBool32    depthClamp                                  {         };
+        VkBool32    depthBiasClamp                              {         };
+        VkBool32    fillModeNonSolid                            {         };
+        VkBool32    depthBounds                                 {         };
+        VkBool32    wideLines                                   {         };
+        VkBool32    largePoints                                 {         };
+        VkBool32    alphaToOne                                  {         };
+        VkBool32    multiViewport                               {         };
+        VkBool32    samplerAnisotropy                           {         };
+        VkBool32    textureCompressionETC2                      {         };
+        VkBool32    textureCompressionASTC_LDR                  {         };
+        VkBool32    textureCompressionBC                        {         };
+        VkBool32    occlusionQueryPrecise                       {         };
+        VkBool32    pipelineStatisticsQuery                     {         };
+        VkBool32    vertexPipelineStoresAndAtomics              {         };
+        VkBool32    fragmentStoresAndAtomics                    {         };
+        VkBool32    shaderTessellationAndGeometryPointSize      {         };
+        VkBool32    shaderImageGatherExtended                   {         };
+        VkBool32    shaderStorageImageExtendedFormats           {         };
+        VkBool32    shaderStorageImageMultisample               {         };
+        VkBool32    shaderStorageImageReadWithoutFormat         {         };
+        VkBool32    shaderStorageImageWriteWithoutFormat        {         };
+        VkBool32    shaderUniformBufferArrayDynamicIndexing     {         };
+        VkBool32    shaderSampledImageArrayDynamicIndexing      {         };
+        VkBool32    shaderStorageBufferArrayDynamicIndexing     {         };
+        VkBool32    shaderStorageImageArrayDynamicIndexing      {         };
+        VkBool32    shaderClipDistance                          {         };
+        VkBool32    shaderCullDistance                          {         };
+        VkBool32    shaderFloat64                               {         };
+        VkBool32    shaderInt64                                 {         };
+        VkBool32    shaderInt16                                 {         };
+        VkBool32    shaderResourceResidency                     {         };
+        VkBool32    shaderResourceMinLod                        {         };
+        VkBool32    sparseBinding                               {         };
+        VkBool32    sparseResidencyBuffer                       {         };
+        VkBool32    sparseResidencyImage2D                      {         };
+        VkBool32    sparseResidencyImage3D                      {         };
+        VkBool32    sparseResidency2Samples                     {         };
+        VkBool32    sparseResidency4Samples                     {         };
+        VkBool32    sparseResidency8Samples                     {         };
+        VkBool32    sparseResidency16Samples                    {         };
+        VkBool32    sparseResidencyAliased                      {         };
+        VkBool32    variableMultisampleRate                     {         };
+        VkBool32    inheritedQueries                            {         };
+
+    };
+
+    /// @brief VkPhysicalDeviceFeatures2 mixin (physical_device_10_features).
+    template <typename derived_t>
+    struct vk_struct_ext<derived_t, VkPhysicalDeviceFeatures2>
+    {
+
+        VkStructureType                           sType     { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2 };
+        void*                                     pNext     { nullptr                                      };
+        vk_struct_base<VkPhysicalDeviceFeatures>  features  {                                              };
+
+        inline void*                                            get_next() const     { return this->pNext;       }
+        inline const vk_struct_base<VkPhysicalDeviceFeatures>&  get_features() const { return this->features;    }
+        inline vk_struct_base<VkPhysicalDeviceFeatures>&        get_features()       { return this->features;    }
+
+        inline derived_t& set_next(void* next) { this->pNext = next; return *s(); }
+
+        private:
+            inline derived_t* s() { return reinterpret_cast<derived_t*>(this); }
+
+    };
+
+    /// @brief VkPhysicalDeviceVulkan11Features mixin (physical_device_11_features).
+    template <typename derived_t>
+    struct vk_struct_ext<derived_t, VkPhysicalDeviceVulkan11Features>
+    {
+
+        VkStructureType     sType                               { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES };
+        void*               pNext                               { nullptr };
+        VkBool32            storageBuffer16BitAccess            {         };
+        VkBool32            uniformAndStorageBuffer16BitAccess  {         };
+        VkBool32            storagePushConstant16               {         };
+        VkBool32            storageInputOutput16                {         };
+        VkBool32            multiview                           {         };
+        VkBool32            multiviewGeometryShader             {         };
+        VkBool32            multiviewTessellationShader         {         };
+        VkBool32            variablePointersStorageBuffer       {         };
+        VkBool32            variablePointers                    {         };
+        VkBool32            protectedMemory                     {         };
+        VkBool32            samplerYcbcrConversion              {         };
+        VkBool32            shaderDrawParameters                {         };
+
+        inline void*      get_next() const     { return this->pNext;               }
+        inline derived_t& set_next(void* next)  { this->pNext = next; return *s();  }
+
+        private:
+            inline derived_t* s() { return reinterpret_cast<derived_t*>(this); }
+
+    };
+
+    /// @brief VkPhysicalDeviceVulkan12Features mixin (physical_device_12_features).
+    template <typename derived_t>
+    struct vk_struct_ext<derived_t, VkPhysicalDeviceVulkan12Features>
+    {
+
+        VkStructureType     sType                                           { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES };
+        void*               pNext                                           { nullptr };
+        VkBool32            samplerMirrorClampToEdge                        {         };
+        VkBool32            drawIndirectCount                               {         };
+        VkBool32            storageBuffer8BitAccess                         {         };
+        VkBool32            uniformAndStorageBuffer8BitAccess               {         };
+        VkBool32            storagePushConstant8                            {         };
+        VkBool32            shaderBufferInt64Atomics                        {         };
+        VkBool32            shaderSharedInt64Atomics                        {         };
+        VkBool32            shaderFloat16                                   {         };
+        VkBool32            shaderInt8                                      {         };
+        VkBool32            descriptorIndexing                              {         };
+        VkBool32            shaderInputAttachmentArrayDynamicIndexing       {         };
+        VkBool32            shaderUniformTexelBufferArrayDynamicIndexing    {         };
+        VkBool32            shaderStorageTexelBufferArrayDynamicIndexing    {         };
+        VkBool32            shaderUniformBufferArrayNonUniformIndexing      {         };
+        VkBool32            shaderSampledImageArrayNonUniformIndexing       {         };
+        VkBool32            shaderStorageBufferArrayNonUniformIndexing      {         };
+        VkBool32            shaderStorageImageArrayNonUniformIndexing       {         };
+        VkBool32            shaderInputAttachmentArrayNonUniformIndexing    {         };
+        VkBool32            shaderUniformTexelBufferArrayNonUniformIndexing {         };
+        VkBool32            shaderStorageTexelBufferArrayNonUniformIndexing {         };
+        VkBool32            descriptorBindingUniformBufferUpdateAfterBind   {         };
+        VkBool32            descriptorBindingSampledImageUpdateAfterBind    {         };
+        VkBool32            descriptorBindingStorageImageUpdateAfterBind    {         };
+        VkBool32            descriptorBindingStorageBufferUpdateAfterBind   {         };
+        VkBool32            descriptorBindingUniformTexelBufferUpdateAfterBind  {     };
+        VkBool32            descriptorBindingStorageTexelBufferUpdateAfterBind  {     };
+        VkBool32            descriptorBindingUpdateUnusedWhilePending       {         };
+        VkBool32            descriptorBindingPartiallyBound                 {         };
+        VkBool32            descriptorBindingVariableDescriptorCount        {         };
+        VkBool32            runtimeDescriptorArray                          {         };
+        VkBool32            samplerFilterMinmax                             {         };
+        VkBool32            scalarBlockLayout                               {         };
+        VkBool32            imagelessFramebuffer                            {         };
+        VkBool32            uniformBufferStandardLayout                     {         };
+        VkBool32            shaderSubgroupExtendedTypes                     {         };
+        VkBool32            separateDepthStencilLayouts                     {         };
+        VkBool32            hostQueryReset                                  {         };
+        VkBool32            timelineSemaphore                               {         };
+        VkBool32            bufferDeviceAddress                             {         };
+        VkBool32            bufferDeviceAddressCaptureReplay                {         };
+        VkBool32            bufferDeviceAddressMultiDevice                  {         };
+        VkBool32            vulkanMemoryModel                               {         };
+        VkBool32            vulkanMemoryModelDeviceScope                    {         };
+        VkBool32            vulkanMemoryModelAvailabilityVisibilityChains   {         };
+        VkBool32            shaderOutputViewportIndex                       {         };
+        VkBool32            shaderOutputLayer                               {         };
+        VkBool32            subgroupBroadcastDynamicId                      {         };
+
+        inline void*      get_next() const     { return this->pNext;               }
+        inline derived_t& set_next(void* next)  { this->pNext = next; return *s();  }
+
+        private:
+            inline derived_t* s() { return reinterpret_cast<derived_t*>(this); }
+
+    };
+
+    /// @brief VkPhysicalDeviceVulkan13Features mixin (physical_device_13_features).
+    template <typename derived_t>
+    struct vk_struct_ext<derived_t, VkPhysicalDeviceVulkan13Features>
+    {
+
+        VkStructureType     sType                                               { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES };
+        void*               pNext                                               { nullptr };
+        VkBool32            robustImageAccess                                   {         };
+        VkBool32            inlineUniformBlock                                  {         };
+        VkBool32            descriptorBindingInlineUniformBlockUpdateAfterBind  {         };
+        VkBool32            pipelineCreationCacheControl                        {         };
+        VkBool32            privateData                                         {         };
+        VkBool32            shaderDemoteToHelperInvocation                      {         };
+        VkBool32            shaderTerminateInvocation                           {         };
+        VkBool32            subgroupSizeControl                                 {         };
+        VkBool32            computeFullSubgroups                                {         };
+        VkBool32            synchronization2                                    {         };
+        VkBool32            textureCompressionASTC_HDR                          {         };
+        VkBool32            shaderZeroInitializeWorkgroupMemory                 {         };
+        VkBool32            dynamicRendering                                    {         };
+        VkBool32            shaderIntegerDotProduct                             {         };
+        VkBool32            maintenance4                                        {         };
+
+        inline void*      get_next() const     { return this->pNext;               }
+        inline derived_t& set_next(void* next)  { this->pNext = next; return *s();  }
+
+        private:
+            inline derived_t* s() { return reinterpret_cast<derived_t*>(this); }
+
+    };
+
+    /// @brief VkPhysicalDeviceVulkan14Features mixin (physical_device_14_features).
+    template <typename derived_t>
+    struct vk_struct_ext<derived_t, VkPhysicalDeviceVulkan14Features>
+    {
+
+        VkStructureType     sType                                   { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_4_FEATURES };
+        void*               pNext                                   { nullptr };
+        VkBool32            globalPriorityQuery                     {         };
+        VkBool32            shaderSubgroupRotate                    {         };
+        VkBool32            shaderSubgroupRotateClustered           {         };
+        VkBool32            shaderFloatControls2                    {         };
+        VkBool32            shaderExpectAssume                      {         };
+        VkBool32            rectangularLines                        {         };
+        VkBool32            bresenhamLines                          {         };
+        VkBool32            smoothLines                             {         };
+        VkBool32            stippledRectangularLines                {         };
+        VkBool32            stippledBresenhamLines                  {         };
+        VkBool32            stippledSmoothLines                     {         };
+        VkBool32            vertexAttributeInstanceRateDivisor      {         };
+        VkBool32            vertexAttributeInstanceRateZeroDivisor  {         };
+        VkBool32            indexTypeUint8                          {         };
+        VkBool32            dynamicRenderingLocalRead               {         };
+        VkBool32            maintenance5                            {         };
+        VkBool32            maintenance6                            {         };
+        VkBool32            pipelineProtectedAccess                 {         };
+        VkBool32            pipelineRobustness                      {         };
+        VkBool32            hostImageCopy                           {         };
+        VkBool32            pushDescriptor                          {         };
+
+        inline void*      get_next() const     { return this->pNext;               }
+        inline derived_t& set_next(void* next)  { this->pNext = next; return *s();  }
+
+        private:
+            inline derived_t* s() { return reinterpret_cast<derived_t*>(this); }
+
+    };
+
+    /// @brief VkPhysicalDeviceLimits mixin (physical_device_limits).
+    ///
+    /// A large flat block of device limits read by name, so the members are left public for direct
+    /// access rather than carrying a getter per field. Reused as the nested `limits` member of
+    /// physical_device_properties below.
+    template <typename derived_t>
+    struct vk_struct_ext<derived_t, VkPhysicalDeviceLimits>
+    {
+
+        uint32_t              maxImageDimension1D                               {         };
+        uint32_t              maxImageDimension2D                               {         };
+        uint32_t              maxImageDimension3D                               {         };
+        uint32_t              maxImageDimensionCube                             {         };
+        uint32_t              maxImageArrayLayers                               {         };
+        uint32_t              maxTexelBufferElements                            {         };
+        uint32_t              maxUniformBufferRange                             {         };
+        uint32_t              maxStorageBufferRange                             {         };
+        uint32_t              maxPushConstantsSize                              {         };
+        uint32_t              maxMemoryAllocationCount                          {         };
+        uint32_t              maxSamplerAllocationCount                         {         };
+        VkDeviceSize          bufferImageGranularity                            {         };
+        VkDeviceSize          sparseAddressSpaceSize                            {         };
+        uint32_t              maxBoundDescriptorSets                            {         };
+        uint32_t              maxPerStageDescriptorSamplers                     {         };
+        uint32_t              maxPerStageDescriptorUniformBuffers               {         };
+        uint32_t              maxPerStageDescriptorStorageBuffers               {         };
+        uint32_t              maxPerStageDescriptorSampledImages                {         };
+        uint32_t              maxPerStageDescriptorStorageImages                {         };
+        uint32_t              maxPerStageDescriptorInputAttachments             {         };
+        uint32_t              maxPerStageResources                              {         };
+        uint32_t              maxDescriptorSetSamplers                          {         };
+        uint32_t              maxDescriptorSetUniformBuffers                    {         };
+        uint32_t              maxDescriptorSetUniformBuffersDynamic             {         };
+        uint32_t              maxDescriptorSetStorageBuffers                    {         };
+        uint32_t              maxDescriptorSetStorageBuffersDynamic             {         };
+        uint32_t              maxDescriptorSetSampledImages                     {         };
+        uint32_t              maxDescriptorSetStorageImages                     {         };
+        uint32_t              maxDescriptorSetInputAttachments                  {         };
+        uint32_t              maxVertexInputAttributes                          {         };
+        uint32_t              maxVertexInputBindings                            {         };
+        uint32_t              maxVertexInputAttributeOffset                     {         };
+        uint32_t              maxVertexInputBindingStride                       {         };
+        uint32_t              maxVertexOutputComponents                         {         };
+        uint32_t              maxTessellationGenerationLevel                    {         };
+        uint32_t              maxTessellationPatchSize                          {         };
+        uint32_t              maxTessellationControlPerVertexInputComponents    {         };
+        uint32_t              maxTessellationControlPerVertexOutputComponents   {         };
+        uint32_t              maxTessellationControlPerPatchOutputComponents    {         };
+        uint32_t              maxTessellationControlTotalOutputComponents       {         };
+        uint32_t              maxTessellationEvaluationInputComponents          {         };
+        uint32_t              maxTessellationEvaluationOutputComponents         {         };
+        uint32_t              maxGeometryShaderInvocations                      {         };
+        uint32_t              maxGeometryInputComponents                        {         };
+        uint32_t              maxGeometryOutputComponents                       {         };
+        uint32_t              maxGeometryOutputVertices                         {         };
+        uint32_t              maxGeometryTotalOutputComponents                  {         };
+        uint32_t              maxFragmentInputComponents                        {         };
+        uint32_t              maxFragmentOutputAttachments                      {         };
+        uint32_t              maxFragmentDualSrcAttachments                     {         };
+        uint32_t              maxFragmentCombinedOutputResources                {         };
+        uint32_t              maxComputeSharedMemorySize                        {         };
+        uint32_t              maxComputeWorkGroupCount[3]                       {         };
+        uint32_t              maxComputeWorkGroupInvocations                    {         };
+        uint32_t              maxComputeWorkGroupSize[3]                        {         };
+        uint32_t              subPixelPrecisionBits                             {         };
+        uint32_t              subTexelPrecisionBits                             {         };
+        uint32_t              mipmapPrecisionBits                               {         };
+        uint32_t              maxDrawIndexedIndexValue                          {         };
+        uint32_t              maxDrawIndirectCount                              {         };
+        float                 maxSamplerLodBias                                 {         };
+        float                 maxSamplerAnisotropy                              {         };
+        uint32_t              maxViewports                                      {         };
+        uint32_t              maxViewportDimensions[2]                          {         };
+        float                 viewportBoundsRange[2]                            {         };
+        uint32_t              viewportSubPixelBits                              {         };
+        size_t                minMemoryMapAlignment                             {         };
+        VkDeviceSize          minTexelBufferOffsetAlignment                     {         };
+        VkDeviceSize          minUniformBufferOffsetAlignment                   {         };
+        VkDeviceSize          minStorageBufferOffsetAlignment                   {         };
+        int32_t               minTexelOffset                                    {         };
+        uint32_t              maxTexelOffset                                    {         };
+        int32_t               minTexelGatherOffset                              {         };
+        uint32_t              maxTexelGatherOffset                              {         };
+        float                 minInterpolationOffset                            {         };
+        float                 maxInterpolationOffset                            {         };
+        uint32_t              subPixelInterpolationOffsetBits                   {         };
+        uint32_t              maxFramebufferWidth                               {         };
+        uint32_t              maxFramebufferHeight                              {         };
+        uint32_t              maxFramebufferLayers                              {         };
+        VkSampleCountFlags    framebufferColorSampleCounts                      {         };
+        VkSampleCountFlags    framebufferDepthSampleCounts                      {         };
+        VkSampleCountFlags    framebufferStencilSampleCounts                    {         };
+        VkSampleCountFlags    framebufferNoAttachmentsSampleCounts              {         };
+        uint32_t              maxColorAttachments                               {         };
+        VkSampleCountFlags    sampledImageColorSampleCounts                     {         };
+        VkSampleCountFlags    sampledImageIntegerSampleCounts                   {         };
+        VkSampleCountFlags    sampledImageDepthSampleCounts                     {         };
+        VkSampleCountFlags    sampledImageStencilSampleCounts                   {         };
+        VkSampleCountFlags    storageImageSampleCounts                          {         };
+        uint32_t              maxSampleMaskWords                                {         };
+        VkBool32              timestampComputeAndGraphics                       {         };
+        float                 timestampPeriod                                   {         };
+        uint32_t              maxClipDistances                                  {         };
+        uint32_t              maxCullDistances                                  {         };
+        uint32_t              maxCombinedClipAndCullDistances                   {         };
+        uint32_t              discreteQueuePriorities                           {         };
+        float                 pointSizeRange[2]                                 {         };
+        float                 lineWidthRange[2]                                 {         };
+        float                 pointSizeGranularity                              {         };
+        float                 lineWidthGranularity                              {         };
+        VkBool32              strictLines                                       {         };
+        VkBool32              standardSampleLocations                           {         };
+        VkDeviceSize          optimalBufferCopyOffsetAlignment                  {         };
+        VkDeviceSize          optimalBufferCopyRowPitchAlignment                {         };
+        VkDeviceSize          nonCoherentAtomSize                               {         };
+
+    };
+
+    /// @brief VkPhysicalDeviceSparseProperties mixin (physical_device_sparse_properties).
+    template <typename derived_t>
+    struct vk_struct_ext<derived_t, VkPhysicalDeviceSparseProperties>
+    {
+
+        VkBool32    residencyStandard2DBlockShape               {         };
+        VkBool32    residencyStandard2DMultisampleBlockShape    {         };
+        VkBool32    residencyStandard3DBlockShape               {         };
+        VkBool32    residencyAlignedMipSize                     {         };
+        VkBool32    residencyNonResidentStrict                  {         };
+
+        inline VkBool32 get_residency_standard_2d_block_shape() const               { return this->residencyStandard2DBlockShape;               }
+        inline VkBool32 get_residency_standard_2d_multisample_block_shape() const   { return this->residencyStandard2DMultisampleBlockShape;    }
+        inline VkBool32 get_residency_standard_3d_block_shape() const               { return this->residencyStandard3DBlockShape;               }
+        inline VkBool32 get_residency_aligned_mip_size() const                      { return this->residencyAlignedMipSize;                     }
+        inline VkBool32 get_residency_non_resident_strict() const                   { return this->residencyNonResidentStrict;                  }
+
+    };
+
+    /// @brief VkConformanceVersion mixin (conformance_version).
+    template <typename derived_t>
+    struct vk_struct_ext<derived_t, VkConformanceVersion>
+    {
+
+        uint8_t major       {         };
+        uint8_t minor       {         };
+        uint8_t subminor    {         };
+        uint8_t patch       {         };
+
+        inline uint8_t get_major() const    { return this->major;       }
+        inline uint8_t get_minor() const    { return this->minor;       }
+        inline uint8_t get_subminor() const { return this->subminor;    }
+        inline uint8_t get_patch() const    { return this->patch;       }
+
+    };
+
     /// @brief VkPhysicalDeviceProperties mixin (physical_device_properties).
     template <typename derived_t>
     struct vk_struct_ext<derived_t, VkPhysicalDeviceProperties>
@@ -143,19 +543,19 @@ namespace spx::vk
         uint32_t                            vendorID                                        {         };
         uint32_t                            deviceID                                        {         };
         VkPhysicalDeviceType                deviceType                                      {         };
-        char                                deviceName[VK_MAX_PHYSICAL_DEVICE_NAME_SIZE]    {         };
-        uint8_t                             pipelineCacheUUID[VK_UUID_SIZE]                 {         };
-        VkPhysicalDeviceLimits              limits                                          {         };
-        VkPhysicalDeviceSparseProperties    sparseProperties                                {         };
+        char                                            deviceName[VK_MAX_PHYSICAL_DEVICE_NAME_SIZE]    {         };
+        uint8_t                                         pipelineCacheUUID[VK_UUID_SIZE]                 {         };
+        vk_struct_base<VkPhysicalDeviceLimits>          limits                                          {         };
+        vk_struct_base<VkPhysicalDeviceSparseProperties> sparseProperties                               {         };
 
-        inline uint32_t                                 get_api_version() const         { return this->apiVersion;          }
-        inline uint32_t                                 get_driver_version() const      { return this->driverVersion;       }
-        inline uint32_t                                 get_vendor_id() const           { return this->vendorID;            }
-        inline uint32_t                                 get_device_id() const           { return this->deviceID;            }
-        inline VkPhysicalDeviceType                     get_device_type() const         { return this->deviceType;          }
-        inline const char*                              get_device_name() const         { return this->deviceName;          }
-        inline const VkPhysicalDeviceLimits&            get_limits() const              { return this->limits;              }
-        inline const VkPhysicalDeviceSparseProperties&  get_sparse_properties() const   { return this->sparseProperties;    }
+        inline uint32_t                                                 get_api_version() const         { return this->apiVersion;          }
+        inline uint32_t                                                 get_driver_version() const      { return this->driverVersion;       }
+        inline uint32_t                                                 get_vendor_id() const           { return this->vendorID;            }
+        inline uint32_t                                                 get_device_id() const           { return this->deviceID;            }
+        inline VkPhysicalDeviceType                                     get_device_type() const         { return this->deviceType;          }
+        inline const char*                                              get_device_name() const         { return this->deviceName;          }
+        inline const vk_struct_base<VkPhysicalDeviceLimits>&            get_limits() const              { return this->limits;              }
+        inline const vk_struct_base<VkPhysicalDeviceSparseProperties>&  get_sparse_properties() const   { return this->sparseProperties;    }
 
     };
 
@@ -219,7 +619,7 @@ namespace spx::vk
         VkDriverId                          driverID                                                {         };
         char                                driverName[VK_MAX_DRIVER_NAME_SIZE]                     {         };
         char                                driverInfo[VK_MAX_DRIVER_INFO_SIZE]                     {         };
-        VkConformanceVersion                conformanceVersion                                      {         };
+        vk_struct_base<VkConformanceVersion> conformanceVersion                                     {         };
         VkShaderFloatControlsIndependence   denormBehaviorIndependence                              {         };
         VkShaderFloatControlsIndependence   roundingModeIndependence                                {         };
         VkBool32                            shaderSignedZeroInfNanPreserveFloat16                   {         };
@@ -386,15 +786,26 @@ namespace spx::vk
     // variation.
     // ---------------------------------------------------------------------------------------------
 
-    using application_info      = vk_struct_base<VkApplicationInfo>;
-    using instance_create_info  = vk_struct_base<VkInstanceCreateInfo>;
+    using application_info                  = vk_struct_base<VkApplicationInfo>;
+    using instance_create_info              = vk_struct_base<VkInstanceCreateInfo>;
 
-    using physical_device_properties    = vk_struct_base<VkPhysicalDeviceProperties>;
-    using physical_device_10_properties = vk_struct_base<VkPhysicalDeviceProperties2>;
-    using physical_device_11_properties = vk_struct_base<VkPhysicalDeviceVulkan11Properties>;
-    using physical_device_12_properties = vk_struct_base<VkPhysicalDeviceVulkan12Properties>;
-    using physical_device_13_properties = vk_struct_base<VkPhysicalDeviceVulkan13Properties>;
-    using physical_device_14_properties = vk_struct_base<VkPhysicalDeviceVulkan14Properties>;
+    using physical_device_features          = vk_struct_base<VkPhysicalDeviceFeatures>;
+    using physical_device_10_features       = vk_struct_base<VkPhysicalDeviceFeatures2>;
+    using physical_device_11_features       = vk_struct_base<VkPhysicalDeviceVulkan11Features>;
+    using physical_device_12_features       = vk_struct_base<VkPhysicalDeviceVulkan12Features>;
+    using physical_device_13_features       = vk_struct_base<VkPhysicalDeviceVulkan13Features>;
+    using physical_device_14_features       = vk_struct_base<VkPhysicalDeviceVulkan14Features>;
+
+    using physical_device_limits            = vk_struct_base<VkPhysicalDeviceLimits>;
+    using physical_device_sparse_properties = vk_struct_base<VkPhysicalDeviceSparseProperties>;
+    using conformance_version               = vk_struct_base<VkConformanceVersion>;
+
+    using physical_device_properties        = vk_struct_base<VkPhysicalDeviceProperties>;
+    using physical_device_10_properties     = vk_struct_base<VkPhysicalDeviceProperties2>;
+    using physical_device_11_properties     = vk_struct_base<VkPhysicalDeviceVulkan11Properties>;
+    using physical_device_12_properties     = vk_struct_base<VkPhysicalDeviceVulkan12Properties>;
+    using physical_device_13_properties     = vk_struct_base<VkPhysicalDeviceVulkan13Properties>;
+    using physical_device_14_properties     = vk_struct_base<VkPhysicalDeviceVulkan14Properties>;
 
     // ---------------------------------------------------------------------------------------------
     // Layout guards.
@@ -429,9 +840,73 @@ namespace spx::vk
     static_assert(offsetof(instance_create_info, enabledExtensionCount) == offsetof(VkInstanceCreateInfo, enabledExtensionCount));
     static_assert(offsetof(instance_create_info, ppEnabledExtensionNames) == offsetof(VkInstanceCreateInfo, ppEnabledExtensionNames));
 
-    // Physical device property checks. The version-specific structs are large, so beyond sType/pNext
-    // these probe the first and last data members: any reorder, retype, or SDK bump shifts sizeof or
-    // the trailing offset and trips a guard.
+    // Physical device feature/property checks. The version-specific structs are large, so beyond
+    // sType/pNext these probe the first and last data members: any reorder, retype, or SDK bump
+    // shifts sizeof or the trailing offset and trips a guard.
+
+    // VkPhysicalDeviceFeatures checks.
+    static_assert(std::is_standard_layout_v<physical_device_features>, "physical_device_features must be standard-layout for native interop.");
+    static_assert(sizeof(physical_device_features) == sizeof(VkPhysicalDeviceFeatures), "physical_device_features layout diverged from VkPhysicalDeviceFeatures.");
+    static_assert(offsetof(physical_device_features, robustBufferAccess) == offsetof(VkPhysicalDeviceFeatures, robustBufferAccess));
+    static_assert(offsetof(physical_device_features, inheritedQueries) == offsetof(VkPhysicalDeviceFeatures, inheritedQueries));
+
+    // VkPhysicalDeviceFeatures2 checks.
+    static_assert(std::is_standard_layout_v<physical_device_10_features>, "physical_device_10_features must be standard-layout for native interop.");
+    static_assert(sizeof(physical_device_10_features) == sizeof(VkPhysicalDeviceFeatures2), "physical_device_10_features layout diverged from VkPhysicalDeviceFeatures2.");
+    static_assert(offsetof(physical_device_10_features, sType) == offsetof(VkPhysicalDeviceFeatures2, sType));
+    static_assert(offsetof(physical_device_10_features, pNext) == offsetof(VkPhysicalDeviceFeatures2, pNext));
+    static_assert(offsetof(physical_device_10_features, features) == offsetof(VkPhysicalDeviceFeatures2, features));
+
+    // VkPhysicalDeviceVulkan11Features checks.
+    static_assert(std::is_standard_layout_v<physical_device_11_features>, "physical_device_11_features must be standard-layout for native interop.");
+    static_assert(sizeof(physical_device_11_features) == sizeof(VkPhysicalDeviceVulkan11Features), "physical_device_11_features layout diverged from VkPhysicalDeviceVulkan11Features.");
+    static_assert(offsetof(physical_device_11_features, sType) == offsetof(VkPhysicalDeviceVulkan11Features, sType));
+    static_assert(offsetof(physical_device_11_features, pNext) == offsetof(VkPhysicalDeviceVulkan11Features, pNext));
+    static_assert(offsetof(physical_device_11_features, storageBuffer16BitAccess) == offsetof(VkPhysicalDeviceVulkan11Features, storageBuffer16BitAccess));
+    static_assert(offsetof(physical_device_11_features, shaderDrawParameters) == offsetof(VkPhysicalDeviceVulkan11Features, shaderDrawParameters));
+
+    // VkPhysicalDeviceVulkan12Features checks.
+    static_assert(std::is_standard_layout_v<physical_device_12_features>, "physical_device_12_features must be standard-layout for native interop.");
+    static_assert(sizeof(physical_device_12_features) == sizeof(VkPhysicalDeviceVulkan12Features), "physical_device_12_features layout diverged from VkPhysicalDeviceVulkan12Features.");
+    static_assert(offsetof(physical_device_12_features, sType) == offsetof(VkPhysicalDeviceVulkan12Features, sType));
+    static_assert(offsetof(physical_device_12_features, pNext) == offsetof(VkPhysicalDeviceVulkan12Features, pNext));
+    static_assert(offsetof(physical_device_12_features, samplerMirrorClampToEdge) == offsetof(VkPhysicalDeviceVulkan12Features, samplerMirrorClampToEdge));
+    static_assert(offsetof(physical_device_12_features, subgroupBroadcastDynamicId) == offsetof(VkPhysicalDeviceVulkan12Features, subgroupBroadcastDynamicId));
+
+    // VkPhysicalDeviceVulkan13Features checks.
+    static_assert(std::is_standard_layout_v<physical_device_13_features>, "physical_device_13_features must be standard-layout for native interop.");
+    static_assert(sizeof(physical_device_13_features) == sizeof(VkPhysicalDeviceVulkan13Features), "physical_device_13_features layout diverged from VkPhysicalDeviceVulkan13Features.");
+    static_assert(offsetof(physical_device_13_features, sType) == offsetof(VkPhysicalDeviceVulkan13Features, sType));
+    static_assert(offsetof(physical_device_13_features, pNext) == offsetof(VkPhysicalDeviceVulkan13Features, pNext));
+    static_assert(offsetof(physical_device_13_features, robustImageAccess) == offsetof(VkPhysicalDeviceVulkan13Features, robustImageAccess));
+    static_assert(offsetof(physical_device_13_features, maintenance4) == offsetof(VkPhysicalDeviceVulkan13Features, maintenance4));
+
+    // VkPhysicalDeviceVulkan14Features checks.
+    static_assert(std::is_standard_layout_v<physical_device_14_features>, "physical_device_14_features must be standard-layout for native interop.");
+    static_assert(sizeof(physical_device_14_features) == sizeof(VkPhysicalDeviceVulkan14Features), "physical_device_14_features layout diverged from VkPhysicalDeviceVulkan14Features.");
+    static_assert(offsetof(physical_device_14_features, sType) == offsetof(VkPhysicalDeviceVulkan14Features, sType));
+    static_assert(offsetof(physical_device_14_features, pNext) == offsetof(VkPhysicalDeviceVulkan14Features, pNext));
+    static_assert(offsetof(physical_device_14_features, globalPriorityQuery) == offsetof(VkPhysicalDeviceVulkan14Features, globalPriorityQuery));
+    static_assert(offsetof(physical_device_14_features, pushDescriptor) == offsetof(VkPhysicalDeviceVulkan14Features, pushDescriptor));
+
+    // VkPhysicalDeviceLimits checks.
+    static_assert(std::is_standard_layout_v<physical_device_limits>, "physical_device_limits must be standard-layout for native interop.");
+    static_assert(sizeof(physical_device_limits) == sizeof(VkPhysicalDeviceLimits), "physical_device_limits layout diverged from VkPhysicalDeviceLimits.");
+    static_assert(offsetof(physical_device_limits, maxImageDimension1D) == offsetof(VkPhysicalDeviceLimits, maxImageDimension1D));
+    static_assert(offsetof(physical_device_limits, minMemoryMapAlignment) == offsetof(VkPhysicalDeviceLimits, minMemoryMapAlignment));
+    static_assert(offsetof(physical_device_limits, nonCoherentAtomSize) == offsetof(VkPhysicalDeviceLimits, nonCoherentAtomSize));
+
+    // VkPhysicalDeviceSparseProperties checks.
+    static_assert(std::is_standard_layout_v<physical_device_sparse_properties>, "physical_device_sparse_properties must be standard-layout for native interop.");
+    static_assert(sizeof(physical_device_sparse_properties) == sizeof(VkPhysicalDeviceSparseProperties), "physical_device_sparse_properties layout diverged from VkPhysicalDeviceSparseProperties.");
+    static_assert(offsetof(physical_device_sparse_properties, residencyStandard2DBlockShape) == offsetof(VkPhysicalDeviceSparseProperties, residencyStandard2DBlockShape));
+    static_assert(offsetof(physical_device_sparse_properties, residencyNonResidentStrict) == offsetof(VkPhysicalDeviceSparseProperties, residencyNonResidentStrict));
+
+    // VkConformanceVersion checks.
+    static_assert(std::is_standard_layout_v<conformance_version>, "conformance_version must be standard-layout for native interop.");
+    static_assert(sizeof(conformance_version) == sizeof(VkConformanceVersion), "conformance_version layout diverged from VkConformanceVersion.");
+    static_assert(offsetof(conformance_version, major) == offsetof(VkConformanceVersion, major));
+    static_assert(offsetof(conformance_version, patch) == offsetof(VkConformanceVersion, patch));
 
     // VkPhysicalDeviceProperties checks.
     static_assert(std::is_standard_layout_v<physical_device_properties>, "physical_device_properties must be standard-layout for native interop.");

@@ -73,4 +73,17 @@ namespace spx::vk
         vkGetPhysicalDeviceProperties2(device.native, &native_properties);
     }
 
+    /// @brief Wraps vkGetPhysicalDeviceFeatures2, writing into a wrapped features struct.
+    ///
+    /// Any version-specific feature structs (physical_device_11/12/13/14_features) chained onto
+    /// out_features via set_next are filled by the driver in the same call.
+    /// @param device       The physical device to query.
+    /// @param out_features The features struct (and its pNext chain) to populate.
+    inline void
+    get_physical_device_features(physical_device& device, physical_device_10_features& out_features)
+    {
+        VkPhysicalDeviceFeatures2& native_features = out_features;
+        vkGetPhysicalDeviceFeatures2(device.native, &native_features);
+    }
+
 }
