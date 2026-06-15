@@ -775,26 +775,26 @@ namespace spx::vk
     // variation.
     // ---------------------------------------------------------------------------------------------
 
-    using application_info                  = vk_struct_base<VkApplicationInfo>;
-    using instance_create_info              = vk_struct_base<VkInstanceCreateInfo>;
+    using application_info_t                    = vk_struct_base<VkApplicationInfo>;
+    using instance_create_info_t                = vk_struct_base<VkInstanceCreateInfo>;
 
-    using physical_device_features          = vk_struct_base<VkPhysicalDeviceFeatures>;
-    using physical_device_10_features       = vk_struct_base<VkPhysicalDeviceFeatures2>;
-    using physical_device_11_features       = vk_struct_base<VkPhysicalDeviceVulkan11Features>;
-    using physical_device_12_features       = vk_struct_base<VkPhysicalDeviceVulkan12Features>;
-    using physical_device_13_features       = vk_struct_base<VkPhysicalDeviceVulkan13Features>;
-    using physical_device_14_features       = vk_struct_base<VkPhysicalDeviceVulkan14Features>;
+    using physical_device_features_t            = vk_struct_base<VkPhysicalDeviceFeatures>;
+    using physical_device_10_features_t         = vk_struct_base<VkPhysicalDeviceFeatures2>;
+    using physical_device_11_features_t         = vk_struct_base<VkPhysicalDeviceVulkan11Features>;
+    using physical_device_12_features_t         = vk_struct_base<VkPhysicalDeviceVulkan12Features>;
+    using physical_device_13_features_t         = vk_struct_base<VkPhysicalDeviceVulkan13Features>;
+    using physical_device_14_features_t         = vk_struct_base<VkPhysicalDeviceVulkan14Features>;
 
-    using physical_device_limits            = vk_struct_base<VkPhysicalDeviceLimits>;
-    using physical_device_sparse_properties = vk_struct_base<VkPhysicalDeviceSparseProperties>;
-    using conformance_version               = vk_struct_base<VkConformanceVersion>;
+    using physical_device_limits_t              = vk_struct_base<VkPhysicalDeviceLimits>;
+    using physical_device_sparse_properties_t   = vk_struct_base<VkPhysicalDeviceSparseProperties>;
+    using conformance_version_t                 = vk_struct_base<VkConformanceVersion>;
 
-    using physical_device_properties        = vk_struct_base<VkPhysicalDeviceProperties>;
-    using physical_device_10_properties     = vk_struct_base<VkPhysicalDeviceProperties2>;
-    using physical_device_11_properties     = vk_struct_base<VkPhysicalDeviceVulkan11Properties>;
-    using physical_device_12_properties     = vk_struct_base<VkPhysicalDeviceVulkan12Properties>;
-    using physical_device_13_properties     = vk_struct_base<VkPhysicalDeviceVulkan13Properties>;
-    using physical_device_14_properties     = vk_struct_base<VkPhysicalDeviceVulkan14Properties>;
+    using physical_device_properties_t          = vk_struct_base<VkPhysicalDeviceProperties>;
+    using physical_device_10_properties_t       = vk_struct_base<VkPhysicalDeviceProperties2>;
+    using physical_device_11_properties_t       = vk_struct_base<VkPhysicalDeviceVulkan11Properties>;
+    using physical_device_12_properties_t       = vk_struct_base<VkPhysicalDeviceVulkan12Properties>;
+    using physical_device_13_properties_t       = vk_struct_base<VkPhysicalDeviceVulkan13Properties>;
+    using physical_device_14_properties_t       = vk_struct_base<VkPhysicalDeviceVulkan14Properties>;
 
     // ---------------------------------------------------------------------------------------------
     // Layout guards.
@@ -807,144 +807,144 @@ namespace spx::vk
     // ---------------------------------------------------------------------------------------------
 
     // VkApplicationInfo checks.
-    static_assert(std::is_standard_layout_v<application_info>, "application_info must be standard-layout for native interop.");
-    static_assert(sizeof(application_info) == sizeof(VkApplicationInfo), "application_info layout diverged from VkApplicationInfo.");
-    static_assert(offsetof(application_info, sType) == offsetof(VkApplicationInfo, sType));
-    static_assert(offsetof(application_info, pNext) == offsetof(VkApplicationInfo, pNext));
-    static_assert(offsetof(application_info, pApplicationName) == offsetof(VkApplicationInfo, pApplicationName));
-    static_assert(offsetof(application_info, applicationVersion) == offsetof(VkApplicationInfo, applicationVersion));
-    static_assert(offsetof(application_info, pEngineName) == offsetof(VkApplicationInfo, pEngineName));
-    static_assert(offsetof(application_info, engineVersion) == offsetof(VkApplicationInfo, engineVersion));
-    static_assert(offsetof(application_info, apiVersion) == offsetof(VkApplicationInfo, apiVersion));
+    static_assert(std::is_standard_layout_v<application_info_t>, "application_info must be standard-layout for native interop.");
+    static_assert(sizeof(application_info_t) == sizeof(VkApplicationInfo), "application_info layout diverged from VkApplicationInfo.");
+    static_assert(offsetof(application_info_t, sType) == offsetof(VkApplicationInfo, sType));
+    static_assert(offsetof(application_info_t, pNext) == offsetof(VkApplicationInfo, pNext));
+    static_assert(offsetof(application_info_t, pApplicationName) == offsetof(VkApplicationInfo, pApplicationName));
+    static_assert(offsetof(application_info_t, applicationVersion) == offsetof(VkApplicationInfo, applicationVersion));
+    static_assert(offsetof(application_info_t, pEngineName) == offsetof(VkApplicationInfo, pEngineName));
+    static_assert(offsetof(application_info_t, engineVersion) == offsetof(VkApplicationInfo, engineVersion));
+    static_assert(offsetof(application_info_t, apiVersion) == offsetof(VkApplicationInfo, apiVersion));
 
     // VkInstanceCreateInfo checks.
-    static_assert(std::is_standard_layout_v<instance_create_info>, "instance_create_info must be standard-layout for native interop.");
-    static_assert(sizeof(instance_create_info) == sizeof(VkInstanceCreateInfo), "instance_create_info layout diverged from VkInstanceCreateInfo.");
-    static_assert(offsetof(instance_create_info, sType) == offsetof(VkInstanceCreateInfo, sType));
-    static_assert(offsetof(instance_create_info, pNext) == offsetof(VkInstanceCreateInfo, pNext));
-    static_assert(offsetof(instance_create_info, flags) == offsetof(VkInstanceCreateInfo, flags));
-    static_assert(offsetof(instance_create_info, pApplicationInfo) == offsetof(VkInstanceCreateInfo, pApplicationInfo));
-    static_assert(offsetof(instance_create_info, enabledLayerCount) == offsetof(VkInstanceCreateInfo, enabledLayerCount));
-    static_assert(offsetof(instance_create_info, ppEnabledLayerNames) == offsetof(VkInstanceCreateInfo, ppEnabledLayerNames));
-    static_assert(offsetof(instance_create_info, enabledExtensionCount) == offsetof(VkInstanceCreateInfo, enabledExtensionCount));
-    static_assert(offsetof(instance_create_info, ppEnabledExtensionNames) == offsetof(VkInstanceCreateInfo, ppEnabledExtensionNames));
+    static_assert(std::is_standard_layout_v<instance_create_info_t>, "instance_create_info must be standard-layout for native interop.");
+    static_assert(sizeof(instance_create_info_t) == sizeof(VkInstanceCreateInfo), "instance_create_info layout diverged from VkInstanceCreateInfo.");
+    static_assert(offsetof(instance_create_info_t, sType) == offsetof(VkInstanceCreateInfo, sType));
+    static_assert(offsetof(instance_create_info_t, pNext) == offsetof(VkInstanceCreateInfo, pNext));
+    static_assert(offsetof(instance_create_info_t, flags) == offsetof(VkInstanceCreateInfo, flags));
+    static_assert(offsetof(instance_create_info_t, pApplicationInfo) == offsetof(VkInstanceCreateInfo, pApplicationInfo));
+    static_assert(offsetof(instance_create_info_t, enabledLayerCount) == offsetof(VkInstanceCreateInfo, enabledLayerCount));
+    static_assert(offsetof(instance_create_info_t, ppEnabledLayerNames) == offsetof(VkInstanceCreateInfo, ppEnabledLayerNames));
+    static_assert(offsetof(instance_create_info_t, enabledExtensionCount) == offsetof(VkInstanceCreateInfo, enabledExtensionCount));
+    static_assert(offsetof(instance_create_info_t, ppEnabledExtensionNames) == offsetof(VkInstanceCreateInfo, ppEnabledExtensionNames));
 
     // Physical device feature/property checks. The version-specific structs are large, so beyond
     // sType/pNext these probe the first and last data members: any reorder, retype, or SDK bump
     // shifts sizeof or the trailing offset and trips a guard.
 
     // VkPhysicalDeviceFeatures checks.
-    static_assert(std::is_standard_layout_v<physical_device_features>, "physical_device_features must be standard-layout for native interop.");
-    static_assert(sizeof(physical_device_features) == sizeof(VkPhysicalDeviceFeatures), "physical_device_features layout diverged from VkPhysicalDeviceFeatures.");
-    static_assert(offsetof(physical_device_features, robustBufferAccess) == offsetof(VkPhysicalDeviceFeatures, robustBufferAccess));
-    static_assert(offsetof(physical_device_features, inheritedQueries) == offsetof(VkPhysicalDeviceFeatures, inheritedQueries));
+    static_assert(std::is_standard_layout_v<physical_device_features_t>, "physical_device_features must be standard-layout for native interop.");
+    static_assert(sizeof(physical_device_features_t) == sizeof(VkPhysicalDeviceFeatures), "physical_device_features layout diverged from VkPhysicalDeviceFeatures.");
+    static_assert(offsetof(physical_device_features_t, robustBufferAccess) == offsetof(VkPhysicalDeviceFeatures, robustBufferAccess));
+    static_assert(offsetof(physical_device_features_t, inheritedQueries) == offsetof(VkPhysicalDeviceFeatures, inheritedQueries));
 
-    // VkPhysicalDeviceFeatures2 checks.
-    static_assert(std::is_standard_layout_v<physical_device_10_features>, "physical_device_10_features must be standard-layout for native interop.");
-    static_assert(sizeof(physical_device_10_features) == sizeof(VkPhysicalDeviceFeatures2), "physical_device_10_features layout diverged from VkPhysicalDeviceFeatures2.");
-    static_assert(offsetof(physical_device_10_features, sType) == offsetof(VkPhysicalDeviceFeatures2, sType));
-    static_assert(offsetof(physical_device_10_features, pNext) == offsetof(VkPhysicalDeviceFeatures2, pNext));
-    static_assert(offsetof(physical_device_10_features, features) == offsetof(VkPhysicalDeviceFeatures2, features));
+    // VkPhysicalDevicefeatures_t2 checks.
+    static_assert(std::is_standard_layout_v<physical_device_10_features_t>, "physical_device_10_features must be standard-layout for native interop.");
+    static_assert(sizeof(physical_device_10_features_t) == sizeof(VkPhysicalDeviceFeatures2), "physical_device_10_features layout diverged from VkPhysicalDeviceFeatures2.");
+    static_assert(offsetof(physical_device_10_features_t, sType) == offsetof(VkPhysicalDeviceFeatures2, sType));
+    static_assert(offsetof(physical_device_10_features_t, pNext) == offsetof(VkPhysicalDeviceFeatures2, pNext));
+    static_assert(offsetof(physical_device_10_features_t, features) == offsetof(VkPhysicalDeviceFeatures2, features));
 
-    // VkPhysicalDeviceVulkan11Features checks.
-    static_assert(std::is_standard_layout_v<physical_device_11_features>, "physical_device_11_features must be standard-layout for native interop.");
-    static_assert(sizeof(physical_device_11_features) == sizeof(VkPhysicalDeviceVulkan11Features), "physical_device_11_features layout diverged from VkPhysicalDeviceVulkan11Features.");
-    static_assert(offsetof(physical_device_11_features, sType) == offsetof(VkPhysicalDeviceVulkan11Features, sType));
-    static_assert(offsetof(physical_device_11_features, pNext) == offsetof(VkPhysicalDeviceVulkan11Features, pNext));
-    static_assert(offsetof(physical_device_11_features, storageBuffer16BitAccess) == offsetof(VkPhysicalDeviceVulkan11Features, storageBuffer16BitAccess));
-    static_assert(offsetof(physical_device_11_features, shaderDrawParameters) == offsetof(VkPhysicalDeviceVulkan11Features, shaderDrawParameters));
+    // VkPhysicalDeviceVulkan11features_t checks.
+    static_assert(std::is_standard_layout_v<physical_device_11_features_t>, "physical_device_11_features must be standard-layout for native interop.");
+    static_assert(sizeof(physical_device_11_features_t) == sizeof(VkPhysicalDeviceVulkan11Features), "physical_device_11_features layout diverged from VkPhysicalDeviceVulkan11Features.");
+    static_assert(offsetof(physical_device_11_features_t, sType) == offsetof(VkPhysicalDeviceVulkan11Features, sType));
+    static_assert(offsetof(physical_device_11_features_t, pNext) == offsetof(VkPhysicalDeviceVulkan11Features, pNext));
+    static_assert(offsetof(physical_device_11_features_t, storageBuffer16BitAccess) == offsetof(VkPhysicalDeviceVulkan11Features, storageBuffer16BitAccess));
+    static_assert(offsetof(physical_device_11_features_t, shaderDrawParameters) == offsetof(VkPhysicalDeviceVulkan11Features, shaderDrawParameters));
 
-    // VkPhysicalDeviceVulkan12Features checks.
-    static_assert(std::is_standard_layout_v<physical_device_12_features>, "physical_device_12_features must be standard-layout for native interop.");
-    static_assert(sizeof(physical_device_12_features) == sizeof(VkPhysicalDeviceVulkan12Features), "physical_device_12_features layout diverged from VkPhysicalDeviceVulkan12Features.");
-    static_assert(offsetof(physical_device_12_features, sType) == offsetof(VkPhysicalDeviceVulkan12Features, sType));
-    static_assert(offsetof(physical_device_12_features, pNext) == offsetof(VkPhysicalDeviceVulkan12Features, pNext));
-    static_assert(offsetof(physical_device_12_features, samplerMirrorClampToEdge) == offsetof(VkPhysicalDeviceVulkan12Features, samplerMirrorClampToEdge));
-    static_assert(offsetof(physical_device_12_features, subgroupBroadcastDynamicId) == offsetof(VkPhysicalDeviceVulkan12Features, subgroupBroadcastDynamicId));
+    // VkPhysicalDeviceVulkan12features_t checks.
+    static_assert(std::is_standard_layout_v<physical_device_12_features_t>, "physical_device_12_features must be standard-layout for native interop.");
+    static_assert(sizeof(physical_device_12_features_t) == sizeof(VkPhysicalDeviceVulkan12Features), "physical_device_12_features layout diverged from VkPhysicalDeviceVulkan12Features.");
+    static_assert(offsetof(physical_device_12_features_t, sType) == offsetof(VkPhysicalDeviceVulkan12Features, sType));
+    static_assert(offsetof(physical_device_12_features_t, pNext) == offsetof(VkPhysicalDeviceVulkan12Features, pNext));
+    static_assert(offsetof(physical_device_12_features_t, samplerMirrorClampToEdge) == offsetof(VkPhysicalDeviceVulkan12Features, samplerMirrorClampToEdge));
+    static_assert(offsetof(physical_device_12_features_t, subgroupBroadcastDynamicId) == offsetof(VkPhysicalDeviceVulkan12Features, subgroupBroadcastDynamicId));
 
-    // VkPhysicalDeviceVulkan13Features checks.
-    static_assert(std::is_standard_layout_v<physical_device_13_features>, "physical_device_13_features must be standard-layout for native interop.");
-    static_assert(sizeof(physical_device_13_features) == sizeof(VkPhysicalDeviceVulkan13Features), "physical_device_13_features layout diverged from VkPhysicalDeviceVulkan13Features.");
-    static_assert(offsetof(physical_device_13_features, sType) == offsetof(VkPhysicalDeviceVulkan13Features, sType));
-    static_assert(offsetof(physical_device_13_features, pNext) == offsetof(VkPhysicalDeviceVulkan13Features, pNext));
-    static_assert(offsetof(physical_device_13_features, robustImageAccess) == offsetof(VkPhysicalDeviceVulkan13Features, robustImageAccess));
-    static_assert(offsetof(physical_device_13_features, maintenance4) == offsetof(VkPhysicalDeviceVulkan13Features, maintenance4));
+    // VkPhysicalDeviceVulkan13features_t checks.
+    static_assert(std::is_standard_layout_v<physical_device_13_features_t>, "physical_device_13_features must be standard-layout for native interop.");
+    static_assert(sizeof(physical_device_13_features_t) == sizeof(VkPhysicalDeviceVulkan13Features), "physical_device_13_features layout diverged from VkPhysicalDeviceVulkan13Features.");
+    static_assert(offsetof(physical_device_13_features_t, sType) == offsetof(VkPhysicalDeviceVulkan13Features, sType));
+    static_assert(offsetof(physical_device_13_features_t, pNext) == offsetof(VkPhysicalDeviceVulkan13Features, pNext));
+    static_assert(offsetof(physical_device_13_features_t, robustImageAccess) == offsetof(VkPhysicalDeviceVulkan13Features, robustImageAccess));
+    static_assert(offsetof(physical_device_13_features_t, maintenance4) == offsetof(VkPhysicalDeviceVulkan13Features, maintenance4));
 
-    // VkPhysicalDeviceVulkan14Features checks.
-    static_assert(std::is_standard_layout_v<physical_device_14_features>, "physical_device_14_features must be standard-layout for native interop.");
-    static_assert(sizeof(physical_device_14_features) == sizeof(VkPhysicalDeviceVulkan14Features), "physical_device_14_features layout diverged from VkPhysicalDeviceVulkan14Features.");
-    static_assert(offsetof(physical_device_14_features, sType) == offsetof(VkPhysicalDeviceVulkan14Features, sType));
-    static_assert(offsetof(physical_device_14_features, pNext) == offsetof(VkPhysicalDeviceVulkan14Features, pNext));
-    static_assert(offsetof(physical_device_14_features, globalPriorityQuery) == offsetof(VkPhysicalDeviceVulkan14Features, globalPriorityQuery));
-    static_assert(offsetof(physical_device_14_features, pushDescriptor) == offsetof(VkPhysicalDeviceVulkan14Features, pushDescriptor));
+    // VkPhysicalDeviceVulkan14features_t checks.
+    static_assert(std::is_standard_layout_v<physical_device_14_features_t>, "physical_device_14_features must be standard-layout for native interop.");
+    static_assert(sizeof(physical_device_14_features_t) == sizeof(VkPhysicalDeviceVulkan14Features), "physical_device_14_features layout diverged from VkPhysicalDeviceVulkan14Features.");
+    static_assert(offsetof(physical_device_14_features_t, sType) == offsetof(VkPhysicalDeviceVulkan14Features, sType));
+    static_assert(offsetof(physical_device_14_features_t, pNext) == offsetof(VkPhysicalDeviceVulkan14Features, pNext));
+    static_assert(offsetof(physical_device_14_features_t, globalPriorityQuery) == offsetof(VkPhysicalDeviceVulkan14Features, globalPriorityQuery));
+    static_assert(offsetof(physical_device_14_features_t, pushDescriptor) == offsetof(VkPhysicalDeviceVulkan14Features, pushDescriptor));
 
     // VkPhysicalDeviceLimits checks.
-    static_assert(std::is_standard_layout_v<physical_device_limits>, "physical_device_limits must be standard-layout for native interop.");
-    static_assert(sizeof(physical_device_limits) == sizeof(VkPhysicalDeviceLimits), "physical_device_limits layout diverged from VkPhysicalDeviceLimits.");
-    static_assert(offsetof(physical_device_limits, maxImageDimension1D) == offsetof(VkPhysicalDeviceLimits, maxImageDimension1D));
-    static_assert(offsetof(physical_device_limits, minMemoryMapAlignment) == offsetof(VkPhysicalDeviceLimits, minMemoryMapAlignment));
-    static_assert(offsetof(physical_device_limits, nonCoherentAtomSize) == offsetof(VkPhysicalDeviceLimits, nonCoherentAtomSize));
+    static_assert(std::is_standard_layout_v<physical_device_limits_t>, "physical_device_limits must be standard-layout for native interop.");
+    static_assert(sizeof(physical_device_limits_t) == sizeof(VkPhysicalDeviceLimits), "physical_device_limits layout diverged from VkPhysicalDeviceLimits.");
+    static_assert(offsetof(physical_device_limits_t, maxImageDimension1D) == offsetof(VkPhysicalDeviceLimits, maxImageDimension1D));
+    static_assert(offsetof(physical_device_limits_t, minMemoryMapAlignment) == offsetof(VkPhysicalDeviceLimits, minMemoryMapAlignment));
+    static_assert(offsetof(physical_device_limits_t, nonCoherentAtomSize) == offsetof(VkPhysicalDeviceLimits, nonCoherentAtomSize));
 
     // VkPhysicalDeviceSparseProperties checks.
-    static_assert(std::is_standard_layout_v<physical_device_sparse_properties>, "physical_device_sparse_properties must be standard-layout for native interop.");
-    static_assert(sizeof(physical_device_sparse_properties) == sizeof(VkPhysicalDeviceSparseProperties), "physical_device_sparse_properties layout diverged from VkPhysicalDeviceSparseProperties.");
-    static_assert(offsetof(physical_device_sparse_properties, residencyStandard2DBlockShape) == offsetof(VkPhysicalDeviceSparseProperties, residencyStandard2DBlockShape));
-    static_assert(offsetof(physical_device_sparse_properties, residencyNonResidentStrict) == offsetof(VkPhysicalDeviceSparseProperties, residencyNonResidentStrict));
+    static_assert(std::is_standard_layout_v<physical_device_sparse_properties_t>, "physical_device_sparse_properties must be standard-layout for native interop.");
+    static_assert(sizeof(physical_device_sparse_properties_t) == sizeof(VkPhysicalDeviceSparseProperties), "physical_device_sparse_properties layout diverged from VkPhysicalDeviceSparseProperties.");
+    static_assert(offsetof(physical_device_sparse_properties_t, residencyStandard2DBlockShape) == offsetof(VkPhysicalDeviceSparseProperties, residencyStandard2DBlockShape));
+    static_assert(offsetof(physical_device_sparse_properties_t, residencyNonResidentStrict) == offsetof(VkPhysicalDeviceSparseProperties, residencyNonResidentStrict));
 
     // VkConformanceVersion checks.
-    static_assert(std::is_standard_layout_v<conformance_version>, "conformance_version must be standard-layout for native interop.");
-    static_assert(sizeof(conformance_version) == sizeof(VkConformanceVersion), "conformance_version layout diverged from VkConformanceVersion.");
-    static_assert(offsetof(conformance_version, major) == offsetof(VkConformanceVersion, major));
-    static_assert(offsetof(conformance_version, patch) == offsetof(VkConformanceVersion, patch));
+    static_assert(std::is_standard_layout_v<conformance_version_t>, "conformance_version must be standard-layout for native interop.");
+    static_assert(sizeof(conformance_version_t) == sizeof(VkConformanceVersion), "conformance_version layout diverged from VkConformanceVersion.");
+    static_assert(offsetof(conformance_version_t, major) == offsetof(VkConformanceVersion, major));
+    static_assert(offsetof(conformance_version_t, patch) == offsetof(VkConformanceVersion, patch));
 
-    // VkPhysicalDeviceProperties checks.
-    static_assert(std::is_standard_layout_v<physical_device_properties>, "physical_device_properties must be standard-layout for native interop.");
-    static_assert(sizeof(physical_device_properties) == sizeof(VkPhysicalDeviceProperties), "physical_device_properties layout diverged from VkPhysicalDeviceProperties.");
-    static_assert(offsetof(physical_device_properties, apiVersion) == offsetof(VkPhysicalDeviceProperties, apiVersion));
-    static_assert(offsetof(physical_device_properties, deviceType) == offsetof(VkPhysicalDeviceProperties, deviceType));
-    static_assert(offsetof(physical_device_properties, deviceName) == offsetof(VkPhysicalDeviceProperties, deviceName));
-    static_assert(offsetof(physical_device_properties, pipelineCacheUUID) == offsetof(VkPhysicalDeviceProperties, pipelineCacheUUID));
-    static_assert(offsetof(physical_device_properties, limits) == offsetof(VkPhysicalDeviceProperties, limits));
-    static_assert(offsetof(physical_device_properties, sparseProperties) == offsetof(VkPhysicalDeviceProperties, sparseProperties));
+    // VkPhysicalDeviceproperties_t checks.
+    static_assert(std::is_standard_layout_v<physical_device_properties_t>, "physical_device_properties must be standard-layout for native interop.");
+    static_assert(sizeof(physical_device_properties_t) == sizeof(VkPhysicalDeviceProperties), "physical_device_properties layout diverged from VkPhysicalDeviceProperties.");
+    static_assert(offsetof(physical_device_properties_t, apiVersion) == offsetof(VkPhysicalDeviceProperties, apiVersion));
+    static_assert(offsetof(physical_device_properties_t, deviceType) == offsetof(VkPhysicalDeviceProperties, deviceType));
+    static_assert(offsetof(physical_device_properties_t, deviceName) == offsetof(VkPhysicalDeviceProperties, deviceName));
+    static_assert(offsetof(physical_device_properties_t, pipelineCacheUUID) == offsetof(VkPhysicalDeviceProperties, pipelineCacheUUID));
+    static_assert(offsetof(physical_device_properties_t, limits) == offsetof(VkPhysicalDeviceProperties, limits));
+    static_assert(offsetof(physical_device_properties_t, sparseProperties) == offsetof(VkPhysicalDeviceProperties, sparseProperties));
 
-    // VkPhysicalDeviceProperties2 checks.
-    static_assert(std::is_standard_layout_v<physical_device_10_properties>, "physical_device_10_properties must be standard-layout for native interop.");
-    static_assert(sizeof(physical_device_10_properties) == sizeof(VkPhysicalDeviceProperties2), "physical_device_10_properties layout diverged from VkPhysicalDeviceProperties2.");
-    static_assert(offsetof(physical_device_10_properties, sType) == offsetof(VkPhysicalDeviceProperties2, sType));
-    static_assert(offsetof(physical_device_10_properties, pNext) == offsetof(VkPhysicalDeviceProperties2, pNext));
-    static_assert(offsetof(physical_device_10_properties, properties) == offsetof(VkPhysicalDeviceProperties2, properties));
+    // VkPhysicalDeviceproperties_t2 checks.
+    static_assert(std::is_standard_layout_v<physical_device_10_properties_t>, "physical_device_10_properties must be standard-layout for native interop.");
+    static_assert(sizeof(physical_device_10_properties_t) == sizeof(VkPhysicalDeviceProperties2), "physical_device_10_properties layout diverged from VkPhysicalDeviceProperties2.");
+    static_assert(offsetof(physical_device_10_properties_t, sType) == offsetof(VkPhysicalDeviceProperties2, sType));
+    static_assert(offsetof(physical_device_10_properties_t, pNext) == offsetof(VkPhysicalDeviceProperties2, pNext));
+    static_assert(offsetof(physical_device_10_properties_t, properties) == offsetof(VkPhysicalDeviceProperties2, properties));
 
-    // VkPhysicalDeviceVulkan11Properties checks.
-    static_assert(std::is_standard_layout_v<physical_device_11_properties>, "physical_device_11_properties must be standard-layout for native interop.");
-    static_assert(sizeof(physical_device_11_properties) == sizeof(VkPhysicalDeviceVulkan11Properties), "physical_device_11_properties layout diverged from VkPhysicalDeviceVulkan11Properties.");
-    static_assert(offsetof(physical_device_11_properties, sType) == offsetof(VkPhysicalDeviceVulkan11Properties, sType));
-    static_assert(offsetof(physical_device_11_properties, pNext) == offsetof(VkPhysicalDeviceVulkan11Properties, pNext));
-    static_assert(offsetof(physical_device_11_properties, deviceUUID) == offsetof(VkPhysicalDeviceVulkan11Properties, deviceUUID));
-    static_assert(offsetof(physical_device_11_properties, maxMemoryAllocationSize) == offsetof(VkPhysicalDeviceVulkan11Properties, maxMemoryAllocationSize));
+    // VkPhysicalDeviceVulkan11properties_t checks.
+    static_assert(std::is_standard_layout_v<physical_device_11_properties_t>, "physical_device_11_properties must be standard-layout for native interop.");
+    static_assert(sizeof(physical_device_11_properties_t) == sizeof(VkPhysicalDeviceVulkan11Properties), "physical_device_11_properties layout diverged from VkPhysicalDeviceVulkan11Properties.");
+    static_assert(offsetof(physical_device_11_properties_t, sType) == offsetof(VkPhysicalDeviceVulkan11Properties, sType));
+    static_assert(offsetof(physical_device_11_properties_t, pNext) == offsetof(VkPhysicalDeviceVulkan11Properties, pNext));
+    static_assert(offsetof(physical_device_11_properties_t, deviceUUID) == offsetof(VkPhysicalDeviceVulkan11Properties, deviceUUID));
+    static_assert(offsetof(physical_device_11_properties_t, maxMemoryAllocationSize) == offsetof(VkPhysicalDeviceVulkan11Properties, maxMemoryAllocationSize));
 
-    // VkPhysicalDeviceVulkan12Properties checks.
-    static_assert(std::is_standard_layout_v<physical_device_12_properties>, "physical_device_12_properties must be standard-layout for native interop.");
-    static_assert(sizeof(physical_device_12_properties) == sizeof(VkPhysicalDeviceVulkan12Properties), "physical_device_12_properties layout diverged from VkPhysicalDeviceVulkan12Properties.");
-    static_assert(offsetof(physical_device_12_properties, sType) == offsetof(VkPhysicalDeviceVulkan12Properties, sType));
-    static_assert(offsetof(physical_device_12_properties, pNext) == offsetof(VkPhysicalDeviceVulkan12Properties, pNext));
-    static_assert(offsetof(physical_device_12_properties, driverID) == offsetof(VkPhysicalDeviceVulkan12Properties, driverID));
-    static_assert(offsetof(physical_device_12_properties, framebufferIntegerColorSampleCounts) == offsetof(VkPhysicalDeviceVulkan12Properties, framebufferIntegerColorSampleCounts));
+    // VkPhysicalDeviceVulkan12properties_t checks.
+    static_assert(std::is_standard_layout_v<physical_device_12_properties_t>, "physical_device_12_properties must be standard-layout for native interop.");
+    static_assert(sizeof(physical_device_12_properties_t) == sizeof(VkPhysicalDeviceVulkan12Properties), "physical_device_12_properties layout diverged from VkPhysicalDeviceVulkan12Properties.");
+    static_assert(offsetof(physical_device_12_properties_t, sType) == offsetof(VkPhysicalDeviceVulkan12Properties, sType));
+    static_assert(offsetof(physical_device_12_properties_t, pNext) == offsetof(VkPhysicalDeviceVulkan12Properties, pNext));
+    static_assert(offsetof(physical_device_12_properties_t, driverID) == offsetof(VkPhysicalDeviceVulkan12Properties, driverID));
+    static_assert(offsetof(physical_device_12_properties_t, framebufferIntegerColorSampleCounts) == offsetof(VkPhysicalDeviceVulkan12Properties, framebufferIntegerColorSampleCounts));
 
-    // VkPhysicalDeviceVulkan13Properties checks.
-    static_assert(std::is_standard_layout_v<physical_device_13_properties>, "physical_device_13_properties must be standard-layout for native interop.");
-    static_assert(sizeof(physical_device_13_properties) == sizeof(VkPhysicalDeviceVulkan13Properties), "physical_device_13_properties layout diverged from VkPhysicalDeviceVulkan13Properties.");
-    static_assert(offsetof(physical_device_13_properties, sType) == offsetof(VkPhysicalDeviceVulkan13Properties, sType));
-    static_assert(offsetof(physical_device_13_properties, pNext) == offsetof(VkPhysicalDeviceVulkan13Properties, pNext));
-    static_assert(offsetof(physical_device_13_properties, minSubgroupSize) == offsetof(VkPhysicalDeviceVulkan13Properties, minSubgroupSize));
-    static_assert(offsetof(physical_device_13_properties, maxBufferSize) == offsetof(VkPhysicalDeviceVulkan13Properties, maxBufferSize));
+    // VkPhysicalDeviceVulkan13properties_t checks.
+    static_assert(std::is_standard_layout_v<physical_device_13_properties_t>, "physical_device_13_properties must be standard-layout for native interop.");
+    static_assert(sizeof(physical_device_13_properties_t) == sizeof(VkPhysicalDeviceVulkan13Properties), "physical_device_13_properties layout diverged from VkPhysicalDeviceVulkan13Properties.");
+    static_assert(offsetof(physical_device_13_properties_t, sType) == offsetof(VkPhysicalDeviceVulkan13Properties, sType));
+    static_assert(offsetof(physical_device_13_properties_t, pNext) == offsetof(VkPhysicalDeviceVulkan13Properties, pNext));
+    static_assert(offsetof(physical_device_13_properties_t, minSubgroupSize) == offsetof(VkPhysicalDeviceVulkan13Properties, minSubgroupSize));
+    static_assert(offsetof(physical_device_13_properties_t, maxBufferSize) == offsetof(VkPhysicalDeviceVulkan13Properties, maxBufferSize));
 
-    // VkPhysicalDeviceVulkan14Properties checks.
-    static_assert(std::is_standard_layout_v<physical_device_14_properties>, "physical_device_14_properties must be standard-layout for native interop.");
-    static_assert(sizeof(physical_device_14_properties) == sizeof(VkPhysicalDeviceVulkan14Properties), "physical_device_14_properties layout diverged from VkPhysicalDeviceVulkan14Properties.");
-    static_assert(offsetof(physical_device_14_properties, sType) == offsetof(VkPhysicalDeviceVulkan14Properties, sType));
-    static_assert(offsetof(physical_device_14_properties, pNext) == offsetof(VkPhysicalDeviceVulkan14Properties, pNext));
-    static_assert(offsetof(physical_device_14_properties, lineSubPixelPrecisionBits) == offsetof(VkPhysicalDeviceVulkan14Properties, lineSubPixelPrecisionBits));
-    static_assert(offsetof(physical_device_14_properties, identicalMemoryTypeRequirements) == offsetof(VkPhysicalDeviceVulkan14Properties, identicalMemoryTypeRequirements));
+    // VkPhysicalDeviceVulkan14properties_t checks.
+    static_assert(std::is_standard_layout_v<physical_device_14_properties_t>, "physical_device_14_properties must be standard-layout for native interop.");
+    static_assert(sizeof(physical_device_14_properties_t) == sizeof(VkPhysicalDeviceVulkan14Properties), "physical_device_14_properties layout diverged from VkPhysicalDeviceVulkan14Properties.");
+    static_assert(offsetof(physical_device_14_properties_t, sType) == offsetof(VkPhysicalDeviceVulkan14Properties, sType));
+    static_assert(offsetof(physical_device_14_properties_t, pNext) == offsetof(VkPhysicalDeviceVulkan14Properties, pNext));
+    static_assert(offsetof(physical_device_14_properties_t, lineSubPixelPrecisionBits) == offsetof(VkPhysicalDeviceVulkan14Properties, lineSubPixelPrecisionBits));
+    static_assert(offsetof(physical_device_14_properties_t, identicalMemoryTypeRequirements) == offsetof(VkPhysicalDeviceVulkan14Properties, identicalMemoryTypeRequirements));
 
 
 }

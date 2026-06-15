@@ -45,14 +45,25 @@ create_instance()
     spx::dynamic_array<const char*> required_layers;
     required_layers.emplace_back("VK_LAYER_KHRONOS_validation");
 
-    // TODO(Chris): Actually create the instance.
-    spx::vk::application_info application_info { };
-    application_info.apiVersion = VK_MAKE_VERSION(1, 3, 0);
-    application_info.engineVersion = VK_MAKE_VERSION(1, 0, 0);
-    application_info.pApplicationName = "Simplex";
-    application_info.pEngineName = "SimplexVK";
+    // Verify our extensions.
+    if (!spx::vk::instance_t::validate_instance_extensions(required_extensions))
+        THROW_SIMPLEX_RENDERER_EXCEPTION("Failed to validate instance extensions.");
+    spx::logger::dispatch_diagnostic_log("Validated instance extensions successfully.");
 
-    spx::vk::instance_create_info instance_create_info { };
+    // Verify our layers.
+    if (!spx::vk::instance_t::validate_instance_layers(required_layers))
+        THROW_SIMPLEX_RENDERER_EXCEPTION("Failed to validate instance layers.");
+    spx::logger::dispatch_diagnostic_log("Validated instance layers successfully.");
+
+    // Set application info.
+    spx::vk::application_info_t application_info { };
+    application_info.apiVersion         = VK_MAKE_VERSION(1, 3, 0);
+    application_info.engineVersion      = VK_MAKE_VERSION(1, 0, 0);
+    application_info.pApplicationName   = "Simplex";
+    application_info.pEngineName        = "SimplexVK";
+
+    // Instance creation.
+    spx::vk::instance_create_info_t instance_create_info { };
     instance_create_info.set_extensions(required_extensions);
     instance_create_info.set_layers(required_layers);
 

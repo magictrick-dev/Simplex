@@ -14,10 +14,7 @@ namespace spx::vk
     ///
     /// Each wrapper takes its arguments by reference and forwards them straight to the native
     /// call. The wrapped types convert to their native Vulkan structs/handles through a
-    /// reinterpret_cast (the layout guards in structures.hpp enforce that this is valid), so
-    /// nothing is copied and these compile down to the exact same call you would have written
-    /// by hand. Routing every call through here is what lets the wrappers drop the address-of
-    /// (operator&) overload, since the conversion happens explicitly inside the wrapper.
+    /// reinterpret_cast (the layout guards in structures.hpp enforce that this is valid).
 
     /// @brief Wraps vkCreateInstance, taking a wrapped create-info and writing into a wrapped handle.
     /// @param create_info  The instance create info.
@@ -25,9 +22,9 @@ namespace spx::vk
     /// @param out_instance The handle to populate on success.
     /// @return The native VkResult from vkCreateInstance.
     inline VkResult
-    create_instance(const instance_create_info& create_info,
+    create_instance(const instance_create_info_t& create_info,
                     const VkAllocationCallbacks* allocator,
-                    instance& out_instance)
+                    instance_t& out_instance)
     {
         const VkInstanceCreateInfo& native_create_info = create_info;
         return vkCreateInstance(&native_create_info, allocator, &out_instance.native);
@@ -37,7 +34,7 @@ namespace spx::vk
     /// @param inst      The instance to destroy.
     /// @param allocator Optional allocation callbacks (may be nullptr). Must match what was passed to create_instance.
     inline void
-    destroy_instance(instance& inst, const VkAllocationCallbacks* allocator = nullptr)
+    destroy_instance(instance_t& inst, const VkAllocationCallbacks* allocator = nullptr)
     {
         vkDestroyInstance(inst.native, allocator);
         inst.native = nullptr;
@@ -54,7 +51,7 @@ namespace spx::vk
     /// @param out_devices Buffer of physical_device wrappers, or nullptr to only query the count.
     /// @return The native VkResult from vkEnumeratePhysicalDevices.
     inline VkResult
-    enumerate_physical_devices(instance& inst, uint32_t* count, physical_device* out_devices)
+    enumerate_physical_devices(instance_t& inst, uint32_t* count, physical_device_t* out_devices)
     {
         return vkEnumeratePhysicalDevices(inst.native, count,
             out_devices ? &out_devices->native : nullptr);
@@ -67,7 +64,7 @@ namespace spx::vk
     /// @param device         The physical device to query.
     /// @param out_properties The properties struct (and its pNext chain) to populate.
     inline void
-    get_physical_device_properties(physical_device& device, physical_device_10_properties& out_properties)
+    get_physical_device_properties(physical_device_t& device, physical_device_10_properties_t& out_properties)
     {
         VkPhysicalDeviceProperties2& native_properties = out_properties;
         vkGetPhysicalDeviceProperties2(device.native, &native_properties);
@@ -80,7 +77,7 @@ namespace spx::vk
     /// @param device       The physical device to query.
     /// @param out_features The features struct (and its pNext chain) to populate.
     inline void
-    get_physical_device_features(physical_device& device, physical_device_10_features& out_features)
+    get_physical_device_features(physical_device_t& device, physical_device_10_features_t& out_features)
     {
         VkPhysicalDeviceFeatures2& native_features = out_features;
         vkGetPhysicalDeviceFeatures2(device.native, &native_features);

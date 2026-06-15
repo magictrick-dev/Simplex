@@ -29,8 +29,8 @@ namespace spx::vk
             virtual RendererResultType internal_deinitialize() override;
 
         private:
-            spx::vk::instance instance;
-            spx::vk::physical_device physical_device;
+            spx::vk::instance_t instance;
+            spx::vk::physical_device_t physical_device;
 
     };
 

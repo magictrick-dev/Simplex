@@ -42,8 +42,8 @@ namespace spx::vk
     // Using statements.
     // ---------------------------------------------------------------------------------------------
 
-    using instance          = vk_handle<VkInstance>;
-    using physical_device   = vk_handle<VkPhysicalDevice>;
+    using instance_t        = vk_handle<VkInstance>;
+    using physical_device_t = vk_handle<VkPhysicalDevice>;
 
     // ---------------------------------------------------------------------------------------------
     // Handle mixins.
@@ -57,7 +57,7 @@ namespace spx::vk
         /// @brief Validates a list of instance extensions from the list of available extensions.
         /// @param requested_extensions The list of extensions to check.
         /// @return True if all extensions are available, false otherwise.
-        inline bool32_t
+        static inline bool32_t
         validate_instance_extensions(spx::array_view<const char*> requested_extensions)
         {
 
@@ -88,7 +88,7 @@ namespace spx::vk
         /// @brief Validates a list of instance layers from the list of available layers.
         /// @param requested_layers The lsit of layers to check.
         /// @return True if all extensions are available, false otherwise.
-        inline bool32_t
+        static inline bool32_t
         validate_instance_layers(spx::array_view<const char*> requested_layers)
         {
 
