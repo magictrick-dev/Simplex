@@ -1,5 +1,8 @@
 #pragma once
 #include <simplex/renderer/renderer_interface.hpp>
+#include <simplex/renderer/vulkan/functions.hpp>
+#include <simplex/renderer/vulkan/handles.hpp>
+#include <simplex/renderer/vulkan/structures.hpp>
 
 namespace spx::vk
 {
@@ -24,6 +27,10 @@ namespace spx::vk
             virtual RendererResultType internal_render_end() override;
             virtual RendererResultType internal_frame_end() override;
             virtual RendererResultType internal_deinitialize() override;
+
+        private:
+            spx::vk::instance instance;
+            spx::vk::physical_device physical_device;
 
     };
 

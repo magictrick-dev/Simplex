@@ -4,9 +4,10 @@
 
 #include <vulkan/vulkan.h>
 
+#include <simplex/array_view.hpp>
 #include <simplex/string_view.hpp>
 #include <simplex/dynamic_array.hpp>
-#include <simplex/array_view.hpp>
+#include <simplex/dynamic_string.hpp>
 
 #include <simplex/renderer/renderer_utils.hpp>
 #include <simplex/renderer/vulkan/structures.hpp>

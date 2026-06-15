@@ -39,22 +39,6 @@ int
 scratch_main()
 {
 
-    spx::vk::instance_create_info create_info { };
-    spx::vk::instance instance { };
-
-    spx::vk::create_instance(create_info, nullptr, instance);
-
-    spx::logger::dispatch_information_log("Extensions {}", create_info.enabledExtensionCount);
-    
-    spx::logger::dispatch_debug_log("Sizeof spx instance create info: {}", sizeof(create_info));
-    spx::logger::dispatch_debug_log("Sizeof vk  instance create info: {}", sizeof(VkInstanceCreateInfo));
-
-    auto list = spx::vk::instance::get_available_instance_layers();
-    for (auto l : list)
-    {
-        spx::logger::dispatch_debug_log("Instance layer available is: {}", l.c_str());
-    }
-
 #   define SIMPLEX_SCRATCH_RUN_LOOP 1
 #   if defined(SIMPLEX_SCRATCH_RUN_LOOP) && SIMPLEX_SCRATCH_RUN_LOOP == 1
 

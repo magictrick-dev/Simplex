@@ -78,13 +78,6 @@ namespace spx::vk
         inline uint32_t     get_engine_version() const      { return this->engineVersion;       }
         inline uint32_t     get_api_version() const         { return this->apiVersion;          }
 
-        inline derived_t& set_next(const void* next)                { this->pNext = next; return *s();                  }
-        inline derived_t& set_application_name(const char* name)    { this->pApplicationName = name; return *s();       }
-        inline derived_t& set_application_version(uint32_t version) { this->applicationVersion = version; return *s();  }
-        inline derived_t& set_engine_name(const char* name)         { this->pEngineName = name; return *s();            }
-        inline derived_t& set_engine_version(uint32_t version)      { this->engineVersion = version; return *s();       }
-        inline derived_t& set_api_version(uint32_t version)         { this->apiVersion = version; return *s();          }
-
         private:
             inline derived_t* s() { return reinterpret_cast<derived_t*>(this); }
 
@@ -98,7 +91,7 @@ namespace spx::vk
         VkStructureType             sType                   { VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO    };
         const void*                 pNext                   { nullptr                                   };
         VkInstanceCreateFlags       flags                   {                                           };
-        const VkApplicationInfo*    pApplicationInfo        { nullptr                                   };
+        const vk_struct_base<VkApplicationInfo>* pApplicationInfo { nullptr                             };
         uint32_t                    enabledLayerCount       {                                           };
         const char* const*          ppEnabledLayerNames     { nullptr                                   };
         uint32_t                    enabledExtensionCount   {                                           };
@@ -109,10 +102,6 @@ namespace spx::vk
         inline const VkApplicationInfo*     get_application_info() const    { return this->pApplicationInfo;                                            }
         inline spx::array_view<const char*> get_layers() const              { return { this->ppEnabledLayerNames, this->enabledLayerCount };            }
         inline spx::array_view<const char*> get_extensions() const          { return { this->ppEnabledExtensionNames, this->enabledExtensionCount };    }
-
-        inline derived_t& set_next(const void* next)                            { this->pNext = next; return *s();              }
-        inline derived_t& set_flags(VkInstanceCreateFlags flags)                { this->flags = flags; return *s();             }
-        inline derived_t& set_application_info(const VkApplicationInfo* info)   { this->pApplicationInfo = info; return *s();   }
 
         inline derived_t& set_layers(spx::array_view<const char*> layers)
         {

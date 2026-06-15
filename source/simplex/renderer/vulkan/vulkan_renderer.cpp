@@ -11,8 +11,6 @@ internal_initialize()
     this->select_physical_device();
     this->create_logical_device();
 
-    // Generating a surface.
-
     return RendererResultType_OK;
 
 }
@@ -48,6 +46,21 @@ create_instance()
     required_layers.emplace_back("VK_LAYER_KHRONOS_validation");
 
     // TODO(Chris): Actually create the instance.
+    spx::vk::application_info application_info { };
+    application_info.apiVersion = VK_MAKE_VERSION(1, 3, 0);
+    application_info.engineVersion = VK_MAKE_VERSION(1, 0, 0);
+    application_info.pApplicationName = "Simplex";
+    application_info.pEngineName = "SimplexVK";
+
+    spx::vk::instance_create_info instance_create_info { };
+    instance_create_info.set_extensions(required_extensions);
+    instance_create_info.set_layers(required_layers);
+
+    // Creates the instance.
+    const auto result = spx::vk::create_instance(instance_create_info, NULL, this->instance);
+    if (result != VK_SUCCESS) THROW_SIMPLEX_RENDERER_EXCEPTION("Failed to create vulkan instance.");
+
+    spx::logger::dispatch_diagnostic_log("Created a vulkan instance successfully.");
 
 }
 
@@ -55,6 +68,7 @@ RendererResultType spx::vk::vulkan_renderer::
 internal_deinitialize() 
 {
 
+    spx::vk::destroy_instance(this->instance);
 
     return RendererResultType_OK;
 
