@@ -43,4 +43,34 @@ namespace spx::vk
         inst.native = nullptr;
     }
 
+    /// @brief Wraps vkEnumeratePhysicalDevices.
+    ///
+    /// Follows the native two-call pattern: pass out_devices == nullptr to query the count, then
+    /// call again with a buffer sized to that count. The physical_device wrapper is layout-identical
+    /// to the raw VkPhysicalDevice (see the guards in handles.hpp), so the array of wrappers is
+    /// written into directly without a copy.
+    /// @param inst        The instance to enumerate over.
+    /// @param count       In/out: capacity of out_devices, and the number actually written.
+    /// @param out_devices Buffer of physical_device wrappers, or nullptr to only query the count.
+    /// @return The native VkResult from vkEnumeratePhysicalDevices.
+    inline VkResult
+    enumerate_physical_devices(instance& inst, uint32_t* count, physical_device* out_devices)
+    {
+        return vkEnumeratePhysicalDevices(inst.native, count,
+            out_devices ? &out_devices->native : nullptr);
+    }
+
+    /// @brief Wraps vkGetPhysicalDeviceProperties2, writing into a wrapped properties struct.
+    ///
+    /// Any version-specific property structs (physical_device_11/12/13/14_properties) chained onto
+    /// out_properties via set_next are filled by the driver in the same call.
+    /// @param device         The physical device to query.
+    /// @param out_properties The properties struct (and its pNext chain) to populate.
+    inline void
+    get_physical_device_properties(physical_device& device, physical_device_10_properties& out_properties)
+    {
+        VkPhysicalDeviceProperties2& native_properties = out_properties;
+        vkGetPhysicalDeviceProperties2(device.native, &native_properties);
+    }
+
 }

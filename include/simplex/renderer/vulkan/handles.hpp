@@ -11,6 +11,9 @@
 #include <simplex/renderer/renderer_utils.hpp>
 #include <simplex/renderer/vulkan/structures.hpp>
 
+#include <type_traits>
+#include <cstddef>
+
 namespace spx::vk
 {
 
@@ -34,8 +37,16 @@ namespace spx::vk
 
     };
 
+    // ---------------------------------------------------------------------------------------------
     // Using statements.
-    using instance = vk_handle<VkInstance>;
+    // ---------------------------------------------------------------------------------------------
+
+    using instance          = vk_handle<VkInstance>;
+    using physical_device   = vk_handle<VkPhysicalDevice>;
+
+    // ---------------------------------------------------------------------------------------------
+    // Handle mixins.
+    // ---------------------------------------------------------------------------------------------
 
     // @brief VkInstance mixin extensions.
     template <typename derived_t>
@@ -145,6 +156,13 @@ namespace spx::vk
             return std::move(layers);
 
         }
+
+    };
+
+    /// @brief VkPhysicalDevice mixin.
+    template <typename derived_t>
+    struct vk_handle_ext<derived_t, VkPhysicalDevice>
+    {
 
     };
 
