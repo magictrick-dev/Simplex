@@ -11,9 +11,11 @@
 enum RendererResultType : uint32_t
 {
     RendererResultType_OK,
-    RendererResultType_InitializationFailed,
-    RendererResultType_DeinitializationFailed,
     RendererResultType_WindowInvalid,
+    RendererResultType_VulkanInstanceCreationFailed,
+    RendererResultType_VulkanSurfaceCreationFailed,
+    RendererResultType_VulkanPhysicalDeviceSelectionFailed,
+    RendererResultType_VulkanLogicalDeviceCreationFailed,
 };
 
 namespace spx

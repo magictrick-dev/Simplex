@@ -35,36 +35,7 @@
 #endif
 #include <vendor/glad/glad.h>
 #include <GLFW/glfw3.h>
-
-#ifndef SIMPLEX_PLATFORM_INFORMATION
-#   define SIMPLEX_PLATFORM_INFORMATION
-#   if defined(__APPLE__)
-#       define SIMPLEX_PLATFORM_TYPE "Apple MacOSX"
-#       define SIMPLEX_FRONTEND_RENDERER "OpenGL"
-#       define SIMPLEX_BACKEND_RENDERER "RenderView"
-#   elif defined(_WIN32)
-#       define SIMPLEX_PLATFORM_TYPE "Microsoft Windows Win32"
-#       define SIMPLEX_FRONTEND_RENDERER "OpenGL"
-#       define SIMPLEX_BACKEND_RENDERER "RenderView"
-#   elif defined(__unix__)
-#       define SIMPLEX_PLATFORM_TYPE "Linux UNIX"
-#       define SIMPLEX_FRONTEND_RENDERER "OpenGL"
-#       define SIMPLEX_BACKEND_RENDERER "RenderView"
-#   else
-#       define SIMPLEX_PLATFORM_TYPE "Unknown"
-#       define SIMPLEX_FRONTEND_RENDERER "Unavailable"
-#       define SIMPLEX_BACKEND_RENDERER "Unavailable"
-#   endif
-#endif
-
-static inline void
-print_engine_information()
-{
-    printf("Simplex Rendering Engine - Version 0.0A - 2026 Christopher DeJong - MagicTrick-Dev\n");
-    printf("    - Platform              : %s\n", SIMPLEX_PLATFORM_TYPE);
-    printf("    - Frontend Renderer     : %s\n", SIMPLEX_FRONTEND_RENDERER);
-    printf("    - Backend Renderer      : %s\n", SIMPLEX_BACKEND_RENDERER);
-}
+#include <utils/about.hpp>
 
 static int
 entry(int argc, char **argv)
@@ -75,11 +46,8 @@ entry(int argc, char **argv)
     // TODO(Chris): Defer our logs to a file rather than to standard-output.
     // TODO(Chris): GUI-based logging window?
     spx::logger::set_thread_name("MAIN");
-    spx::logger::dispatch_message<spx::logging_level::diagnostic, spx::logging_classification::internal>(
-        "Simplex Version    : {}\n"
-        "Simplex Platform   : {}\n"
-        "Simplex Frontend   : {}\n", 
-        "0.0.1A", SIMPLEX_PLATFORM_TYPE, SIMPLEX_FRONTEND_RENDERER);
+    spx::logger::dispatch_information_log("Simplex Version {}.{}.{}",
+        SIMPLEX_ABOUT_VERSION_MAJOR, SIMPLEX_ABOUT_VERSION_MINOR, SIMPLEX_ABOUT_VERSION_PATCH);
 
     // NOTE(Chris): The CLI stuff defers directly the console, which is ideal.
     CLIParser cli(argc, argv);

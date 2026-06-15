@@ -1,3 +1,5 @@
+#include <utils/about.hpp>
+
 #include <simplex/renderer/vulkan/vulkan_renderer.hpp>
 #include <simplex/platform/window.hpp>
 #include <simplex/dynamic_array.hpp>
@@ -6,18 +8,27 @@ RendererResultType spx::vk::vulkan_renderer::
 internal_initialize()
 {
 
-    this->create_instance();
-    this->create_surface();
-    this->select_physical_device();
-    this->create_logical_device();
-
-    // Generating a surface.
+    if (this->create_instance() == false)           return RendererResultType_VulkanInstanceCreationFailed;
+    if (this->create_surface() == false)            return RendererResultType_VulkanSurfaceCreationFailed;
+    if (this->select_physical_device() == false)    return RendererResultType_VulkanPhysicalDeviceSelectionFailed;
+    if (this->create_logical_device() == false)     return RendererResultType_VulkanLogicalDeviceCreationFailed;
 
     return RendererResultType_OK;
 
 }
 
-void spx::vk::vulkan_renderer::
+RendererResultType spx::vk::vulkan_renderer::
+internal_deinitialize() 
+{
+
+    if constexpr (enable_validation) spx::vk::destroy_debug_utils_messenger(this->instance, this->debug_messenger);
+    spx::vk::destroy_instance(this->instance);
+
+    return RendererResultType_OK;
+
+}
+
+bool32_t spx::vk::vulkan_renderer::
 create_instance()
 {
 
@@ -37,7 +48,8 @@ create_instance()
     }
 
     // Add additional instance extensions as needed.
-    required_extensions.emplace_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+    if constexpr (enable_validation)
+        required_extensions.emplace_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
 
 #   if defined(__APPLE__)
         required_extensions.emplace_back(VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME);
@@ -45,28 +57,116 @@ create_instance()
 
     // Add additional layers as we need them.
     spx::dynamic_array<const char*> required_layers;
-    required_layers.emplace_back("VK_LAYER_KHRONOS_validation");
 
-    // TODO(Chris): Actually create the instance.
+    if constexpr (enable_validation)
+    {
+        required_layers.emplace_back("VK_LAYER_KHRONOS_validation");
+    }
+
+    // Verify our extensions.
+    if (!spx::vk::instance_t::validate_instance_extensions(required_extensions))
+    {
+        THROW_SIMPLEX_RENDERER_EXCEPTION("Failed to validate instance extensions.");
+        return false;
+    }
+
+    spx::logger::dispatch_diagnostic_log("Validated instance extensions successfully.");
+
+    // Verify our layers.
+    if (!spx::vk::instance_t::validate_instance_layers(required_layers))
+    {
+        THROW_SIMPLEX_RENDERER_EXCEPTION("Failed to validate instance layers.");
+        return false;
+    }
+    spx::logger::dispatch_diagnostic_log("Validated instance layers successfully.");
+
+    // Set application info.
+    spx::vk::application_info_t application_info { };
+    application_info.apiVersion         = VK_MAKE_VERSION(1, 3, 0);
+    application_info.engineVersion      = VK_MAKE_VERSION(SIMPLEX_ABOUT_VERSION_MAJOR,
+                                                          SIMPLEX_ABOUT_VERSION_MINOR,
+                                                          SIMPLEX_ABOUT_VERSION_PATCH);
+    application_info.pApplicationName   = SIMPLEX_ABOUT_PROJECT_NAME;
+    application_info.pEngineName        = SIMPLEX_ABOUT_ENGINE_NAME;
+
+    // Instance creation.
+    spx::vk::instance_create_info_t instance_create_info { };
+    instance_create_info.set_extensions(required_extensions);
+    instance_create_info.set_layers(required_layers);
+
+    // When validation is enabled, describe the debug messenger up front and chain it into the
+    // instance create info's pNext so the vkCreateInstance/vkDestroyInstance calls themselves are
+    // covered, then reuse the same description to build the persistent messenger once the instance
+    // exists. The whole path is dispatched at compile time off enable_validation.
+    spx::vk::debug_utils_messenger_create_info_t debug_create_info { };
+    if constexpr (enable_validation)
+    {
+        debug_create_info.set_message_severity(
+            VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT |
+            VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT    |
+            VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
+            VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT);
+        debug_create_info.set_message_type(
+            VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT     |
+            VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT  |
+            VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT);
+        debug_create_info.set_user_callback(&vulkan_renderer::debug_callback);
+        debug_create_info.set_user_data(this);
+
+        const VkDebugUtilsMessengerCreateInfoEXT& native_debug_info = debug_create_info;
+        instance_create_info.pNext = &native_debug_info;
+    }
+
+    // Creates the instance.
+    const auto result = spx::vk::create_instance(instance_create_info, NULL, this->instance);
+    if (result != VK_SUCCESS) THROW_SIMPLEX_RENDERER_EXCEPTION("Failed to create vulkan instance.");
+
+    spx::logger::dispatch_diagnostic_log("Created a vulkan instance successfully.");
+
+    // Stand up the persistent debug messenger for the lifetime of the instance.
+    if constexpr (enable_validation)
+    {
+        const auto debug_result = spx::vk::create_debug_utils_messenger(
+            this->instance, debug_create_info, NULL, this->debug_messenger);
+        if (debug_result != VK_SUCCESS)
+            THROW_SIMPLEX_RENDERER_EXCEPTION("Failed to create the vulkan debug messenger.");
+
+        spx::logger::dispatch_diagnostic_log("Created the vulkan debug messenger successfully.");
+    }
+
+    return true;
 
 }
 
-RendererResultType spx::vk::vulkan_renderer::
-internal_deinitialize() 
+VKAPI_ATTR VkBool32 VKAPI_CALL spx::vk::vulkan_renderer::
+debug_callback(
+    VkDebugUtilsMessageSeverityFlagBitsEXT      message_severity,
+    VkDebugUtilsMessageTypeFlagsEXT             message_type,
+    const VkDebugUtilsMessengerCallbackDataEXT* callback_data,
+    void*                                       user_data)
 {
 
+    switch (message_severity)
+    {
+        case VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT: spx::logger::dispatch_diagnostic_log(callback_data->pMessage); break;
+        case VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT: spx::logger::dispatch_information_log(callback_data->pMessage); break;
+        case VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT: spx::logger::dispatch_warning_log(callback_data->pMessage); break;
+        case VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT: spx::logger::dispatch_error_log(callback_data->pMessage); break;
+        default :spx::logger::dispatch_error_log(callback_data->pMessage);
+    }
 
-    return RendererResultType_OK;
+    return VK_FALSE;
 
 }
 
-void spx::vk::vulkan_renderer::
+bool32_t spx::vk::vulkan_renderer::
 select_physical_device()
 {
 
+    return true;
 }
 
-void spx::vk::vulkan_renderer::
+bool32_t spx::vk::vulkan_renderer::
 create_logical_device()
 {
 
@@ -79,9 +179,11 @@ create_logical_device()
 
     // TODO(Chris): Actually create the logical device.
 
+    return true;
+
 }
 
-void spx::vk::vulkan_renderer::
+bool32_t spx::vk::vulkan_renderer::
 create_surface()
 {
 
@@ -90,6 +192,7 @@ create_surface()
 
     // TODO(Chris): Actually create the surface.
 
+    return true;
 }
 
 RendererResultType spx::vk::vulkan_renderer::

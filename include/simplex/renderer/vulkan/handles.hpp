@@ -4,12 +4,16 @@
 
 #include <vulkan/vulkan.h>
 
+#include <simplex/array_view.hpp>
 #include <simplex/string_view.hpp>
 #include <simplex/dynamic_array.hpp>
-#include <simplex/array_view.hpp>
+#include <simplex/dynamic_string.hpp>
 
 #include <simplex/renderer/renderer_utils.hpp>
 #include <simplex/renderer/vulkan/structures.hpp>
+
+#include <type_traits>
+#include <cstddef>
 
 namespace spx::vk
 {
@@ -34,8 +38,17 @@ namespace spx::vk
 
     };
 
+    // ---------------------------------------------------------------------------------------------
     // Using statements.
-    using instance = vk_handle<VkInstance>;
+    // ---------------------------------------------------------------------------------------------
+
+    using instance_t                = vk_handle<VkInstance>;
+    using physical_device_t         = vk_handle<VkPhysicalDevice>;
+    using debug_utils_messenger_t   = vk_handle<VkDebugUtilsMessengerEXT>;
+
+    // ---------------------------------------------------------------------------------------------
+    // Handle mixins.
+    // ---------------------------------------------------------------------------------------------
 
     // @brief VkInstance mixin extensions.
     template <typename derived_t>
@@ -45,7 +58,7 @@ namespace spx::vk
         /// @brief Validates a list of instance extensions from the list of available extensions.
         /// @param requested_extensions The list of extensions to check.
         /// @return True if all extensions are available, false otherwise.
-        inline bool32_t
+        static inline bool32_t
         validate_instance_extensions(spx::array_view<const char*> requested_extensions)
         {
 
@@ -76,7 +89,7 @@ namespace spx::vk
         /// @brief Validates a list of instance layers from the list of available layers.
         /// @param requested_layers The lsit of layers to check.
         /// @return True if all extensions are available, false otherwise.
-        inline bool32_t
+        static inline bool32_t
         validate_instance_layers(spx::array_view<const char*> requested_layers)
         {
 
@@ -145,6 +158,13 @@ namespace spx::vk
             return std::move(layers);
 
         }
+
+    };
+
+    /// @brief VkPhysicalDevice mixin.
+    template <typename derived_t>
+    struct vk_handle_ext<derived_t, VkPhysicalDevice>
+    {
 
     };
 

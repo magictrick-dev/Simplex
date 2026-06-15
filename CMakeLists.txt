@@ -1,6 +1,8 @@
 CMAKE_MINIMUM_REQUIRED(VERSION 4.3)
 
 PROJECT(Simplex)
+
+FIND_PACKAGE(Python3 REQUIRED COMPONENTS Interpreter)
 SET(CMAKE_CXX_STANDARD 23)
 SET(CMAKE_CXX_STANDARD_REQUIRED ON)
 
@@ -156,3 +158,11 @@ IF (APPLE)
     TARGET_LINK_LIBRARIES(Simplex OpenGL::GL glfw ${Vulkan_LIBRARIES}
         "-framework Cocoa" "-framework QuartzCore")
 ENDIF(APPLE)
+
+ADD_CUSTOM_COMMAND(TARGET Simplex POST_BUILD
+    COMMAND ${Python3_EXECUTABLE}
+        ${CMAKE_SOURCE_DIR}/scripts/bump_version.py
+        ${CMAKE_SOURCE_DIR}/include/utils/about.hpp
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    COMMENT "Bumping patch version in about.hpp"
+)
