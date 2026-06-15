@@ -29,7 +29,8 @@ namespace spx::vk
         using native_type_t     = handle_type_t;
         native_type_t native    = { nullptr };
 
-        inline operator native_type_t() { return this->native; }
+        inline operator native_type_t&()                { return this->native; }
+        inline operator native_type_t const &() const   { return this->native; }
 
     };
 
@@ -114,7 +115,13 @@ namespace spx::vk
             spx::dynamic_array<VkExtensionProperties> extensions(extension_count);
             vkEnumerateInstanceExtensionProperties(NULL, &extension_count, extensions.begin());
 
-            return std::move(extensions);
+            spx::dynamic_array<spx::dynamic_string<char>> extension_names;
+            for (auto extension : extensions) 
+            {
+                extension_names.emplace_back(extension.extensionName);
+            }
+
+            return std::move(extension_names);
 
         }
 

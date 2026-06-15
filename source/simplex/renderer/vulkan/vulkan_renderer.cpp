@@ -47,21 +47,22 @@ create_instance()
     spx::dynamic_array<const char*> required_layers;
     required_layers.emplace_back("VK_LAYER_KHRONOS_validation");
 
-    this->instance.create(required_extensions, required_layers);
+    // TODO(Chris): Actually create the instance.
+
+}
+
+RendererResultType spx::vk::vulkan_renderer::
+internal_deinitialize() 
+{
+
+
+    return RendererResultType_OK;
 
 }
 
 void spx::vk::vulkan_renderer::
 select_physical_device()
 {
-
-    // Allowing the selection of the optimal device based on device scoring.
-    this->physical_device = spx::vk::physical_device::get_optimal_device(this->instance, this->surface);
-
-    spx::logger::dispatch_diagnostic_log(
-        "Selected {} as the physical device.",
-        this->physical_device.get_qualified_name().c_str()
-    );
 
 }
 
@@ -76,7 +77,7 @@ create_logical_device()
         required_device_extensions.emplace_back("VK_KHR_portability_subset");
 #   endif
 
-    this->logical_device.create(this->instance, this->physical_device, required_device_extensions);
+    // TODO(Chris): Actually create the logical device.
 
 }
 
@@ -87,8 +88,7 @@ create_surface()
     // Fetch the window.
     spx::window_interface *window = this->get_window();
 
-    // Creating the surface.
-    this->surface.create(this->instance, window);
+    // TODO(Chris): Actually create the surface.
 
 }
 
@@ -118,16 +118,4 @@ internal_frame_end()
 {
 
     return RendererResultType_OK;
-}
-
-RendererResultType spx::vk::vulkan_renderer::
-internal_deinitialize() 
-{
-
-    this->logical_device.destroy();
-    this->surface.destroy();
-    this->instance.destroy();
-
-    return RendererResultType_OK;
-
 }
