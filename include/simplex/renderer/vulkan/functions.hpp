@@ -207,4 +207,22 @@ namespace spx::vk
             out_present_modes);
     }
 
+    /// @brief Wraps vkGetPhysicalDeviceQueueFamilyProperties2.
+    ///
+    /// Native two-call pattern: pass out_properties == nullptr to query the count, then call again
+    /// with a buffer sized to it. queue_family_properties_2_t is layout-identical to
+    /// VkQueueFamilyProperties2 (guarded in structures.hpp), so the wrapper array is written
+    /// directly; read the per-family data through .get_queue_family_properties().
+    /// @param device        The physical device to query.
+    /// @param count         In/out: capacity of out_properties, and the number actually written.
+    /// @param out_properties Buffer of queue_family_properties_2_t, or nullptr to only query count.
+    inline void
+    get_physical_device_queue_family_properties(physical_device_t& device, uint32_t* count,
+                                                 queue_family_properties_2_t* out_properties)
+    {
+        VkQueueFamilyProperties2* native_properties =
+            out_properties ? &static_cast<VkQueueFamilyProperties2&>(*out_properties) : nullptr;
+        vkGetPhysicalDeviceQueueFamilyProperties2(device.native, count, native_properties);
+    }
+
 }

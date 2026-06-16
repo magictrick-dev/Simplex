@@ -870,6 +870,107 @@ namespace spx::vk
 
     };
 
+    /// @brief VkExtent3D mixin (extent_3d_t).
+    ///
+    /// A 3D size; reused as the nested transfer-granularity member of queue_family_properties_t.
+    template <typename derived_t>
+    struct vk_struct_ext<derived_t, VkExtent3D>
+    {
+
+        uint32_t    width   {         };
+        uint32_t    height  {         };
+        uint32_t    depth   {         };
+
+        inline uint32_t get_width() const   { return this->width;   }
+        inline uint32_t get_height() const  { return this->height;  }
+        inline uint32_t get_depth() const   { return this->depth;   }
+
+        inline derived_t& set_width(uint32_t w)  { this->width = w; return *s();  }
+        inline derived_t& set_height(uint32_t h) { this->height = h; return *s(); }
+        inline derived_t& set_depth(uint32_t d)  { this->depth = d; return *s();  }
+
+        private:
+            inline derived_t* s() { return reinterpret_cast<derived_t*>(this); }
+
+    };
+
+    /// @brief VkQueueFamilyProperties mixin (queue_family_properties_t).
+    ///
+    /// Output struct from vkGetPhysicalDeviceQueueFamilyProperties; members are public for direct
+    /// read, with the transfer granularity wrapped as extent_3d_t. Reused as the nested member of
+    /// queue_family_properties_2_t below.
+    template <typename derived_t>
+    struct vk_struct_ext<derived_t, VkQueueFamilyProperties>
+    {
+
+        VkQueueFlags                queueFlags                  {         };
+        uint32_t                    queueCount                  {         };
+        uint32_t                    timestampValidBits          {         };
+        vk_struct_base<VkExtent3D>  minImageTransferGranularity {         };
+
+        inline VkQueueFlags                         get_queue_flags() const             { return this->queueFlags;          }
+        inline uint32_t                             get_queue_count() const             { return this->queueCount;          }
+        inline uint32_t                             get_timestamp_valid_bits() const    { return this->timestampValidBits;  }
+        inline const vk_struct_base<VkExtent3D>&    get_min_image_transfer_granularity() const { return this->minImageTransferGranularity; }
+
+    };
+
+    /// @brief VkQueueFamilyProperties2 mixin (queue_family_properties_2_t).
+    template <typename derived_t>
+    struct vk_struct_ext<derived_t, VkQueueFamilyProperties2>
+    {
+
+        VkStructureType                          sType                  { VK_STRUCTURE_TYPE_QUEUE_FAMILY_PROPERTIES_2 };
+        void*                                    pNext                  { nullptr };
+        vk_struct_base<VkQueueFamilyProperties>  queueFamilyProperties  {         };
+
+        inline void*                                          get_next() const                   { return this->pNext;                  }
+        inline const vk_struct_base<VkQueueFamilyProperties>& get_queue_family_properties() const { return this->queueFamilyProperties;  }
+
+        inline derived_t& set_next(void* next) { this->pNext = next; return *s(); }
+
+        private:
+            inline derived_t* s() { return reinterpret_cast<derived_t*>(this); }
+
+    };
+
+    /// @brief VkDeviceQueueCreateInfo mixin (device_queue_create_info_t).
+    ///
+    /// Input struct describing the queues to allocate when creating a logical device. set_queue_-
+    /// priorities keeps queueCount in sync with the supplied priority list.
+    template <typename derived_t>
+    struct vk_struct_ext<derived_t, VkDeviceQueueCreateInfo>
+    {
+
+        VkStructureType             sType               { VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO };
+        const void*                 pNext               { nullptr };
+        VkDeviceQueueCreateFlags    flags               {         };
+        uint32_t                    queueFamilyIndex    {         };
+        uint32_t                    queueCount          {         };
+        const float*                pQueuePriorities    { nullptr };
+
+        inline const void*              get_next() const                { return this->pNext;             }
+        inline VkDeviceQueueCreateFlags get_flags() const               { return this->flags;             }
+        inline uint32_t                 get_queue_family_index() const  { return this->queueFamilyIndex;  }
+        inline uint32_t                 get_queue_count() const         { return this->queueCount;        }
+        inline spx::array_view<float>   get_queue_priorities() const    { return { this->pQueuePriorities, this->queueCount }; }
+
+        inline derived_t& set_next(const void* next)                { this->pNext = next; return *s();             }
+        inline derived_t& set_flags(VkDeviceQueueCreateFlags flags) { this->flags = flags; return *s();            }
+        inline derived_t& set_queue_family_index(uint32_t index)    { this->queueFamilyIndex = index; return *s(); }
+
+        inline derived_t& set_queue_priorities(spx::array_view<float> priorities)
+        {
+            this->pQueuePriorities = priorities.data();
+            this->queueCount       = static_cast<uint32_t>(priorities.size());
+            return *s();
+        }
+
+        private:
+            inline derived_t* s() { return reinterpret_cast<derived_t*>(this); }
+
+    };
+
     // ---------------------------------------------------------------------------------------------
     // Using statements.
     //
@@ -900,8 +1001,13 @@ namespace spx::vk
     using physical_device_14_properties_t       = vk_struct_base<VkPhysicalDeviceVulkan14Properties>;
 
     using extent_2d_t                           = vk_struct_base<VkExtent2D>;
+    using extent_3d_t                           = vk_struct_base<VkExtent3D>;
     using surface_capabilities_t                = vk_struct_base<VkSurfaceCapabilitiesKHR>;
     using surface_format_t                      = vk_struct_base<VkSurfaceFormatKHR>;
+
+    using queue_family_properties_t             = vk_struct_base<VkQueueFamilyProperties>;
+    using queue_family_properties_2_t           = vk_struct_base<VkQueueFamilyProperties2>;
+    using device_queue_create_info_t            = vk_struct_base<VkDeviceQueueCreateInfo>;
 
     // ---------------------------------------------------------------------------------------------
     // Layout guards.
@@ -1084,6 +1190,36 @@ namespace spx::vk
     static_assert(sizeof(surface_format_t) == sizeof(VkSurfaceFormatKHR), "surface_format_t layout diverged from VkSurfaceFormatKHR.");
     static_assert(offsetof(surface_format_t, format) == offsetof(VkSurfaceFormatKHR, format));
     static_assert(offsetof(surface_format_t, colorSpace) == offsetof(VkSurfaceFormatKHR, colorSpace));
+
+    // VkExtent3D checks.
+    static_assert(std::is_standard_layout_v<extent_3d_t>, "extent_3d_t must be standard-layout for native interop.");
+    static_assert(sizeof(extent_3d_t) == sizeof(VkExtent3D), "extent_3d_t layout diverged from VkExtent3D.");
+    static_assert(offsetof(extent_3d_t, width) == offsetof(VkExtent3D, width));
+    static_assert(offsetof(extent_3d_t, depth) == offsetof(VkExtent3D, depth));
+
+    // VkQueueFamilyProperties checks. The array-writing wrapper for
+    // vkGetPhysicalDeviceQueueFamilyProperties reinterprets a buffer of these, so this must be exact.
+    static_assert(std::is_standard_layout_v<queue_family_properties_t>, "queue_family_properties_t must be standard-layout for native interop.");
+    static_assert(sizeof(queue_family_properties_t) == sizeof(VkQueueFamilyProperties), "queue_family_properties_t layout diverged from VkQueueFamilyProperties.");
+    static_assert(offsetof(queue_family_properties_t, queueFlags) == offsetof(VkQueueFamilyProperties, queueFlags));
+    static_assert(offsetof(queue_family_properties_t, minImageTransferGranularity) == offsetof(VkQueueFamilyProperties, minImageTransferGranularity));
+
+    // VkQueueFamilyProperties2 checks. Same array-reinterpret concern for the _2 query wrapper.
+    static_assert(std::is_standard_layout_v<queue_family_properties_2_t>, "queue_family_properties_2_t must be standard-layout for native interop.");
+    static_assert(sizeof(queue_family_properties_2_t) == sizeof(VkQueueFamilyProperties2), "queue_family_properties_2_t layout diverged from VkQueueFamilyProperties2.");
+    static_assert(offsetof(queue_family_properties_2_t, sType) == offsetof(VkQueueFamilyProperties2, sType));
+    static_assert(offsetof(queue_family_properties_2_t, pNext) == offsetof(VkQueueFamilyProperties2, pNext));
+    static_assert(offsetof(queue_family_properties_2_t, queueFamilyProperties) == offsetof(VkQueueFamilyProperties2, queueFamilyProperties));
+
+    // VkDeviceQueueCreateInfo checks.
+    static_assert(std::is_standard_layout_v<device_queue_create_info_t>, "device_queue_create_info_t must be standard-layout for native interop.");
+    static_assert(sizeof(device_queue_create_info_t) == sizeof(VkDeviceQueueCreateInfo), "device_queue_create_info_t layout diverged from VkDeviceQueueCreateInfo.");
+    static_assert(offsetof(device_queue_create_info_t, sType) == offsetof(VkDeviceQueueCreateInfo, sType));
+    static_assert(offsetof(device_queue_create_info_t, pNext) == offsetof(VkDeviceQueueCreateInfo, pNext));
+    static_assert(offsetof(device_queue_create_info_t, flags) == offsetof(VkDeviceQueueCreateInfo, flags));
+    static_assert(offsetof(device_queue_create_info_t, queueFamilyIndex) == offsetof(VkDeviceQueueCreateInfo, queueFamilyIndex));
+    static_assert(offsetof(device_queue_create_info_t, queueCount) == offsetof(VkDeviceQueueCreateInfo, queueCount));
+    static_assert(offsetof(device_queue_create_info_t, pQueuePriorities) == offsetof(VkDeviceQueueCreateInfo, pQueuePriorities));
 
 
 }
