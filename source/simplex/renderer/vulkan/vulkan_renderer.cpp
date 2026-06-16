@@ -22,6 +22,7 @@ internal_deinitialize()
 {
 
     if constexpr (enable_validation) spx::vk::destroy_debug_utils_messenger(this->instance, this->debug_messenger);
+    spx::vk::destroy_surface(this->instance, this->surface);
     spx::vk::destroy_instance(this->instance);
 
     return RendererResultType_OK;
@@ -119,7 +120,11 @@ create_instance()
 
     // Creates the instance.
     const auto result = spx::vk::create_instance(instance_create_info, NULL, this->instance);
-    if (result != VK_SUCCESS) THROW_SIMPLEX_RENDERER_EXCEPTION("Failed to create vulkan instance.");
+    if (result != VK_SUCCESS)
+    {
+        THROW_SIMPLEX_RENDERER_EXCEPTION("Failed to create vulkan instance.");
+        return false;
+    }
 
     spx::logger::dispatch_diagnostic_log("Created a vulkan instance successfully.");
 
@@ -129,7 +134,10 @@ create_instance()
         const auto debug_result = spx::vk::create_debug_utils_messenger(
             this->instance, debug_create_info, NULL, this->debug_messenger);
         if (debug_result != VK_SUCCESS)
+        {
             THROW_SIMPLEX_RENDERER_EXCEPTION("Failed to create the vulkan debug messenger.");
+            return false;
+        }
 
         spx::logger::dispatch_diagnostic_log("Created the vulkan debug messenger successfully.");
     }
@@ -190,7 +198,17 @@ create_surface()
     // Fetch the window.
     spx::window_interface *window = this->get_window();
 
-    // TODO(Chris): Actually create the surface.
+    // The window owns platform-specific surface creation; hand it our instance and let it populate
+    // the surface handle.
+    const WindowStatus status = window->create_vulkan_surface(
+        this->instance, NULL, &this->surface.native);
+    if (status != WindowStatus_OK)
+    {
+        THROW_SIMPLEX_RENDERER_EXCEPTION("Failed to create the vulkan presentation surface.");
+        return false;
+    }
+
+    spx::logger::dispatch_diagnostic_log("Created the vulkan presentation surface successfully.");
 
     return true;
 }

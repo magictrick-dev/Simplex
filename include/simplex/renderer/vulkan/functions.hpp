@@ -129,4 +129,82 @@ namespace spx::vk
         messenger.native = nullptr;
     }
 
+    /// @brief Wraps vkDestroySurfaceKHR. Null-safe; the handle is nulled afterward either way.
+    /// @param inst      The instance the surface was created against.
+    /// @param surface   The surface to destroy.
+    /// @param allocator Optional allocation callbacks (must match the surface's creation).
+    inline void
+    destroy_surface(instance_t& inst, surface_t& surface, const VkAllocationCallbacks* allocator = nullptr)
+    {
+        if (surface.native != nullptr) vkDestroySurfaceKHR(inst.native, surface.native, allocator);
+        surface.native = nullptr;
+    }
+
+    /// @brief Wraps vkGetPhysicalDeviceSurfaceSupportKHR (does the queue family support presentation
+    ///        to this surface).
+    /// @param device              The physical device to query.
+    /// @param queue_family_index  The queue family to test.
+    /// @param surface             The surface to test against.
+    /// @param out_supported       Receives VK_TRUE/VK_FALSE.
+    /// @return The native VkResult.
+    inline VkResult
+    get_physical_device_surface_support(physical_device_t& device, uint32_t queue_family_index,
+                                        surface_t& surface, VkBool32* out_supported)
+    {
+        return vkGetPhysicalDeviceSurfaceSupportKHR(device.native, queue_family_index,
+            surface.native, out_supported);
+    }
+
+    /// @brief Wraps vkGetPhysicalDeviceSurfaceCapabilitiesKHR, writing into a wrapped capabilities
+    ///        struct.
+    /// @param device           The physical device to query.
+    /// @param surface          The surface to query.
+    /// @param out_capabilities The capabilities struct to populate.
+    /// @return The native VkResult.
+    inline VkResult
+    get_physical_device_surface_capabilities(physical_device_t& device, surface_t& surface,
+                                             surface_capabilities_t& out_capabilities)
+    {
+        VkSurfaceCapabilitiesKHR& native_capabilities = out_capabilities;
+        return vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device.native, surface.native,
+            &native_capabilities);
+    }
+
+    /// @brief Wraps vkGetPhysicalDeviceSurfaceFormatsKHR.
+    ///
+    /// Native two-call pattern: pass out_formats == nullptr to query the count, then call again with
+    /// a buffer sized to it. surface_format_t is layout-identical to VkSurfaceFormatKHR (guarded in
+    /// structures.hpp), so the wrapper array is written into directly.
+    /// @param device      The physical device to query.
+    /// @param surface     The surface to query.
+    /// @param count       In/out: capacity of out_formats, and the number actually written.
+    /// @param out_formats Buffer of surface_format_t, or nullptr to only query the count.
+    /// @return The native VkResult.
+    inline VkResult
+    get_physical_device_surface_formats(physical_device_t& device, surface_t& surface,
+                                        uint32_t* count, surface_format_t* out_formats)
+    {
+        VkSurfaceFormatKHR* native_formats =
+            out_formats ? &static_cast<VkSurfaceFormatKHR&>(*out_formats) : nullptr;
+        return vkGetPhysicalDeviceSurfaceFormatsKHR(device.native, surface.native, count,
+            native_formats);
+    }
+
+    /// @brief Wraps vkGetPhysicalDeviceSurfacePresentModesKHR.
+    ///
+    /// Native two-call pattern. VkPresentModeKHR is a plain enum, so present modes are written into a
+    /// raw VkPresentModeKHR buffer (no wrapper).
+    /// @param device     The physical device to query.
+    /// @param surface    The surface to query.
+    /// @param count      In/out: capacity of out_present_modes, and the number actually written.
+    /// @param out_present_modes Buffer of present modes, or nullptr to only query the count.
+    /// @return The native VkResult.
+    inline VkResult
+    get_physical_device_surface_present_modes(physical_device_t& device, surface_t& surface,
+                                              uint32_t* count, VkPresentModeKHR* out_present_modes)
+    {
+        return vkGetPhysicalDeviceSurfacePresentModesKHR(device.native, surface.native, count,
+            out_present_modes);
+    }
+
 }

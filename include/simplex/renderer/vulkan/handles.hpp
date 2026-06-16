@@ -45,6 +45,7 @@ namespace spx::vk
     using instance_t                = vk_handle<VkInstance>;
     using physical_device_t         = vk_handle<VkPhysicalDevice>;
     using debug_utils_messenger_t   = vk_handle<VkDebugUtilsMessengerEXT>;
+    using surface_t                 = vk_handle<VkSurfaceKHR>;
 
     // ---------------------------------------------------------------------------------------------
     // Handle mixins.
