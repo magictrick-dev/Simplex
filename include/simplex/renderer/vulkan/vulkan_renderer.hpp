@@ -42,6 +42,7 @@ namespace spx::vk
             spx::vk::instance_t instance;
             spx::vk::physical_device_t physical_device;
             spx::vk::debug_utils_messenger_t debug_messenger;
+            spx::vk::surface_t surface;
 
     };
 

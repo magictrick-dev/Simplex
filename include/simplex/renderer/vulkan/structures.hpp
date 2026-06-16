@@ -803,6 +803,73 @@ namespace spx::vk
 
     };
 
+    /// @brief VkExtent2D mixin (extent_2d_t).
+    ///
+    /// A 2D size used throughout the surface/swapchain structs; reused as the nested extent members
+    /// of surface_capabilities_t below.
+    template <typename derived_t>
+    struct vk_struct_ext<derived_t, VkExtent2D>
+    {
+
+        uint32_t    width   {         };
+        uint32_t    height  {         };
+
+        inline uint32_t get_width() const   { return this->width;   }
+        inline uint32_t get_height() const  { return this->height;  }
+
+        inline derived_t& set_width(uint32_t w)  { this->width = w; return *s();  }
+        inline derived_t& set_height(uint32_t h) { this->height = h; return *s(); }
+
+        private:
+            inline derived_t* s() { return reinterpret_cast<derived_t*>(this); }
+
+    };
+
+    /// @brief VkSurfaceCapabilitiesKHR mixin (surface_capabilities_t).
+    ///
+    /// An output struct filled by vkGetPhysicalDeviceSurfaceCapabilitiesKHR; members are public for
+    /// direct read, with the extent members wrapped as extent_2d_t for typed access.
+    template <typename derived_t>
+    struct vk_struct_ext<derived_t, VkSurfaceCapabilitiesKHR>
+    {
+
+        uint32_t                        minImageCount           {         };
+        uint32_t                        maxImageCount           {         };
+        vk_struct_base<VkExtent2D>      currentExtent           {         };
+        vk_struct_base<VkExtent2D>      minImageExtent          {         };
+        vk_struct_base<VkExtent2D>      maxImageExtent          {         };
+        uint32_t                        maxImageArrayLayers     {         };
+        VkSurfaceTransformFlagsKHR      supportedTransforms     {         };
+        VkSurfaceTransformFlagBitsKHR   currentTransform        {         };
+        VkCompositeAlphaFlagsKHR        supportedCompositeAlpha {         };
+        VkImageUsageFlags               supportedUsageFlags     {         };
+
+        inline uint32_t                             get_min_image_count() const         { return this->minImageCount;           }
+        inline uint32_t                             get_max_image_count() const         { return this->maxImageCount;           }
+        inline const vk_struct_base<VkExtent2D>&    get_current_extent() const          { return this->currentExtent;           }
+        inline const vk_struct_base<VkExtent2D>&    get_min_image_extent() const        { return this->minImageExtent;          }
+        inline const vk_struct_base<VkExtent2D>&    get_max_image_extent() const        { return this->maxImageExtent;          }
+        inline uint32_t                             get_max_image_array_layers() const  { return this->maxImageArrayLayers;     }
+        inline VkSurfaceTransformFlagsKHR           get_supported_transforms() const    { return this->supportedTransforms;     }
+        inline VkSurfaceTransformFlagBitsKHR        get_current_transform() const       { return this->currentTransform;        }
+        inline VkCompositeAlphaFlagsKHR             get_supported_composite_alpha() const { return this->supportedCompositeAlpha; }
+        inline VkImageUsageFlags                    get_supported_usage_flags() const   { return this->supportedUsageFlags;     }
+
+    };
+
+    /// @brief VkSurfaceFormatKHR mixin (surface_format_t).
+    template <typename derived_t>
+    struct vk_struct_ext<derived_t, VkSurfaceFormatKHR>
+    {
+
+        VkFormat        format      {         };
+        VkColorSpaceKHR colorSpace  {         };
+
+        inline VkFormat         get_format() const      { return this->format;      }
+        inline VkColorSpaceKHR  get_color_space() const { return this->colorSpace;  }
+
+    };
+
     // ---------------------------------------------------------------------------------------------
     // Using statements.
     //
@@ -831,6 +898,10 @@ namespace spx::vk
     using physical_device_12_properties_t       = vk_struct_base<VkPhysicalDeviceVulkan12Properties>;
     using physical_device_13_properties_t       = vk_struct_base<VkPhysicalDeviceVulkan13Properties>;
     using physical_device_14_properties_t       = vk_struct_base<VkPhysicalDeviceVulkan14Properties>;
+
+    using extent_2d_t                           = vk_struct_base<VkExtent2D>;
+    using surface_capabilities_t                = vk_struct_base<VkSurfaceCapabilitiesKHR>;
+    using surface_format_t                      = vk_struct_base<VkSurfaceFormatKHR>;
 
     // ---------------------------------------------------------------------------------------------
     // Layout guards.
@@ -992,6 +1063,27 @@ namespace spx::vk
     static_assert(offsetof(physical_device_14_properties_t, pNext) == offsetof(VkPhysicalDeviceVulkan14Properties, pNext));
     static_assert(offsetof(physical_device_14_properties_t, lineSubPixelPrecisionBits) == offsetof(VkPhysicalDeviceVulkan14Properties, lineSubPixelPrecisionBits));
     static_assert(offsetof(physical_device_14_properties_t, identicalMemoryTypeRequirements) == offsetof(VkPhysicalDeviceVulkan14Properties, identicalMemoryTypeRequirements));
+
+    // VkExtent2D checks.
+    static_assert(std::is_standard_layout_v<extent_2d_t>, "extent_2d_t must be standard-layout for native interop.");
+    static_assert(sizeof(extent_2d_t) == sizeof(VkExtent2D), "extent_2d_t layout diverged from VkExtent2D.");
+    static_assert(offsetof(extent_2d_t, width) == offsetof(VkExtent2D, width));
+    static_assert(offsetof(extent_2d_t, height) == offsetof(VkExtent2D, height));
+
+    // VkSurfaceCapabilitiesKHR checks.
+    static_assert(std::is_standard_layout_v<surface_capabilities_t>, "surface_capabilities_t must be standard-layout for native interop.");
+    static_assert(sizeof(surface_capabilities_t) == sizeof(VkSurfaceCapabilitiesKHR), "surface_capabilities_t layout diverged from VkSurfaceCapabilitiesKHR.");
+    static_assert(offsetof(surface_capabilities_t, minImageCount) == offsetof(VkSurfaceCapabilitiesKHR, minImageCount));
+    static_assert(offsetof(surface_capabilities_t, currentExtent) == offsetof(VkSurfaceCapabilitiesKHR, currentExtent));
+    static_assert(offsetof(surface_capabilities_t, maxImageExtent) == offsetof(VkSurfaceCapabilitiesKHR, maxImageExtent));
+    static_assert(offsetof(surface_capabilities_t, supportedUsageFlags) == offsetof(VkSurfaceCapabilitiesKHR, supportedUsageFlags));
+
+    // VkSurfaceFormatKHR checks. The array-writing wrapper for vkGetPhysicalDeviceSurfaceFormatsKHR
+    // (functions.hpp) reinterprets a buffer of these as VkSurfaceFormatKHR, so this must be exact.
+    static_assert(std::is_standard_layout_v<surface_format_t>, "surface_format_t must be standard-layout for native interop.");
+    static_assert(sizeof(surface_format_t) == sizeof(VkSurfaceFormatKHR), "surface_format_t layout diverged from VkSurfaceFormatKHR.");
+    static_assert(offsetof(surface_format_t, format) == offsetof(VkSurfaceFormatKHR, format));
+    static_assert(offsetof(surface_format_t, colorSpace) == offsetof(VkSurfaceFormatKHR, colorSpace));
 
 
 }
