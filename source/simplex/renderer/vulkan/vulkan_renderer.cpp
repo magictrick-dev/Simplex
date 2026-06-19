@@ -83,7 +83,7 @@ create_instance()
 
     // Set application info.
     spx::vk::application_info_t application_info { };
-    application_info.apiVersion         = VK_MAKE_VERSION(1, 3, 0);
+    application_info.apiVersion         = VK_API_VERSION_1_4;
     application_info.engineVersion      = VK_MAKE_VERSION(SIMPLEX_ABOUT_VERSION_MAJOR,
                                                           SIMPLEX_ABOUT_VERSION_MINOR,
                                                           SIMPLEX_ABOUT_VERSION_PATCH);
@@ -94,6 +94,7 @@ create_instance()
     spx::vk::instance_create_info_t instance_create_info { };
     instance_create_info.set_extensions(required_extensions);
     instance_create_info.set_layers(required_layers);
+    instance_create_info.pApplicationInfo = &application_info;
 
     // When validation is enabled, describe the debug messenger up front and chain it into the
     // instance create info's pNext so the vkCreateInstance/vkDestroyInstance calls themselves are
@@ -171,7 +172,14 @@ bool32_t spx::vk::vulkan_renderer::
 select_physical_device()
 {
 
+    auto physical_devices = spx::vk::physical_device_t::get_physical_devices(this->instance);
+    for (auto device : physical_devices)
+    {
+        spx::logger::dispatch_diagnostic_log("Physical device found: {}", device.get_device_name().data());
+    }
+
     return true;
+
 }
 
 bool32_t spx::vk::vulkan_renderer::
