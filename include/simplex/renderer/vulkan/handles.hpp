@@ -250,6 +250,16 @@ namespace spx::vk
             return this->device_local_memory;
         }
 
+        /// @brief The device's queue families, pre-fetched and cached at construction. Index into the
+        ///        returned array to read a family's properties (queue_family_properties_2_t exposes
+        ///        the per-family data through get_queue_family_properties()); the array index is the
+        ///        queue family index used elsewhere in the API (e.g. supports_presentation).
+        inline const spx::dynamic_array<spx::vk::queue_family_properties_2_t>&
+        get_queue_families() const
+        {
+            return this->queue_families;
+        }
+
         /// @brief A coarse desirability score for this device. Higher is better. Tiered priority:
         ///        supported Vulkan version first, then device class (discrete > integrated >
         ///        virtual > CPU), then device-local memory (in MB) as the final tiebreaker. The tier
@@ -350,6 +360,8 @@ namespace spx::vk
             spx::vk::physical_device_13_properties_t device_13_properties { };
             spx::vk::physical_device_14_properties_t device_14_properties { };
 
+            spx::dynamic_array<spx::vk::queue_family_properties_2_t> queue_families { };
+
             VkDeviceSize device_local_memory { 0 };
 
             /// @brief Populates the cached property/feature structs from the given handle, chaining
@@ -401,6 +413,18 @@ namespace spx::vk
                     if (memory_properties.memoryHeaps[i].flags & VK_MEMORY_HEAP_DEVICE_LOCAL_BIT)
                         this->device_local_memory += memory_properties.memoryHeaps[i].size;
                 }
+
+                // Pre-fetch and cache the queue families via the two-call pattern. The _2 query
+                // requires each element's sType pre-set, which the wrapper's default ctor handles;
+                // pNext stays null (no chained structs) so the cached array carries no self-
+                // referential pointers and stays copy/move-safe like the structs above.
+                uint32_t queue_family_count = 0;
+                vkGetPhysicalDeviceQueueFamilyProperties2(handle, &queue_family_count, nullptr);
+
+                this->queue_families = spx::dynamic_array<spx::vk::queue_family_properties_2_t>(queue_family_count);
+                VkQueueFamilyProperties2* native_queue_families = queue_family_count
+                    ? &static_cast<VkQueueFamilyProperties2&>(this->queue_families[0]) : nullptr;
+                vkGetPhysicalDeviceQueueFamilyProperties2(handle, &queue_family_count, native_queue_families);
 
                 // The pNext links were only needed for the two queries above. Now that the driver
                 // has filled the structs, sever them: the cached members become plain value data

@@ -178,6 +178,8 @@ select_physical_device()
         spx::logger::dispatch_diagnostic_log("Physical device found: {}", device.get_device_name().data());
     }
 
+    this->physical_device = spx::vk::physical_device_t::select_optimal_device(this->instance);
+    spx::logger::dispatch_diagnostic_log("Selected physical device: {}", this->physical_device.get_device_name().data());
     return true;
 
 }

@@ -913,6 +913,35 @@ namespace spx::vk
         inline uint32_t                             get_timestamp_valid_bits() const    { return this->timestampValidBits;  }
         inline const vk_struct_base<VkExtent3D>&    get_min_image_transfer_granularity() const { return this->minImageTransferGranularity; }
 
+        /// @brief Per-capability checks against queueFlags. Each returns true if the family exposes
+        ///        that capability. Note a graphics- or compute-capable family implicitly supports
+        ///        transfer even when the TRANSFER bit is not explicitly set (per the spec); these
+        ///        helpers report the raw flag and do not fold in that implication.
+        inline bool32_t supports_graphics() const       { return (this->queueFlags & VK_QUEUE_GRAPHICS_BIT)       != 0; }
+        inline bool32_t supports_compute() const         { return (this->queueFlags & VK_QUEUE_COMPUTE_BIT)        != 0; }
+        inline bool32_t supports_transfer() const        { return (this->queueFlags & VK_QUEUE_TRANSFER_BIT)       != 0; }
+        inline bool32_t supports_sparse_binding() const  { return (this->queueFlags & VK_QUEUE_SPARSE_BINDING_BIT) != 0; }
+        inline bool32_t supports_protected() const       { return (this->queueFlags & VK_QUEUE_PROTECTED_BIT)      != 0; }
+
+        /// @brief Queries whether this queue family can present to the given surface.
+        ///
+        /// Presentation support is a property of the (physical device, queue family, surface) triple
+        /// rather than of the family's flags, so it can't be read from queueFlags -- it requires a
+        /// live call to vkGetPhysicalDeviceSurfaceSupportKHR. The family does not carry its own index,
+        /// so the caller supplies it (and the owning device/surface). Raw native handles are used here
+        /// because structures.hpp sits below the handle wrappers in the include graph.
+        /// @param device             The physical device this family belongs to.
+        /// @param queue_family_index The index of this family within that device.
+        /// @param surface            The surface to test presentation against.
+        /// @return True if the family supports presentation to the surface, false otherwise.
+        inline bool32_t
+        supports_presentation(VkPhysicalDevice device, uint32_t queue_family_index, VkSurfaceKHR surface) const
+        {
+            VkBool32 supported = VK_FALSE;
+            vkGetPhysicalDeviceSurfaceSupportKHR(device, queue_family_index, surface, &supported);
+            return supported == VK_TRUE;
+        }
+
     };
 
     /// @brief VkQueueFamilyProperties2 mixin (queue_family_properties_2_t).
