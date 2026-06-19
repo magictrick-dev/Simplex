@@ -1000,6 +1000,62 @@ namespace spx::vk
 
     };
 
+    /// @brief VkDeviceCreateInfo mixin (device_create_info_t).
+    ///
+    /// Input struct describing the logical device to create: the queues to allocate (each a
+    /// device_queue_create_info_t), the device extensions to enable, and optionally a base feature
+    /// set. The enabledLayerCount/ppEnabledLayerNames pair is deprecated and ignored by modern
+    /// loaders, so no setter is exposed for it. To request feature structs beyond the base set,
+    /// chain a physical_device_10_features_t off pNext and leave pEnabledFeatures null.
+    template <typename derived_t>
+    struct vk_struct_ext<derived_t, VkDeviceCreateInfo>
+    {
+
+        VkStructureType                                   sType                   { VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO };
+        const void*                                       pNext                   { nullptr };
+        VkDeviceCreateFlags                               flags                   {         };
+        uint32_t                                          queueCreateInfoCount    {         };
+        const vk_struct_base<VkDeviceQueueCreateInfo>*    pQueueCreateInfos       { nullptr };
+        uint32_t                                          enabledLayerCount       {         };
+        const char* const*                                ppEnabledLayerNames     { nullptr };
+        uint32_t                                          enabledExtensionCount   {         };
+        const char* const*                                ppEnabledExtensionNames { nullptr };
+        const vk_struct_base<VkPhysicalDeviceFeatures>*   pEnabledFeatures        { nullptr };
+
+        inline const void*          get_next() const            { return this->pNext;             }
+        inline VkDeviceCreateFlags  get_flags() const           { return this->flags;             }
+        inline spx::array_view<const char*> get_extensions() const { return { this->ppEnabledExtensionNames, this->enabledExtensionCount }; }
+        inline const vk_struct_base<VkDeviceQueueCreateInfo>* get_queue_create_infos() const { return this->pQueueCreateInfos; }
+        inline const vk_struct_base<VkPhysicalDeviceFeatures>* get_enabled_features() const  { return this->pEnabledFeatures;  }
+
+        inline derived_t& set_next(const void* next)                { this->pNext = next; return *s();  }
+        inline derived_t& set_flags(VkDeviceCreateFlags flags)      { this->flags = flags; return *s(); }
+
+        inline derived_t& set_queue_create_infos(spx::array_view<const vk_struct_base<VkDeviceQueueCreateInfo>> infos)
+        {
+            this->pQueueCreateInfos    = infos.data();
+            this->queueCreateInfoCount = static_cast<uint32_t>(infos.size());
+            return *s();
+        }
+
+        inline derived_t& set_extensions(spx::array_view<const char*> extensions)
+        {
+            this->ppEnabledExtensionNames = extensions.data();
+            this->enabledExtensionCount   = static_cast<uint32_t>(extensions.size());
+            return *s();
+        }
+
+        inline derived_t& set_enabled_features(const vk_struct_base<VkPhysicalDeviceFeatures>* features)
+        {
+            this->pEnabledFeatures = features;
+            return *s();
+        }
+
+        private:
+            inline derived_t* s() { return reinterpret_cast<derived_t*>(this); }
+
+    };
+
     // ---------------------------------------------------------------------------------------------
     // Using statements.
     //
@@ -1037,6 +1093,7 @@ namespace spx::vk
     using queue_family_properties_t             = vk_struct_base<VkQueueFamilyProperties>;
     using queue_family_properties_2_t           = vk_struct_base<VkQueueFamilyProperties2>;
     using device_queue_create_info_t            = vk_struct_base<VkDeviceQueueCreateInfo>;
+    using device_create_info_t                  = vk_struct_base<VkDeviceCreateInfo>;
 
     // ---------------------------------------------------------------------------------------------
     // Layout guards.
@@ -1249,6 +1306,20 @@ namespace spx::vk
     static_assert(offsetof(device_queue_create_info_t, queueFamilyIndex) == offsetof(VkDeviceQueueCreateInfo, queueFamilyIndex));
     static_assert(offsetof(device_queue_create_info_t, queueCount) == offsetof(VkDeviceQueueCreateInfo, queueCount));
     static_assert(offsetof(device_queue_create_info_t, pQueuePriorities) == offsetof(VkDeviceQueueCreateInfo, pQueuePriorities));
+
+    // VkDeviceCreateInfo checks.
+    static_assert(std::is_standard_layout_v<device_create_info_t>, "device_create_info_t must be standard-layout for native interop.");
+    static_assert(sizeof(device_create_info_t) == sizeof(VkDeviceCreateInfo), "device_create_info_t layout diverged from VkDeviceCreateInfo.");
+    static_assert(offsetof(device_create_info_t, sType) == offsetof(VkDeviceCreateInfo, sType));
+    static_assert(offsetof(device_create_info_t, pNext) == offsetof(VkDeviceCreateInfo, pNext));
+    static_assert(offsetof(device_create_info_t, flags) == offsetof(VkDeviceCreateInfo, flags));
+    static_assert(offsetof(device_create_info_t, queueCreateInfoCount) == offsetof(VkDeviceCreateInfo, queueCreateInfoCount));
+    static_assert(offsetof(device_create_info_t, pQueueCreateInfos) == offsetof(VkDeviceCreateInfo, pQueueCreateInfos));
+    static_assert(offsetof(device_create_info_t, enabledLayerCount) == offsetof(VkDeviceCreateInfo, enabledLayerCount));
+    static_assert(offsetof(device_create_info_t, ppEnabledLayerNames) == offsetof(VkDeviceCreateInfo, ppEnabledLayerNames));
+    static_assert(offsetof(device_create_info_t, enabledExtensionCount) == offsetof(VkDeviceCreateInfo, enabledExtensionCount));
+    static_assert(offsetof(device_create_info_t, ppEnabledExtensionNames) == offsetof(VkDeviceCreateInfo, ppEnabledExtensionNames));
+    static_assert(offsetof(device_create_info_t, pEnabledFeatures) == offsetof(VkDeviceCreateInfo, pEnabledFeatures));
 
 
 }

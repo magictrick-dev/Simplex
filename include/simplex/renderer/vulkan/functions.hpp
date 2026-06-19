@@ -225,4 +225,43 @@ namespace spx::vk
         vkGetPhysicalDeviceQueueFamilyProperties2(device.native, count, native_properties);
     }
 
+    /// @brief Wraps vkCreateDevice, taking a wrapped create-info and writing into a wrapped handle.
+    /// @param physical_device The physical device to create the logical device against.
+    /// @param create_info     The device create info (queues, extensions, features).
+    /// @param allocator       Optional allocation callbacks (may be nullptr).
+    /// @param out_device      The handle to populate on success.
+    /// @return The native VkResult from vkCreateDevice.
+    inline VkResult
+    create_device(physical_device_t& physical_device,
+                  const device_create_info_t& create_info,
+                  const VkAllocationCallbacks* allocator,
+                  device_t& out_device)
+    {
+        const VkDeviceCreateInfo& native_create_info = create_info;
+        return vkCreateDevice(physical_device.native, &native_create_info, allocator, &out_device.native);
+    }
+
+    /// @brief Wraps vkDestroyDevice, taking a wrapped device handle. Null-safe; the handle is nulled
+    ///        afterward either way.
+    /// @param device    The logical device to destroy.
+    /// @param allocator Optional allocation callbacks (must match what was passed to create_device).
+    inline void
+    destroy_device(device_t& device, const VkAllocationCallbacks* allocator = nullptr)
+    {
+        if (device.native != nullptr) vkDestroyDevice(device.native, allocator);
+        device.native = nullptr;
+    }
+
+    /// @brief Wraps vkGetDeviceQueue, retrieving a queue handle from a created logical device.
+    /// @param device             The logical device the queue belongs to.
+    /// @param queue_family_index The family the queue was requested from.
+    /// @param queue_index        The index within that family.
+    /// @param out_queue          The handle to populate.
+    inline void
+    get_device_queue(device_t& device, uint32_t queue_family_index, uint32_t queue_index,
+                     queue_t& out_queue)
+    {
+        vkGetDeviceQueue(device.native, queue_family_index, queue_index, &out_queue.native);
+    }
+
 }

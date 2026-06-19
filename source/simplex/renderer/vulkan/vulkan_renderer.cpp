@@ -21,6 +21,7 @@ RendererResultType spx::vk::vulkan_renderer::
 internal_deinitialize() 
 {
 
+    spx::vk::destroy_device(this->device);
     if constexpr (enable_validation) spx::vk::destroy_debug_utils_messenger(this->instance, this->debug_messenger);
     spx::vk::destroy_surface(this->instance, this->surface);
     spx::vk::destroy_instance(this->instance);
@@ -95,6 +96,14 @@ create_instance()
     instance_create_info.set_extensions(required_extensions);
     instance_create_info.set_layers(required_layers);
     instance_create_info.pApplicationInfo = &application_info;
+
+#   if defined(__APPLE__)
+        // MoltenVK is a portability-subset driver. The loader only enumerates such drivers when the
+        // instance is created with this flag set (alongside the portability-enumeration extension
+        // added above). Without it, only native ICDs (e.g. kosmickrisp) appear and MoltenVK is
+        // hidden entirely.
+        instance_create_info.flags |= VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR;
+#   endif
 
     // When validation is enabled, describe the debug messenger up front and chain it into the
     // instance create info's pNext so the vkCreateInstance/vkDestroyInstance calls themselves are
@@ -175,11 +184,73 @@ select_physical_device()
     auto physical_devices = spx::vk::physical_device_t::get_physical_devices(this->instance);
     for (auto device : physical_devices)
     {
-        spx::logger::dispatch_diagnostic_log("Physical device found: {}", device.get_device_name().data());
+        // Include the driver name and Vulkan version: on Apple multiple ICDs (MoltenVK, kosmickrisp)
+        // expose the same GPU under the same device name, so those are what tell them apart.
+        const uint32_t version = device.get_device_api_version();
+        spx::logger::dispatch_diagnostic_log("Physical device found: {} [{}] (Vulkan {}.{}.{}).",
+            device.get_device_name().data(),
+            device.get_device_driver_name().data(),
+            VK_API_VERSION_MAJOR(version), VK_API_VERSION_MINOR(version), VK_API_VERSION_PATCH(version));
     }
 
+    // Pick the highest-scoring device (Vulkan version, then class, then VRAM). select_optimal_device
+    // pre-fetches each device's properties/features/queue families at construction. Because version
+    // ranks first, the 1.4-capable MoltenVK device wins over the kosmickrisp ICD (which lags at an
+    // earlier version) even though both report the same M5 GPU, type, and unified memory.
     this->physical_device = spx::vk::physical_device_t::select_optimal_device(this->instance);
-    spx::logger::dispatch_diagnostic_log("Selected physical device: {}", this->physical_device.get_device_name().data());
+    if (this->physical_device.native == nullptr)
+    {
+        THROW_SIMPLEX_RENDERER_EXCEPTION("No suitable vulkan physical device was found.");
+        return false;
+    }
+
+    const uint32_t selected_version = this->physical_device.get_device_api_version();
+    spx::logger::dispatch_diagnostic_log("Selected physical device: {} ({}) [{}] (Vulkan {}.{}.{}).",
+        this->physical_device.get_device_name().data(),
+        this->physical_device.get_device_vendor().data(),
+        this->physical_device.get_device_driver_name().data(),
+        VK_API_VERSION_MAJOR(selected_version), VK_API_VERSION_MINOR(selected_version), VK_API_VERSION_PATCH(selected_version));
+
+    // Resolve the queue families we need: one that can do graphics and one that can present to our
+    // surface. Prefer a single family that does both (the common case); otherwise fall back to the
+    // first family of each capability.
+    const auto& families = this->physical_device.get_queue_families();
+    for (uint32_t index = 0; index < families.size(); ++index)
+    {
+        const auto& properties = families[index].get_queue_family_properties();
+
+        const bool32_t graphics = properties.supports_graphics();
+        const bool32_t present  = properties.supports_presentation(
+            this->physical_device.native, index, this->surface.native);
+
+        if (graphics && this->graphics_queue_family_index == invalid_queue_family)
+            this->graphics_queue_family_index = index;
+        if (present && this->present_queue_family_index == invalid_queue_family)
+            this->present_queue_family_index = index;
+
+        if (graphics && present)
+        {
+            this->graphics_queue_family_index = index;
+            this->present_queue_family_index  = index;
+            break;
+        }
+    }
+
+    if (this->graphics_queue_family_index == invalid_queue_family)
+    {
+        THROW_SIMPLEX_RENDERER_EXCEPTION("Selected device has no graphics-capable queue family.");
+        return false;
+    }
+
+    if (this->present_queue_family_index == invalid_queue_family)
+    {
+        THROW_SIMPLEX_RENDERER_EXCEPTION("Selected device has no presentation-capable queue family.");
+        return false;
+    }
+
+    spx::logger::dispatch_diagnostic_log("Queue families resolved (graphics: {}, present: {}).",
+        this->graphics_queue_family_index, this->present_queue_family_index);
+
     return true;
 
 }
@@ -188,14 +259,55 @@ bool32_t spx::vk::vulkan_renderer::
 create_logical_device()
 {
 
-    // Create logical device with required extensions.
+    // Device extensions: presentation needs the swapchain extension, and MoltenVK requires the
+    // portability subset extension to be enabled when the device advertises it.
     spx::dynamic_array<const char*> required_device_extensions;
+    required_device_extensions.emplace_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
 
-#   if defined(__APPLE__)
+    // VK_KHR_portability_subset is mandatory to enable *only* on portability drivers that advertise
+    // it (e.g. MoltenVK). Native drivers (e.g. kosmickrisp) don't expose it, so enabling it
+    // unconditionally would fail device creation -- gate it on actual support.
+    if (this->physical_device.supports_extension("VK_KHR_portability_subset"))
         required_device_extensions.emplace_back("VK_KHR_portability_subset");
-#   endif
 
-    // TODO(Chris): Actually create the logical device.
+    // One queue per unique family. When graphics and presentation share a family (the common case)
+    // we request a single queue; otherwise we request one from each. priority is referenced by the
+    // create infos, so it must outlive the create_device call below.
+    const float queue_priority = 1.0f;
+    spx::dynamic_array<spx::vk::device_queue_create_info_t> queue_create_infos;
+
+    {
+        spx::vk::device_queue_create_info_t queue_info { };
+        queue_info.set_queue_family_index(this->graphics_queue_family_index);
+        queue_info.set_queue_priorities({ &queue_priority, 1 });
+        queue_create_infos.emplace_back(queue_info);
+    }
+
+    if (this->present_queue_family_index != this->graphics_queue_family_index)
+    {
+        spx::vk::device_queue_create_info_t queue_info { };
+        queue_info.set_queue_family_index(this->present_queue_family_index);
+        queue_info.set_queue_priorities({ &queue_priority, 1 });
+        queue_create_infos.emplace_back(queue_info);
+    }
+
+    spx::vk::device_create_info_t device_create_info { };
+    device_create_info.set_queue_create_infos(queue_create_infos);
+    device_create_info.set_extensions(required_device_extensions);
+
+    const auto result = spx::vk::create_device(this->physical_device, device_create_info, NULL, this->device);
+    if (result != VK_SUCCESS)
+    {
+        THROW_SIMPLEX_RENDERER_EXCEPTION("Failed to create the vulkan logical device.");
+        return false;
+    }
+
+    spx::logger::dispatch_diagnostic_log("Created the vulkan logical device successfully.");
+
+    // Grab the queue handles (queue 0 from each requested family). When the families coincide both
+    // handles refer to the same underlying queue.
+    spx::vk::get_device_queue(this->device, this->graphics_queue_family_index, 0, this->graphics_queue);
+    spx::vk::get_device_queue(this->device, this->present_queue_family_index, 0, this->present_queue);
 
     return true;
 

@@ -57,6 +57,7 @@ namespace spx::vk
 
     using instance_t                = vk_handle<VkInstance>;
     using physical_device_t         = vk_handle<VkPhysicalDevice>;
+    using device_t                  = vk_handle<VkDevice>;
     using debug_utils_messenger_t   = vk_handle<VkDebugUtilsMessengerEXT>;
     using surface_t                 = vk_handle<VkSurfaceKHR>;
     using queue_t                   = vk_handle<VkQueue>;
@@ -243,6 +244,23 @@ namespace spx::vk
             return this->device_12_properties.conformanceVersion;
         }
 
+        /// @brief The device's reported Vulkan API version (from the base properties), packed in the
+        ///        VK_API_VERSION_* layout. This is what the scoring routine ranks on first.
+        inline uint32_t
+        get_device_api_version()
+        {
+            return this->device_10_properties.get_properties().get_api_version();
+        }
+
+        /// @brief The driver name reported by the device (from the Vulkan 1.2 properties), e.g.
+        ///        "MoltenVK" or "Kosmickrisp". Useful for telling apart multiple ICDs that expose the
+        ///        same physical GPU under the same device name. Empty on devices below Vulkan 1.2.
+        inline spx::string_view<char>
+        get_device_driver_name()
+        {
+            return spx::string_view<char>(this->device_12_properties.driverName);
+        }
+
         /// @brief Total device-local (VRAM) memory in bytes, summed across all DEVICE_LOCAL heaps.
         inline VkDeviceSize
         get_device_local_memory()
@@ -258,6 +276,30 @@ namespace spx::vk
         get_queue_families() const
         {
             return this->queue_families;
+        }
+
+        /// @brief Whether the device advertises the given device extension. Queried live (not cached)
+        ///        since it is only needed a handful of times at device-creation. Used, for example, to
+        ///        decide whether VK_KHR_portability_subset must be enabled.
+        /// @param extension_name The extension to look for.
+        /// @return True if the device supports the extension, false otherwise.
+        inline bool32_t
+        supports_extension(spx::string_view<char> extension_name) const
+        {
+            VkPhysicalDevice handle = static_cast<const derived_t*>(this)->native;
+
+            uint32_t extension_count = 0;
+            vkEnumerateDeviceExtensionProperties(handle, nullptr, &extension_count, nullptr);
+
+            spx::dynamic_array<VkExtensionProperties> extensions(extension_count);
+            vkEnumerateDeviceExtensionProperties(handle, nullptr, &extension_count, extensions.begin());
+
+            for (const auto& extension : extensions)
+            {
+                if (extension_name == spx::string_view<char>(extension.extensionName)) return true;
+            }
+
+            return false;
         }
 
         /// @brief A coarse desirability score for this device. Higher is better. Tiered priority:
