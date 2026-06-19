@@ -27,6 +27,13 @@ namespace spx::vk
         inline ~vk_handle_ext() = default;
     };
 
+    // Forward declarations of the per-handle specializations. These must be visible before
+    // vk_handle (below) names vk_handle_ext<vk_handle<T>, T> as its base, otherwise an
+    // instantiation of vk_handle<T> can bind to the primary template above before the matching
+    // specialization is seen -- which silently drops every member the specialization adds.
+    template <typename derived_t> struct vk_handle_ext<derived_t, VkInstance>;
+    template <typename derived_t> struct vk_handle_ext<derived_t, VkPhysicalDevice>;
+
     /// @brief Wraps vulkan handles up.
     /// @tparam handle_type_t The handle type.
     ///
@@ -367,7 +374,7 @@ namespace spx::vk
         select_optimal_device(const instance_t& instance)
         {
 
-            auto devices = get_physical_devices(instance);
+            auto devices = physical_device_t::get_physical_devices(instance);
 
             vk_handle<VkPhysicalDevice> best { };
             uint64_t best_score = 0;
