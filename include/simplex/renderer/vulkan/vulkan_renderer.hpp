@@ -11,6 +11,7 @@ namespace spx::vk
     {
 
         static constexpr bool32_t enable_validation = true;
+        static constexpr uint32_t invalid_queue_family = (uint32_t)-1;
 
         public:
             inline  vulkan_renderer() = default;
@@ -21,9 +22,9 @@ namespace spx::vk
             bool32_t select_physical_device();
             bool32_t create_logical_device();
             bool32_t create_surface();
+            bool32_t create_swapchain();
 
-            /// @brief Debug messenger callback. Implemented separately so it can be wired into the
-            ///        logging system; matches PFN_vkDebugUtilsMessengerCallbackEXT.
+        protected:
             static VKAPI_ATTR VkBool32 VKAPI_CALL debug_callback(
                 VkDebugUtilsMessageSeverityFlagBitsEXT      message_severity,
                 VkDebugUtilsMessageTypeFlagsEXT             message_type,
@@ -48,8 +49,6 @@ namespace spx::vk
             spx::vk::queue_t graphics_queue;
             spx::vk::queue_t present_queue;
 
-            // Sentinel for "no suitable family found"; resolved in select_physical_device().
-            static constexpr uint32_t invalid_queue_family = (uint32_t)-1;
             uint32_t graphics_queue_family_index = invalid_queue_family;
             uint32_t present_queue_family_index  = invalid_queue_family;
 

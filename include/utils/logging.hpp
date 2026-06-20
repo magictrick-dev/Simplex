@@ -142,18 +142,11 @@ namespace spx
                                 << "(" << std::setprecision(4) << current_message.issued << "s)"
                                 << " : ";
 
-                    std::cout << header.view();
-                    size_t length = header.view().length();
-
                     std::stringstream body { current_message.message.c_str() };
-
-                    bool processed = false;
                     std::string current_line;
                     while (std::getline(body, current_line))
                     {
-                        if (processed == true) std::cout << std::setw(length) << "";
-                        else processed = true;
-                        std::cout << current_line << "\n";
+                        std::cout << header.view() << current_line << "\n";
                     }
 
                     messages.pop();

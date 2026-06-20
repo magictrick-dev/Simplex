@@ -276,12 +276,10 @@ create_logical_device()
     const float queue_priority = 1.0f;
     spx::dynamic_array<spx::vk::device_queue_create_info_t> queue_create_infos;
 
-    {
-        spx::vk::device_queue_create_info_t queue_info { };
-        queue_info.set_queue_family_index(this->graphics_queue_family_index);
-        queue_info.set_queue_priorities({ &queue_priority, 1 });
-        queue_create_infos.emplace_back(queue_info);
-    }
+    spx::vk::device_queue_create_info_t queue_info { };
+    queue_info.set_queue_family_index(this->graphics_queue_family_index);
+    queue_info.set_queue_priorities({ &queue_priority, 1 });
+    queue_create_infos.emplace_back(queue_info);
 
     if (this->present_queue_family_index != this->graphics_queue_family_index)
     {
@@ -333,6 +331,14 @@ create_surface()
     spx::logger::dispatch_diagnostic_log("Created the vulkan presentation surface successfully.");
 
     return true;
+}
+
+bool32_t spx::vk::vulkan_renderer::
+create_swapchain()
+{
+
+
+
 }
 
 RendererResultType spx::vk::vulkan_renderer::
