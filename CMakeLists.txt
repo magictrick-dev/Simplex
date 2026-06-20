@@ -6,11 +6,15 @@ FIND_PACKAGE(Python3 REQUIRED COMPONENTS Interpreter)
 SET(CMAKE_CXX_STANDARD 23)
 SET(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# The darwin window is Cocoa-backed Objective-C++; the language must be
-# enabled before any targets (including subdirectories) are processed, and
-# the CXX standard settings don't govern OBJCXX sources. OBJC is enabled
-# alongside it so GLFW's .m sources keep compiling as a C dialect rather
-# than falling back onto OBJCXX.
+# Place the compiled binary directly into the top-level build directory
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
+
+# Suppress the automatic /Debug or /Release subfolder addition for multi-config generators
+foreach(OUTPUTCONFIG ${CMAKE_CONFIGURATION_TYPES})
+    string(TOUPPER ${OUTPUTCONFIG} OUTPUTCONFIG)
+    set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_${OUTPUTCONFIG} ${CMAKE_BINARY_DIR})
+endforeach()
+
 IF (APPLE)
     ENABLE_LANGUAGE(OBJC)
     ENABLE_LANGUAGE(OBJCXX)

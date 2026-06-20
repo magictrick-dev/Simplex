@@ -225,4 +225,137 @@ namespace spx::vk
         vkGetPhysicalDeviceQueueFamilyProperties2(device.native, count, native_properties);
     }
 
+    /// @brief Wraps vkCreateDevice, taking a wrapped create-info and writing into a wrapped handle.
+    /// @param physical_device The physical device to create the logical device against.
+    /// @param create_info     The device create info (queues, extensions, features).
+    /// @param allocator       Optional allocation callbacks (may be nullptr).
+    /// @param out_device      The handle to populate on success.
+    /// @return The native VkResult from vkCreateDevice.
+    inline VkResult
+    create_device(physical_device_t& physical_device,
+                  const device_create_info_t& create_info,
+                  const VkAllocationCallbacks* allocator,
+                  device_t& out_device)
+    {
+        const VkDeviceCreateInfo& native_create_info = create_info;
+        return vkCreateDevice(physical_device.native, &native_create_info, allocator, &out_device.native);
+    }
+
+    /// @brief Wraps vkDestroyDevice, taking a wrapped device handle. Null-safe; the handle is nulled
+    ///        afterward either way.
+    /// @param device    The logical device to destroy.
+    /// @param allocator Optional allocation callbacks (must match what was passed to create_device).
+    inline void
+    destroy_device(device_t& device, const VkAllocationCallbacks* allocator = nullptr)
+    {
+        if (device.native != nullptr) vkDestroyDevice(device.native, allocator);
+        device.native = nullptr;
+    }
+
+    /// @brief Wraps vkGetDeviceQueue, retrieving a queue handle from a created logical device.
+    /// @param device             The logical device the queue belongs to.
+    /// @param queue_family_index The family the queue was requested from.
+    /// @param queue_index        The index within that family.
+    /// @param out_queue          The handle to populate.
+    inline void
+    get_device_queue(device_t& device, uint32_t queue_family_index, uint32_t queue_index,
+                     queue_t& out_queue)
+    {
+        vkGetDeviceQueue(device.native, queue_family_index, queue_index, &out_queue.native);
+    }
+
+    /// @brief Wraps vkDeviceWaitIdle. Blocks until the device has finished all outstanding work.
+    ///        Used before tearing down swapchain resources so nothing is destroyed while in use.
+    /// @param device The logical device to wait on.
+    /// @return The native VkResult from vkDeviceWaitIdle.
+    inline VkResult
+    device_wait_idle(device_t& device)
+    {
+        return vkDeviceWaitIdle(device.native);
+    }
+
+    /// @brief Wraps vkCreateSwapchainKHR, taking a wrapped create-info and writing into a wrapped
+    ///        handle.
+    /// @param device       The logical device to create the swapchain against.
+    /// @param create_info  The swapchain create info.
+    /// @param allocator    Optional allocation callbacks (may be nullptr).
+    /// @param out_swapchain The handle to populate on success.
+    /// @return The native VkResult from vkCreateSwapchainKHR.
+    inline VkResult
+    create_swapchain(device_t& device,
+                     const swapchain_create_info_t& create_info,
+                     const VkAllocationCallbacks* allocator,
+                     swapchain_t& out_swapchain)
+    {
+        const VkSwapchainCreateInfoKHR& native_create_info = create_info;
+        return vkCreateSwapchainKHR(device.native, &native_create_info, allocator, &out_swapchain.native);
+    }
+
+    /// @brief Wraps vkDestroySwapchainKHR. Null-safe; the handle is nulled afterward either way.
+    /// @param device    The logical device the swapchain was created against.
+    /// @param swapchain The swapchain to destroy.
+    /// @param allocator Optional allocation callbacks (must match create_swapchain).
+    inline void
+    destroy_swapchain(device_t& device, swapchain_t& swapchain, const VkAllocationCallbacks* allocator = nullptr)
+    {
+        if (swapchain.native != nullptr) vkDestroySwapchainKHR(device.native, swapchain.native, allocator);
+        swapchain.native = nullptr;
+    }
+
+    /// @brief Wraps vkCreateImageView, taking a wrapped create-info and writing into a wrapped handle.
+    /// @param device      The logical device to create the view against.
+    /// @param create_info The image view create info.
+    /// @param allocator   Optional allocation callbacks (may be nullptr).
+    /// @param out_view    The handle to populate on success.
+    /// @return The native VkResult from vkCreateImageView.
+    inline VkResult
+    create_image_view(device_t& device,
+                      const image_view_create_info_t& create_info,
+                      const VkAllocationCallbacks* allocator,
+                      image_view_t& out_view)
+    {
+        const VkImageViewCreateInfo& native_create_info = create_info;
+        return vkCreateImageView(device.native, &native_create_info, allocator, &out_view.native);
+    }
+
+    /// @brief Wraps vkDestroyImageView. Null-safe; the handle is nulled afterward either way.
+    /// @param device    The logical device the view was created against.
+    /// @param view      The view to destroy.
+    /// @param allocator Optional allocation callbacks (must match create_image_view).
+    inline void
+    destroy_image_view(device_t& device, image_view_t& view, const VkAllocationCallbacks* allocator = nullptr)
+    {
+        if (view.native != nullptr) vkDestroyImageView(device.native, view.native, allocator);
+        view.native = nullptr;
+    }
+
+    /// @brief Wraps vkCreateShaderModule, taking a wrapped create-info and writing into a wrapped
+    ///        handle. The driver copies the SPIR-V during this call, so the source blob the create
+    ///        info points at may be freed once it returns.
+    /// @param device      The logical device to create the module against.
+    /// @param create_info The shader module create info (a SPIR-V blob).
+    /// @param allocator   Optional allocation callbacks (may be nullptr).
+    /// @param out_module  The handle to populate on success.
+    /// @return The native VkResult from vkCreateShaderModule.
+    inline VkResult
+    create_shader_module(device_t& device,
+                         const shader_module_create_info_t& create_info,
+                         const VkAllocationCallbacks* allocator,
+                         shader_module_t& out_module)
+    {
+        const VkShaderModuleCreateInfo& native_create_info = create_info;
+        return vkCreateShaderModule(device.native, &native_create_info, allocator, &out_module.native);
+    }
+
+    /// @brief Wraps vkDestroyShaderModule. Null-safe; the handle is nulled afterward either way.
+    /// @param device        The logical device the module was created against.
+    /// @param shader_module The module to destroy.
+    /// @param allocator     Optional allocation callbacks (must match create_shader_module).
+    inline void
+    destroy_shader_module(device_t& device, shader_module_t& shader_module, const VkAllocationCallbacks* allocator = nullptr)
+    {
+        if (shader_module.native != nullptr) vkDestroyShaderModule(device.native, shader_module.native, allocator);
+        shader_module.native = nullptr;
+    }
+
 }

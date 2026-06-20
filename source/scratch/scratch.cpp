@@ -17,6 +17,7 @@
 #include <simplex/hashed_sparse_map.hpp>
 
 #include <simplex/platform/window.hpp>
+#include <simplex/platform/filesystem.hpp>
 #include <simplex/renderer/vulkan/vulkan_renderer.hpp>
 #include <simplex/renderer/vulkan/structures.hpp>
 #include <simplex/renderer/vulkan/handles.hpp>
@@ -53,8 +54,7 @@ scratch_main()
         return 0;
     }
 
-    window.lock_resizing();
-    window.show();
+    window.show(); // Shows the window.
 
     if (renderer.initialize(&window) != RendererResultType_OK)
     {
@@ -68,6 +68,37 @@ scratch_main()
     {
 
         window.poll_events();
+        
+        spx::window_event current_event;
+        while (window.poll_event(&current_event))
+        {
+
+            switch (current_event.type)
+            {
+                case WindowEventType_WindowFocused:     { spx::logger::dispatch_diagnostic_log("Window gained focus."); } break;
+                case WindowEventType_WindowUnfocused:   { spx::logger::dispatch_diagnostic_log("Window lost focus."); } break;
+                case WindowEventType_WindowClose:       { spx::logger::dispatch_diagnostic_log("Window requested a close."); } break;
+                case WindowEventType_WindowMinimized:   { spx::logger::dispatch_diagnostic_log("Window is minimized."); } break;
+                case WindowEventType_WindowMaximized:   { spx::logger::dispatch_diagnostic_log("Window is maximized."); } break;
+                case WindowEventType_WindowNormalized:  { spx::logger::dispatch_diagnostic_log("Window is normalized."); } break;
+                case WindowEventType_WindowFullscreenBorderless: { spx::logger::dispatch_diagnostic_log("Window is fullscreen (borderless)."); } break;
+                case WindowEventType_WindowResize: 
+                {
+                    int32_t width = current_event.window_framebuffer_resize.width;
+                    int32_t height = current_event.window_framebuffer_resize.height;
+                    spx::logger::dispatch_diagnostic_log("Window resized to: {}, {}.", width, height);
+                    renderer.resize();
+                } break;
+
+                default:
+                {
+                    spx::logger::dispatch_warning_log("Unhandle window even captured with ID: {}", 
+                        static_cast<uint32_t>(current_event.type));
+                } break;
+            }
+
+        }
+
         spx::logger::process_message_queue();
 
     }

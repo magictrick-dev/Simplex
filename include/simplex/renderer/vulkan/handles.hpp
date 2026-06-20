@@ -27,6 +27,14 @@ namespace spx::vk
         inline ~vk_handle_ext() = default;
     };
 
+    // Forward declarations of the per-handle specializations. These must be visible before
+    // vk_handle (below) names vk_handle_ext<vk_handle<T>, T> as its base, otherwise an
+    // instantiation of vk_handle<T> can bind to the primary template above before the matching
+    // specialization is seen -- which silently drops every member the specialization adds.
+    template <typename derived_t> struct vk_handle_ext<derived_t, VkInstance>;
+    template <typename derived_t> struct vk_handle_ext<derived_t, VkPhysicalDevice>;
+    template <typename derived_t> struct vk_handle_ext<derived_t, VkSwapchainKHR>;
+
     /// @brief Wraps vulkan handles up.
     /// @tparam handle_type_t The handle type.
     ///
@@ -57,9 +65,14 @@ namespace spx::vk
 
     using instance_t                = vk_handle<VkInstance>;
     using physical_device_t         = vk_handle<VkPhysicalDevice>;
+    using device_t                  = vk_handle<VkDevice>;
     using debug_utils_messenger_t   = vk_handle<VkDebugUtilsMessengerEXT>;
     using surface_t                 = vk_handle<VkSurfaceKHR>;
     using queue_t                   = vk_handle<VkQueue>;
+    using swapchain_t               = vk_handle<VkSwapchainKHR>;
+    using image_t                   = vk_handle<VkImage>;
+    using image_view_t              = vk_handle<VkImageView>;
+    using shader_module_t           = vk_handle<VkShaderModule>;
 
     // ---------------------------------------------------------------------------------------------
     // Handle mixins.
@@ -243,11 +256,110 @@ namespace spx::vk
             return this->device_12_properties.conformanceVersion;
         }
 
+        /// @brief The device's reported Vulkan API version (from the base properties), packed in the
+        ///        VK_API_VERSION_* layout. This is what the scoring routine ranks on first.
+        inline uint32_t
+        get_device_api_version()
+        {
+            return this->device_10_properties.get_properties().get_api_version();
+        }
+
+        /// @brief The driver name reported by the device (from the Vulkan 1.2 properties), e.g.
+        ///        "MoltenVK" or "Kosmickrisp". Useful for telling apart multiple ICDs that expose the
+        ///        same physical GPU under the same device name. Empty on devices below Vulkan 1.2.
+        inline spx::string_view<char>
+        get_device_driver_name()
+        {
+            return spx::string_view<char>(this->device_12_properties.driverName);
+        }
+
         /// @brief Total device-local (VRAM) memory in bytes, summed across all DEVICE_LOCAL heaps.
         inline VkDeviceSize
         get_device_local_memory()
         {
             return this->device_local_memory;
+        }
+
+        /// @brief The device's queue families, pre-fetched and cached at construction. Index into the
+        ///        returned array to read a family's properties (queue_family_properties_2_t exposes
+        ///        the per-family data through get_queue_family_properties()); the array index is the
+        ///        queue family index used elsewhere in the API (e.g. supports_presentation).
+        inline const spx::dynamic_array<spx::vk::queue_family_properties_2_t>&
+        get_queue_families() const
+        {
+            return this->queue_families;
+        }
+
+        /// @brief Whether the device advertises the given device extension. Queried live (not cached)
+        ///        since it is only needed a handful of times at device-creation. Used, for example, to
+        ///        decide whether VK_KHR_portability_subset must be enabled.
+        /// @param extension_name The extension to look for.
+        /// @return True if the device supports the extension, false otherwise.
+        inline bool32_t
+        supports_extension(spx::string_view<char> extension_name) const
+        {
+            VkPhysicalDevice handle = static_cast<const derived_t*>(this)->native;
+
+            uint32_t extension_count = 0;
+            vkEnumerateDeviceExtensionProperties(handle, nullptr, &extension_count, nullptr);
+
+            spx::dynamic_array<VkExtensionProperties> extensions(extension_count);
+            vkEnumerateDeviceExtensionProperties(handle, nullptr, &extension_count, extensions.begin());
+
+            for (const auto& extension : extensions)
+            {
+                if (extension_name == spx::string_view<char>(extension.extensionName)) return true;
+            }
+
+            return false;
+        }
+
+        /// @brief Checks that every base (Vulkan 1.0) feature requested in `features` is supported by
+        ///        this device. A feature is "requested" when its VkBool32 member is VK_TRUE; the call
+        ///        passes only if every requested member is also VK_TRUE in the device's cached feature
+        ///        set (the request must be a subset of what's available). The actual field-by-field
+        ///        comparison is owned by the feature struct itself (physical_device_10_features_t::
+        ///        is_subset); this just supplies the device's cached features as the available set.
+        /// @param features The requested feature set to validate.
+        /// @return True if the device supports all requested features.
+        inline bool32_t
+        validate_10_features(const spx::vk::physical_device_10_features_t& features) const
+        {
+            return spx::vk::physical_device_10_features_t::is_subset(features, this->device_10_features);
+        }
+
+        /// @brief Vulkan 1.1 counterpart of validate_10_features. Fast-exits false when the device's
+        ///        effective Vulkan version predates 1.1, since the struct's features can't exist --
+        ///        and the cached struct was never queried -- in that case.
+        inline bool32_t
+        validate_11_features(const spx::vk::physical_device_11_features_t& features) const
+        {
+            if (this->effective_version < VK_API_VERSION_1_1) return false;
+            return spx::vk::physical_device_11_features_t::is_subset(features, this->device_11_features);
+        }
+
+        /// @brief Vulkan 1.2 counterpart of validate_10_features. Fast-exits false below Vulkan 1.2.
+        inline bool32_t
+        validate_12_features(const spx::vk::physical_device_12_features_t& features) const
+        {
+            if (this->effective_version < VK_API_VERSION_1_2) return false;
+            return spx::vk::physical_device_12_features_t::is_subset(features, this->device_12_features);
+        }
+
+        /// @brief Vulkan 1.3 counterpart of validate_10_features. Fast-exits false below Vulkan 1.3.
+        inline bool32_t
+        validate_13_features(const spx::vk::physical_device_13_features_t& features) const
+        {
+            if (this->effective_version < VK_API_VERSION_1_3) return false;
+            return spx::vk::physical_device_13_features_t::is_subset(features, this->device_13_features);
+        }
+
+        /// @brief Vulkan 1.4 counterpart of validate_10_features. Fast-exits false below Vulkan 1.4.
+        inline bool32_t
+        validate_14_features(const spx::vk::physical_device_14_features_t& features) const
+        {
+            if (this->effective_version < VK_API_VERSION_1_4) return false;
+            return spx::vk::physical_device_14_features_t::is_subset(features, this->device_14_features);
         }
 
         /// @brief A coarse desirability score for this device. Higher is better. Tiered priority:
@@ -315,7 +427,7 @@ namespace spx::vk
         select_optimal_device(const instance_t& instance)
         {
 
-            auto devices = get_physical_devices(instance);
+            auto devices = physical_device_t::get_physical_devices(instance);
 
             vk_handle<VkPhysicalDevice> best { };
             uint64_t best_score = 0;
@@ -350,7 +462,13 @@ namespace spx::vk
             spx::vk::physical_device_13_properties_t device_13_properties { };
             spx::vk::physical_device_14_properties_t device_14_properties { };
 
+            spx::dynamic_array<spx::vk::queue_family_properties_2_t> queue_families { };
+
             VkDeviceSize device_local_memory { 0 };
+
+            // Effective Vulkan version = min(instance, device), cached from populate(). Bounds how far
+            // the version-specific feature/property chains were actually queried.
+            uint32_t effective_version { 0 };
 
             /// @brief Populates the cached property/feature structs from the given handle, chaining
             ///        the version-specific structs up to the effective supported version, then
@@ -367,6 +485,11 @@ namespace spx::vk
                 uint32_t instance_version = instance_t::get_instance_version();
                 uint32_t device_version   = base_properties.apiVersion;
                 uint32_t version = (instance_version < device_version) ? instance_version : device_version;
+
+                // Remember the effective version: the feature chains below are only populated up to
+                // this point, so the feature validators must gate on it (not the raw device version)
+                // to avoid validating against a struct the driver never filled.
+                this->effective_version = version;
 
                 // Build the properties chain (a wrapper's address is its native struct's address).
                 void* properties_chain = nullptr;
@@ -402,6 +525,18 @@ namespace spx::vk
                         this->device_local_memory += memory_properties.memoryHeaps[i].size;
                 }
 
+                // Pre-fetch and cache the queue families via the two-call pattern. The _2 query
+                // requires each element's sType pre-set, which the wrapper's default ctor handles;
+                // pNext stays null (no chained structs) so the cached array carries no self-
+                // referential pointers and stays copy/move-safe like the structs above.
+                uint32_t queue_family_count = 0;
+                vkGetPhysicalDeviceQueueFamilyProperties2(handle, &queue_family_count, nullptr);
+
+                this->queue_families = spx::dynamic_array<spx::vk::queue_family_properties_2_t>(queue_family_count);
+                VkQueueFamilyProperties2* native_queue_families = queue_family_count
+                    ? &static_cast<VkQueueFamilyProperties2&>(this->queue_families[0]) : nullptr;
+                vkGetPhysicalDeviceQueueFamilyProperties2(handle, &queue_family_count, native_queue_families);
+
                 // The pNext links were only needed for the two queries above. Now that the driver
                 // has filled the structs, sever them: the cached members become plain value data
                 // with no self-referential pointers, so copying/moving this wrapper (e.g. when the
@@ -419,6 +554,120 @@ namespace spx::vk
                 this->device_14_features.pNext = nullptr;
 
             }
+
+    };
+
+    /// @brief VkSwapchainKHR mixin.
+    ///
+    /// Hosts the selection helpers used to turn a surface's reported capabilities/formats/present
+    /// modes into the concrete parameters a swapchain is created with, plus a helper to read back the
+    /// images the swapchain owns. The helpers are static (they operate on query results, not on a
+    /// live swapchain); get_swapchain_images is the only instance method and reads this swapchain's
+    /// own handle.
+    template <typename derived_t>
+    struct vk_handle_ext<derived_t, VkSwapchainKHR>
+    {
+
+        inline  vk_handle_ext() = default;
+        inline  vk_handle_ext(VkSwapchainKHR handle) { }
+        inline ~vk_handle_ext() = default;
+
+        /// @brief Picks a surface format, preferring 32-bit BGRA in the sRGB-nonlinear color space
+        ///        (the standard choice for a gamma-correct desktop swapchain). Falls back to the
+        ///        first reported format, which the spec guarantees exists when the list is non-empty.
+        /// @param available The formats reported by get_physical_device_surface_formats.
+        /// @return The chosen format.
+        static inline spx::vk::surface_format_t
+        choose_surface_format(spx::array_view<spx::vk::surface_format_t> available)
+        {
+            for (const auto& format : available)
+            {
+                if (format.format == VK_FORMAT_B8G8R8A8_SRGB &&
+                    format.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)
+                    return format;
+            }
+
+            return available.empty() ? spx::vk::surface_format_t { } : available.front();
+        }
+
+        /// @brief Picks a present mode, preferring mailbox (low-latency triple buffering) when offered.
+        ///        Falls back to FIFO, which the spec requires every implementation to support.
+        /// @param available The present modes reported by get_physical_device_surface_present_modes.
+        /// @return The chosen present mode.
+        static inline VkPresentModeKHR
+        choose_present_mode(spx::array_view<VkPresentModeKHR> available)
+        {
+            for (VkPresentModeKHR mode : available)
+            {
+                if (mode == VK_PRESENT_MODE_MAILBOX_KHR) return mode;
+            }
+
+            return VK_PRESENT_MODE_FIFO_KHR;
+        }
+
+        /// @brief Resolves the swapchain extent. When the surface reports a fixed currentExtent we are
+        ///        required to match it; the 0xFFFFFFFF sentinel means we are free to choose, in which
+        ///        case the window's framebuffer size is used, clamped to the surface's min/max extent.
+        /// @param capabilities       The surface capabilities.
+        /// @param framebuffer_width  The window framebuffer width (used only in the sentinel case).
+        /// @param framebuffer_height The window framebuffer height (used only in the sentinel case).
+        /// @return The extent to create the swapchain with.
+        static inline spx::vk::extent_2d_t
+        choose_extent(const spx::vk::surface_capabilities_t& capabilities,
+                      uint32_t framebuffer_width, uint32_t framebuffer_height)
+        {
+            if (capabilities.currentExtent.width != 0xFFFFFFFFu)
+                return capabilities.currentExtent;
+
+            const uint32_t min_w = capabilities.minImageExtent.width;
+            const uint32_t max_w = capabilities.maxImageExtent.width;
+            const uint32_t min_h = capabilities.minImageExtent.height;
+            const uint32_t max_h = capabilities.maxImageExtent.height;
+
+            spx::vk::extent_2d_t extent { };
+            extent.width  = framebuffer_width  < min_w ? min_w : (framebuffer_width  > max_w ? max_w : framebuffer_width);
+            extent.height = framebuffer_height < min_h ? min_h : (framebuffer_height > max_h ? max_h : framebuffer_height);
+            return extent;
+        }
+
+        /// @brief Chooses how many images to request: one more than the surface minimum (so the
+        ///        application is not perpetually waiting on the driver), clamped to the maximum when
+        ///        the surface reports one (maxImageCount == 0 means "no limit").
+        /// @param capabilities The surface capabilities.
+        /// @return The image count to request.
+        static inline uint32_t
+        choose_image_count(const spx::vk::surface_capabilities_t& capabilities)
+        {
+            uint32_t count = capabilities.minImageCount + 1;
+            if (capabilities.maxImageCount > 0 && count > capabilities.maxImageCount)
+                count = capabilities.maxImageCount;
+            return count;
+        }
+
+        /// @brief Reads back the images this swapchain owns. The images are owned by the swapchain
+        ///        (not the application) and must not be destroyed individually; they are wrapped only
+        ///        so views can be created over them. Follows the native two-call count/fill pattern.
+        /// @param device The logical device the swapchain belongs to.
+        /// @return The swapchain's images wrapped as handles.
+        inline spx::dynamic_array<image_t>
+        get_swapchain_images(device_t& device) const
+        {
+            VkSwapchainKHR handle = static_cast<const derived_t*>(this)->native;
+
+            uint32_t image_count = 0;
+            vkGetSwapchainImagesKHR(device.native, handle, &image_count, nullptr);
+
+            spx::dynamic_array<VkImage> raw_images(image_count);
+            vkGetSwapchainImagesKHR(device.native, handle, &image_count, raw_images.begin());
+
+            spx::dynamic_array<image_t> images;
+            for (VkImage image : raw_images)
+            {
+                images.emplace_back(image);
+            }
+
+            return std::move(images);
+        }
 
     };
 
