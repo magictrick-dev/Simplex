@@ -3,6 +3,7 @@
 #include <simplex/renderer/vulkan/functions.hpp>
 #include <simplex/renderer/vulkan/handles.hpp>
 #include <simplex/renderer/vulkan/structures.hpp>
+#include <simplex/dynamic_array.hpp>
 
 namespace spx::vk
 {
@@ -24,6 +25,14 @@ namespace spx::vk
             bool32_t create_surface();
             bool32_t create_swapchain();
 
+            // Rebuilds the swapchain (and its image views) against the window's current size, reusing
+            // create_swapchain after tearing the old resources down. Used to service window resizes.
+            bool32_t recreate_swapchain();
+
+            // Destroys the image views and the swapchain. The swapchain images themselves are owned by
+            // the swapchain and are not destroyed individually -- only the wrapper array is cleared.
+            void     destroy_swapchain();
+
         protected:
             static VKAPI_ATTR VkBool32 VKAPI_CALL debug_callback(
                 VkDebugUtilsMessageSeverityFlagBitsEXT      message_severity,
@@ -38,6 +47,7 @@ namespace spx::vk
             virtual RendererResultType internal_render_end() override;
             virtual RendererResultType internal_frame_end() override;
             virtual RendererResultType internal_deinitialize() override;
+            virtual RendererResultType internal_resize() override;
 
         private:
             spx::vk::instance_t instance;
@@ -51,6 +61,12 @@ namespace spx::vk
 
             uint32_t graphics_queue_family_index = invalid_queue_family;
             uint32_t present_queue_family_index  = invalid_queue_family;
+
+            spx::vk::swapchain_t swapchain;
+            spx::dynamic_array<spx::vk::image_t>      swapchain_images;
+            spx::dynamic_array<spx::vk::image_view_t> swapchain_image_views;
+            VkFormat                                  swapchain_format = VK_FORMAT_UNDEFINED;
+            spx::vk::extent_2d_t                      swapchain_extent;
 
     };
 

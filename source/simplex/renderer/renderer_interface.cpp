@@ -86,11 +86,25 @@ render_begin()
 RendererResultType spx::renderer_interface::
 render_end()
 {
-    
+
     RendererResultType result { };
     BEGIN_CAPTURING_RENDER_EXCEPTIONS();
 
     result = this->internal_render_end();
+
+    END_CAPTURING_RENDER_EXCEPTIONS();
+
+    return result;
+}
+
+RendererResultType spx::renderer_interface::
+resize()
+{
+
+    RendererResultType result { };
+    BEGIN_CAPTURING_RENDER_EXCEPTIONS();
+
+    result = this->internal_resize();
 
     END_CAPTURING_RENDER_EXCEPTIONS();
 

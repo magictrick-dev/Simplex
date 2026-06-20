@@ -264,4 +264,69 @@ namespace spx::vk
         vkGetDeviceQueue(device.native, queue_family_index, queue_index, &out_queue.native);
     }
 
+    /// @brief Wraps vkDeviceWaitIdle. Blocks until the device has finished all outstanding work.
+    ///        Used before tearing down swapchain resources so nothing is destroyed while in use.
+    /// @param device The logical device to wait on.
+    /// @return The native VkResult from vkDeviceWaitIdle.
+    inline VkResult
+    device_wait_idle(device_t& device)
+    {
+        return vkDeviceWaitIdle(device.native);
+    }
+
+    /// @brief Wraps vkCreateSwapchainKHR, taking a wrapped create-info and writing into a wrapped
+    ///        handle.
+    /// @param device       The logical device to create the swapchain against.
+    /// @param create_info  The swapchain create info.
+    /// @param allocator    Optional allocation callbacks (may be nullptr).
+    /// @param out_swapchain The handle to populate on success.
+    /// @return The native VkResult from vkCreateSwapchainKHR.
+    inline VkResult
+    create_swapchain(device_t& device,
+                     const swapchain_create_info_t& create_info,
+                     const VkAllocationCallbacks* allocator,
+                     swapchain_t& out_swapchain)
+    {
+        const VkSwapchainCreateInfoKHR& native_create_info = create_info;
+        return vkCreateSwapchainKHR(device.native, &native_create_info, allocator, &out_swapchain.native);
+    }
+
+    /// @brief Wraps vkDestroySwapchainKHR. Null-safe; the handle is nulled afterward either way.
+    /// @param device    The logical device the swapchain was created against.
+    /// @param swapchain The swapchain to destroy.
+    /// @param allocator Optional allocation callbacks (must match create_swapchain).
+    inline void
+    destroy_swapchain(device_t& device, swapchain_t& swapchain, const VkAllocationCallbacks* allocator = nullptr)
+    {
+        if (swapchain.native != nullptr) vkDestroySwapchainKHR(device.native, swapchain.native, allocator);
+        swapchain.native = nullptr;
+    }
+
+    /// @brief Wraps vkCreateImageView, taking a wrapped create-info and writing into a wrapped handle.
+    /// @param device      The logical device to create the view against.
+    /// @param create_info The image view create info.
+    /// @param allocator   Optional allocation callbacks (may be nullptr).
+    /// @param out_view    The handle to populate on success.
+    /// @return The native VkResult from vkCreateImageView.
+    inline VkResult
+    create_image_view(device_t& device,
+                      const image_view_create_info_t& create_info,
+                      const VkAllocationCallbacks* allocator,
+                      image_view_t& out_view)
+    {
+        const VkImageViewCreateInfo& native_create_info = create_info;
+        return vkCreateImageView(device.native, &native_create_info, allocator, &out_view.native);
+    }
+
+    /// @brief Wraps vkDestroyImageView. Null-safe; the handle is nulled afterward either way.
+    /// @param device    The logical device the view was created against.
+    /// @param view      The view to destroy.
+    /// @param allocator Optional allocation callbacks (must match create_image_view).
+    inline void
+    destroy_image_view(device_t& device, image_view_t& view, const VkAllocationCallbacks* allocator = nullptr)
+    {
+        if (view.native != nullptr) vkDestroyImageView(device.native, view.native, allocator);
+        view.native = nullptr;
+    }
+
 }

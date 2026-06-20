@@ -27,6 +27,13 @@ namespace spx
             RendererResultType render_begin();
             RendererResultType render_end();
 
+            /// @brief  Notifies the renderer that the window's drawable surface has changed size,
+            ///         driving any resolution-dependent resources (e.g. the swapchain and its image
+            ///         views) to be rebuilt against the new dimensions. Intended to be called in
+            ///         response to a window resize event. Safe to call when the window has collapsed
+            ///         to a zero-area surface (minimization); the implementation defers in that case.
+            RendererResultType resize();
+
             inline spx::window_interface* get_window() { return this->window; }
 
         private:
@@ -39,6 +46,7 @@ namespace spx
             inline virtual RendererResultType internal_render_end()     = 0;
             inline virtual RendererResultType internal_frame_end()      = 0;
             inline virtual RendererResultType internal_deinitialize()   = 0;
+            inline virtual RendererResultType internal_resize()         = 0;
         
     };
 

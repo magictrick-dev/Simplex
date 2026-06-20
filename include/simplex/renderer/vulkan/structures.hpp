@@ -239,6 +239,74 @@ namespace spx::vk
 
         inline derived_t& set_next(void* next) { this->pNext = next; return *s(); }
 
+        /// @brief Returns true if every base feature enabled in `requested` is also enabled in
+        ///        `available` -- i.e. `requested` is a subset of `available`. Used to check a
+        ///        requested feature set against what a physical device actually supports.
+        static inline bool32_t
+        is_subset(const derived_t& requested, const derived_t& available)
+        {
+            const vk_struct_base<VkPhysicalDeviceFeatures>& r = requested.features;
+            const vk_struct_base<VkPhysicalDeviceFeatures>& a = available.features;
+
+            if (r.robustBufferAccess && !a.robustBufferAccess) return false;
+            if (r.fullDrawIndexUint32 && !a.fullDrawIndexUint32) return false;
+            if (r.imageCubeArray && !a.imageCubeArray) return false;
+            if (r.independentBlend && !a.independentBlend) return false;
+            if (r.geometryShader && !a.geometryShader) return false;
+            if (r.tessellationShader && !a.tessellationShader) return false;
+            if (r.sampleRateShading && !a.sampleRateShading) return false;
+            if (r.dualSrcBlend && !a.dualSrcBlend) return false;
+            if (r.logicOp && !a.logicOp) return false;
+            if (r.multiDrawIndirect && !a.multiDrawIndirect) return false;
+            if (r.drawIndirectFirstInstance && !a.drawIndirectFirstInstance) return false;
+            if (r.depthClamp && !a.depthClamp) return false;
+            if (r.depthBiasClamp && !a.depthBiasClamp) return false;
+            if (r.fillModeNonSolid && !a.fillModeNonSolid) return false;
+            if (r.depthBounds && !a.depthBounds) return false;
+            if (r.wideLines && !a.wideLines) return false;
+            if (r.largePoints && !a.largePoints) return false;
+            if (r.alphaToOne && !a.alphaToOne) return false;
+            if (r.multiViewport && !a.multiViewport) return false;
+            if (r.samplerAnisotropy && !a.samplerAnisotropy) return false;
+            if (r.textureCompressionETC2 && !a.textureCompressionETC2) return false;
+            if (r.textureCompressionASTC_LDR && !a.textureCompressionASTC_LDR) return false;
+            if (r.textureCompressionBC && !a.textureCompressionBC) return false;
+            if (r.occlusionQueryPrecise && !a.occlusionQueryPrecise) return false;
+            if (r.pipelineStatisticsQuery && !a.pipelineStatisticsQuery) return false;
+            if (r.vertexPipelineStoresAndAtomics && !a.vertexPipelineStoresAndAtomics) return false;
+            if (r.fragmentStoresAndAtomics && !a.fragmentStoresAndAtomics) return false;
+            if (r.shaderTessellationAndGeometryPointSize && !a.shaderTessellationAndGeometryPointSize) return false;
+            if (r.shaderImageGatherExtended && !a.shaderImageGatherExtended) return false;
+            if (r.shaderStorageImageExtendedFormats && !a.shaderStorageImageExtendedFormats) return false;
+            if (r.shaderStorageImageMultisample && !a.shaderStorageImageMultisample) return false;
+            if (r.shaderStorageImageReadWithoutFormat && !a.shaderStorageImageReadWithoutFormat) return false;
+            if (r.shaderStorageImageWriteWithoutFormat && !a.shaderStorageImageWriteWithoutFormat) return false;
+            if (r.shaderUniformBufferArrayDynamicIndexing && !a.shaderUniformBufferArrayDynamicIndexing) return false;
+            if (r.shaderSampledImageArrayDynamicIndexing && !a.shaderSampledImageArrayDynamicIndexing) return false;
+            if (r.shaderStorageBufferArrayDynamicIndexing && !a.shaderStorageBufferArrayDynamicIndexing) return false;
+            if (r.shaderStorageImageArrayDynamicIndexing && !a.shaderStorageImageArrayDynamicIndexing) return false;
+            if (r.shaderClipDistance && !a.shaderClipDistance) return false;
+            if (r.shaderCullDistance && !a.shaderCullDistance) return false;
+            if (r.shaderFloat64 && !a.shaderFloat64) return false;
+            if (r.shaderInt64 && !a.shaderInt64) return false;
+            if (r.shaderInt16 && !a.shaderInt16) return false;
+            if (r.shaderResourceResidency && !a.shaderResourceResidency) return false;
+            if (r.shaderResourceMinLod && !a.shaderResourceMinLod) return false;
+            if (r.sparseBinding && !a.sparseBinding) return false;
+            if (r.sparseResidencyBuffer && !a.sparseResidencyBuffer) return false;
+            if (r.sparseResidencyImage2D && !a.sparseResidencyImage2D) return false;
+            if (r.sparseResidencyImage3D && !a.sparseResidencyImage3D) return false;
+            if (r.sparseResidency2Samples && !a.sparseResidency2Samples) return false;
+            if (r.sparseResidency4Samples && !a.sparseResidency4Samples) return false;
+            if (r.sparseResidency8Samples && !a.sparseResidency8Samples) return false;
+            if (r.sparseResidency16Samples && !a.sparseResidency16Samples) return false;
+            if (r.sparseResidencyAliased && !a.sparseResidencyAliased) return false;
+            if (r.variableMultisampleRate && !a.variableMultisampleRate) return false;
+            if (r.inheritedQueries && !a.inheritedQueries) return false;
+
+            return true;
+        }
+
         private:
             inline derived_t* s() { return reinterpret_cast<derived_t*>(this); }
 
@@ -266,6 +334,28 @@ namespace spx::vk
 
         inline void*      get_next() const     { return this->pNext;               }
         inline derived_t& set_next(void* next)  { this->pNext = next; return *s();  }
+
+        /// @brief Returns true if every feature enabled in `requested` is also enabled in
+        ///        `available` -- i.e. `requested` is a subset of `available`. Used to check a
+        ///        requested feature set against what a physical device actually supports.
+        static inline bool32_t
+        is_subset(const derived_t& r, const derived_t& a)
+        {
+            if (r.storageBuffer16BitAccess && !a.storageBuffer16BitAccess) return false;
+            if (r.uniformAndStorageBuffer16BitAccess && !a.uniformAndStorageBuffer16BitAccess) return false;
+            if (r.storagePushConstant16 && !a.storagePushConstant16) return false;
+            if (r.storageInputOutput16 && !a.storageInputOutput16) return false;
+            if (r.multiview && !a.multiview) return false;
+            if (r.multiviewGeometryShader && !a.multiviewGeometryShader) return false;
+            if (r.multiviewTessellationShader && !a.multiviewTessellationShader) return false;
+            if (r.variablePointersStorageBuffer && !a.variablePointersStorageBuffer) return false;
+            if (r.variablePointers && !a.variablePointers) return false;
+            if (r.protectedMemory && !a.protectedMemory) return false;
+            if (r.samplerYcbcrConversion && !a.samplerYcbcrConversion) return false;
+            if (r.shaderDrawParameters && !a.shaderDrawParameters) return false;
+
+            return true;
+        }
 
         private:
             inline derived_t* s() { return reinterpret_cast<derived_t*>(this); }
@@ -330,6 +420,63 @@ namespace spx::vk
         inline void*      get_next() const     { return this->pNext;               }
         inline derived_t& set_next(void* next)  { this->pNext = next; return *s();  }
 
+        /// @brief Returns true if every feature enabled in `requested` is also enabled in
+        ///        `available` -- i.e. `requested` is a subset of `available`. Used to check a
+        ///        requested feature set against what a physical device actually supports.
+        static inline bool32_t
+        is_subset(const derived_t& r, const derived_t& a)
+        {
+            if (r.samplerMirrorClampToEdge && !a.samplerMirrorClampToEdge) return false;
+            if (r.drawIndirectCount && !a.drawIndirectCount) return false;
+            if (r.storageBuffer8BitAccess && !a.storageBuffer8BitAccess) return false;
+            if (r.uniformAndStorageBuffer8BitAccess && !a.uniformAndStorageBuffer8BitAccess) return false;
+            if (r.storagePushConstant8 && !a.storagePushConstant8) return false;
+            if (r.shaderBufferInt64Atomics && !a.shaderBufferInt64Atomics) return false;
+            if (r.shaderSharedInt64Atomics && !a.shaderSharedInt64Atomics) return false;
+            if (r.shaderFloat16 && !a.shaderFloat16) return false;
+            if (r.shaderInt8 && !a.shaderInt8) return false;
+            if (r.descriptorIndexing && !a.descriptorIndexing) return false;
+            if (r.shaderInputAttachmentArrayDynamicIndexing && !a.shaderInputAttachmentArrayDynamicIndexing) return false;
+            if (r.shaderUniformTexelBufferArrayDynamicIndexing && !a.shaderUniformTexelBufferArrayDynamicIndexing) return false;
+            if (r.shaderStorageTexelBufferArrayDynamicIndexing && !a.shaderStorageTexelBufferArrayDynamicIndexing) return false;
+            if (r.shaderUniformBufferArrayNonUniformIndexing && !a.shaderUniformBufferArrayNonUniformIndexing) return false;
+            if (r.shaderSampledImageArrayNonUniformIndexing && !a.shaderSampledImageArrayNonUniformIndexing) return false;
+            if (r.shaderStorageBufferArrayNonUniformIndexing && !a.shaderStorageBufferArrayNonUniformIndexing) return false;
+            if (r.shaderStorageImageArrayNonUniformIndexing && !a.shaderStorageImageArrayNonUniformIndexing) return false;
+            if (r.shaderInputAttachmentArrayNonUniformIndexing && !a.shaderInputAttachmentArrayNonUniformIndexing) return false;
+            if (r.shaderUniformTexelBufferArrayNonUniformIndexing && !a.shaderUniformTexelBufferArrayNonUniformIndexing) return false;
+            if (r.shaderStorageTexelBufferArrayNonUniformIndexing && !a.shaderStorageTexelBufferArrayNonUniformIndexing) return false;
+            if (r.descriptorBindingUniformBufferUpdateAfterBind && !a.descriptorBindingUniformBufferUpdateAfterBind) return false;
+            if (r.descriptorBindingSampledImageUpdateAfterBind && !a.descriptorBindingSampledImageUpdateAfterBind) return false;
+            if (r.descriptorBindingStorageImageUpdateAfterBind && !a.descriptorBindingStorageImageUpdateAfterBind) return false;
+            if (r.descriptorBindingStorageBufferUpdateAfterBind && !a.descriptorBindingStorageBufferUpdateAfterBind) return false;
+            if (r.descriptorBindingUniformTexelBufferUpdateAfterBind && !a.descriptorBindingUniformTexelBufferUpdateAfterBind) return false;
+            if (r.descriptorBindingStorageTexelBufferUpdateAfterBind && !a.descriptorBindingStorageTexelBufferUpdateAfterBind) return false;
+            if (r.descriptorBindingUpdateUnusedWhilePending && !a.descriptorBindingUpdateUnusedWhilePending) return false;
+            if (r.descriptorBindingPartiallyBound && !a.descriptorBindingPartiallyBound) return false;
+            if (r.descriptorBindingVariableDescriptorCount && !a.descriptorBindingVariableDescriptorCount) return false;
+            if (r.runtimeDescriptorArray && !a.runtimeDescriptorArray) return false;
+            if (r.samplerFilterMinmax && !a.samplerFilterMinmax) return false;
+            if (r.scalarBlockLayout && !a.scalarBlockLayout) return false;
+            if (r.imagelessFramebuffer && !a.imagelessFramebuffer) return false;
+            if (r.uniformBufferStandardLayout && !a.uniformBufferStandardLayout) return false;
+            if (r.shaderSubgroupExtendedTypes && !a.shaderSubgroupExtendedTypes) return false;
+            if (r.separateDepthStencilLayouts && !a.separateDepthStencilLayouts) return false;
+            if (r.hostQueryReset && !a.hostQueryReset) return false;
+            if (r.timelineSemaphore && !a.timelineSemaphore) return false;
+            if (r.bufferDeviceAddress && !a.bufferDeviceAddress) return false;
+            if (r.bufferDeviceAddressCaptureReplay && !a.bufferDeviceAddressCaptureReplay) return false;
+            if (r.bufferDeviceAddressMultiDevice && !a.bufferDeviceAddressMultiDevice) return false;
+            if (r.vulkanMemoryModel && !a.vulkanMemoryModel) return false;
+            if (r.vulkanMemoryModelDeviceScope && !a.vulkanMemoryModelDeviceScope) return false;
+            if (r.vulkanMemoryModelAvailabilityVisibilityChains && !a.vulkanMemoryModelAvailabilityVisibilityChains) return false;
+            if (r.shaderOutputViewportIndex && !a.shaderOutputViewportIndex) return false;
+            if (r.shaderOutputLayer && !a.shaderOutputLayer) return false;
+            if (r.subgroupBroadcastDynamicId && !a.subgroupBroadcastDynamicId) return false;
+
+            return true;
+        }
+
         private:
             inline derived_t* s() { return reinterpret_cast<derived_t*>(this); }
 
@@ -360,6 +507,31 @@ namespace spx::vk
 
         inline void*      get_next() const     { return this->pNext;               }
         inline derived_t& set_next(void* next)  { this->pNext = next; return *s();  }
+
+        /// @brief Returns true if every feature enabled in `requested` is also enabled in
+        ///        `available` -- i.e. `requested` is a subset of `available`. Used to check a
+        ///        requested feature set against what a physical device actually supports.
+        static inline bool32_t
+        is_subset(const derived_t& r, const derived_t& a)
+        {
+            if (r.robustImageAccess && !a.robustImageAccess) return false;
+            if (r.inlineUniformBlock && !a.inlineUniformBlock) return false;
+            if (r.descriptorBindingInlineUniformBlockUpdateAfterBind && !a.descriptorBindingInlineUniformBlockUpdateAfterBind) return false;
+            if (r.pipelineCreationCacheControl && !a.pipelineCreationCacheControl) return false;
+            if (r.privateData && !a.privateData) return false;
+            if (r.shaderDemoteToHelperInvocation && !a.shaderDemoteToHelperInvocation) return false;
+            if (r.shaderTerminateInvocation && !a.shaderTerminateInvocation) return false;
+            if (r.subgroupSizeControl && !a.subgroupSizeControl) return false;
+            if (r.computeFullSubgroups && !a.computeFullSubgroups) return false;
+            if (r.synchronization2 && !a.synchronization2) return false;
+            if (r.textureCompressionASTC_HDR && !a.textureCompressionASTC_HDR) return false;
+            if (r.shaderZeroInitializeWorkgroupMemory && !a.shaderZeroInitializeWorkgroupMemory) return false;
+            if (r.dynamicRendering && !a.dynamicRendering) return false;
+            if (r.shaderIntegerDotProduct && !a.shaderIntegerDotProduct) return false;
+            if (r.maintenance4 && !a.maintenance4) return false;
+
+            return true;
+        }
 
         private:
             inline derived_t* s() { return reinterpret_cast<derived_t*>(this); }
@@ -397,6 +569,37 @@ namespace spx::vk
 
         inline void*      get_next() const     { return this->pNext;               }
         inline derived_t& set_next(void* next)  { this->pNext = next; return *s();  }
+
+        /// @brief Returns true if every feature enabled in `requested` is also enabled in
+        ///        `available` -- i.e. `requested` is a subset of `available`. Used to check a
+        ///        requested feature set against what a physical device actually supports.
+        static inline bool32_t
+        is_subset(const derived_t& r, const derived_t& a)
+        {
+            if (r.globalPriorityQuery && !a.globalPriorityQuery) return false;
+            if (r.shaderSubgroupRotate && !a.shaderSubgroupRotate) return false;
+            if (r.shaderSubgroupRotateClustered && !a.shaderSubgroupRotateClustered) return false;
+            if (r.shaderFloatControls2 && !a.shaderFloatControls2) return false;
+            if (r.shaderExpectAssume && !a.shaderExpectAssume) return false;
+            if (r.rectangularLines && !a.rectangularLines) return false;
+            if (r.bresenhamLines && !a.bresenhamLines) return false;
+            if (r.smoothLines && !a.smoothLines) return false;
+            if (r.stippledRectangularLines && !a.stippledRectangularLines) return false;
+            if (r.stippledBresenhamLines && !a.stippledBresenhamLines) return false;
+            if (r.stippledSmoothLines && !a.stippledSmoothLines) return false;
+            if (r.vertexAttributeInstanceRateDivisor && !a.vertexAttributeInstanceRateDivisor) return false;
+            if (r.vertexAttributeInstanceRateZeroDivisor && !a.vertexAttributeInstanceRateZeroDivisor) return false;
+            if (r.indexTypeUint8 && !a.indexTypeUint8) return false;
+            if (r.dynamicRenderingLocalRead && !a.dynamicRenderingLocalRead) return false;
+            if (r.maintenance5 && !a.maintenance5) return false;
+            if (r.maintenance6 && !a.maintenance6) return false;
+            if (r.pipelineProtectedAccess && !a.pipelineProtectedAccess) return false;
+            if (r.pipelineRobustness && !a.pipelineRobustness) return false;
+            if (r.hostImageCopy && !a.hostImageCopy) return false;
+            if (r.pushDescriptor && !a.pushDescriptor) return false;
+
+            return true;
+        }
 
         private:
             inline derived_t* s() { return reinterpret_cast<derived_t*>(this); }
@@ -1056,6 +1259,232 @@ namespace spx::vk
 
     };
 
+    /// @brief VkComponentMapping mixin (component_mapping_t).
+    ///
+    /// The per-channel swizzle applied by an image view. Defaults to identity on every channel
+    /// (VK_COMPONENT_SWIZZLE_IDENTITY is zero, so a value-initialized struct is already identity),
+    /// which is what the vast majority of views want. Reused as the nested `components` member of
+    /// image_view_create_info_t below.
+    template <typename derived_t>
+    struct vk_struct_ext<derived_t, VkComponentMapping>
+    {
+
+        VkComponentSwizzle  r   { VK_COMPONENT_SWIZZLE_IDENTITY };
+        VkComponentSwizzle  g   { VK_COMPONENT_SWIZZLE_IDENTITY };
+        VkComponentSwizzle  b   { VK_COMPONENT_SWIZZLE_IDENTITY };
+        VkComponentSwizzle  a   { VK_COMPONENT_SWIZZLE_IDENTITY };
+
+        inline VkComponentSwizzle get_r() const { return this->r; }
+        inline VkComponentSwizzle get_g() const { return this->g; }
+        inline VkComponentSwizzle get_b() const { return this->b; }
+        inline VkComponentSwizzle get_a() const { return this->a; }
+
+        inline derived_t& set_r(VkComponentSwizzle s) { this->r = s; return *self(); }
+        inline derived_t& set_g(VkComponentSwizzle s) { this->g = s; return *self(); }
+        inline derived_t& set_b(VkComponentSwizzle s) { this->b = s; return *self(); }
+        inline derived_t& set_a(VkComponentSwizzle s) { this->a = s; return *self(); }
+
+        /// @brief Sets all four channels back to identity.
+        inline derived_t& set_identity()
+        {
+            this->r = this->g = this->b = this->a = VK_COMPONENT_SWIZZLE_IDENTITY;
+            return *self();
+        }
+
+        private:
+            inline derived_t* self() { return reinterpret_cast<derived_t*>(this); }
+
+    };
+
+    /// @brief VkImageSubresourceRange mixin (image_subresource_range_t).
+    ///
+    /// Describes which mip levels / array layers (and which aspect) of an image a view covers.
+    /// Reused as the nested `subresourceRange` member of image_view_create_info_t below.
+    template <typename derived_t>
+    struct vk_struct_ext<derived_t, VkImageSubresourceRange>
+    {
+
+        VkImageAspectFlags  aspectMask      {         };
+        uint32_t            baseMipLevel    {         };
+        uint32_t            levelCount      {         };
+        uint32_t            baseArrayLayer  {         };
+        uint32_t            layerCount      {         };
+
+        inline VkImageAspectFlags   get_aspect_mask() const         { return this->aspectMask;      }
+        inline uint32_t             get_base_mip_level() const      { return this->baseMipLevel;    }
+        inline uint32_t             get_level_count() const         { return this->levelCount;      }
+        inline uint32_t             get_base_array_layer() const    { return this->baseArrayLayer;  }
+        inline uint32_t             get_layer_count() const         { return this->layerCount;      }
+
+        inline derived_t& set_aspect_mask(VkImageAspectFlags mask)  { this->aspectMask = mask; return *s();     }
+        inline derived_t& set_base_mip_level(uint32_t level)        { this->baseMipLevel = level; return *s();  }
+        inline derived_t& set_level_count(uint32_t count)           { this->levelCount = count; return *s();    }
+        inline derived_t& set_base_array_layer(uint32_t layer)      { this->baseArrayLayer = layer; return *s();}
+        inline derived_t& set_layer_count(uint32_t count)           { this->layerCount = count; return *s();    }
+
+        private:
+            inline derived_t* s() { return reinterpret_cast<derived_t*>(this); }
+
+    };
+
+    /// @brief VkImageViewCreateInfo mixin (image_view_create_info_t).
+    ///
+    /// Input struct describing the view to create over an image. The image member is the raw
+    /// VkImage handle (views are created over swapchain images, which the application does not own
+    /// as wrappers). The color_2d factory builds the common case used for swapchain image views.
+    template <typename derived_t>
+    struct vk_struct_ext<derived_t, VkImageViewCreateInfo>
+    {
+
+        VkStructureType                             sType               { VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO };
+        const void*                                 pNext               { nullptr };
+        VkImageViewCreateFlags                      flags               {         };
+        VkImage                                     image               { VK_NULL_HANDLE };
+        VkImageViewType                             viewType            {         };
+        VkFormat                                    format              {         };
+        vk_struct_base<VkComponentMapping>          components          {         };
+        vk_struct_base<VkImageSubresourceRange>     subresourceRange    {         };
+
+        inline const void*              get_next() const        { return this->pNext;       }
+        inline VkImageViewCreateFlags   get_flags() const       { return this->flags;       }
+        inline VkImage                  get_image() const       { return this->image;       }
+        inline VkImageViewType          get_view_type() const   { return this->viewType;    }
+        inline VkFormat                 get_format() const      { return this->format;      }
+        inline const vk_struct_base<VkComponentMapping>&      get_components() const         { return this->components;       }
+        inline const vk_struct_base<VkImageSubresourceRange>& get_subresource_range() const  { return this->subresourceRange; }
+
+        inline derived_t& set_next(const void* next)            { this->pNext = next; return *s();      }
+        inline derived_t& set_flags(VkImageViewCreateFlags f)   { this->flags = f; return *s();         }
+        inline derived_t& set_image(VkImage img)                { this->image = img; return *s();       }
+        inline derived_t& set_view_type(VkImageViewType type)   { this->viewType = type; return *s();   }
+        inline derived_t& set_format(VkFormat fmt)              { this->format = fmt; return *s();      }
+
+        inline derived_t& set_components(const vk_struct_base<VkComponentMapping>& components)
+        {
+            this->components = components;
+            return *s();
+        }
+
+        inline derived_t& set_subresource_range(const vk_struct_base<VkImageSubresourceRange>& range)
+        {
+            this->subresourceRange = range;
+            return *s();
+        }
+
+        /// @brief Builds a create-info for the common case: a single-mip, single-layer 2D color view
+        ///        over the given image with identity swizzles. This is what swapchain image views use.
+        /// @param image  The image (typically a swapchain image) to view.
+        /// @param format The format to interpret the image with (the swapchain's format).
+        /// @return A fully-populated create-info ready to hand to create_image_view.
+        static inline derived_t
+        color_2d(VkImage image, VkFormat format)
+        {
+            derived_t info { };
+            info.image    = image;
+            info.viewType = VK_IMAGE_VIEW_TYPE_2D;
+            info.format   = format;
+            info.subresourceRange.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
+            info.subresourceRange.baseMipLevel   = 0;
+            info.subresourceRange.levelCount     = 1;
+            info.subresourceRange.baseArrayLayer = 0;
+            info.subresourceRange.layerCount     = 1;
+            return info;
+        }
+
+        private:
+            inline derived_t* s() { return reinterpret_cast<derived_t*>(this); }
+
+    };
+
+    /// @brief VkSwapchainCreateInfoKHR mixin (swapchain_create_info_t).
+    ///
+    /// Input struct describing the swapchain to create. surface and oldSwapchain are raw handles
+    /// (the wrappers sit above this layer). set_concurrent_queue_families / set_exclusive_queue_family
+    /// keep the sharing mode and the queue-family index list in sync, mirroring how the queue-priority
+    /// and extension setters elsewhere keep their counts in sync.
+    template <typename derived_t>
+    struct vk_struct_ext<derived_t, VkSwapchainCreateInfoKHR>
+    {
+
+        VkStructureType                 sType                   { VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR };
+        const void*                     pNext                   { nullptr };
+        VkSwapchainCreateFlagsKHR       flags                   {         };
+        VkSurfaceKHR                    surface                 { VK_NULL_HANDLE };
+        uint32_t                        minImageCount           {         };
+        VkFormat                        imageFormat             {         };
+        VkColorSpaceKHR                 imageColorSpace         {         };
+        vk_struct_base<VkExtent2D>      imageExtent             {         };
+        uint32_t                        imageArrayLayers        {         };
+        VkImageUsageFlags               imageUsage              {         };
+        VkSharingMode                   imageSharingMode        {         };
+        uint32_t                        queueFamilyIndexCount   {         };
+        const uint32_t*                 pQueueFamilyIndices     { nullptr };
+        VkSurfaceTransformFlagBitsKHR   preTransform            {         };
+        VkCompositeAlphaFlagBitsKHR     compositeAlpha          {         };
+        VkPresentModeKHR                presentMode             {         };
+        VkBool32                        clipped                 {         };
+        VkSwapchainKHR                  oldSwapchain            { VK_NULL_HANDLE };
+
+        inline const void*                  get_next() const                { return this->pNext;               }
+        inline VkSwapchainCreateFlagsKHR    get_flags() const               { return this->flags;               }
+        inline VkSurfaceKHR                 get_surface() const             { return this->surface;             }
+        inline uint32_t                     get_min_image_count() const     { return this->minImageCount;       }
+        inline VkFormat                     get_image_format() const        { return this->imageFormat;         }
+        inline VkColorSpaceKHR              get_image_color_space() const   { return this->imageColorSpace;     }
+        inline const vk_struct_base<VkExtent2D>& get_image_extent() const   { return this->imageExtent;         }
+        inline uint32_t                     get_image_array_layers() const  { return this->imageArrayLayers;    }
+        inline VkImageUsageFlags            get_image_usage() const         { return this->imageUsage;          }
+        inline VkSharingMode                get_image_sharing_mode() const  { return this->imageSharingMode;    }
+        inline VkSurfaceTransformFlagBitsKHR get_pre_transform() const      { return this->preTransform;        }
+        inline VkCompositeAlphaFlagBitsKHR  get_composite_alpha() const     { return this->compositeAlpha;      }
+        inline VkPresentModeKHR             get_present_mode() const        { return this->presentMode;         }
+        inline VkBool32                     get_clipped() const             { return this->clipped;             }
+        inline VkSwapchainKHR               get_old_swapchain() const       { return this->oldSwapchain;        }
+
+        inline derived_t& set_next(const void* next)                        { this->pNext = next; return *s();              }
+        inline derived_t& set_flags(VkSwapchainCreateFlagsKHR f)            { this->flags = f; return *s();                 }
+        inline derived_t& set_surface(VkSurfaceKHR s)                       { this->surface = s; return *self();            }
+        inline derived_t& set_min_image_count(uint32_t count)              { this->minImageCount = count; return *s();     }
+        inline derived_t& set_image_format(VkFormat fmt)                    { this->imageFormat = fmt; return *s();         }
+        inline derived_t& set_image_color_space(VkColorSpaceKHR space)      { this->imageColorSpace = space; return *s();   }
+        inline derived_t& set_image_extent(const vk_struct_base<VkExtent2D>& extent) { this->imageExtent = extent; return *s(); }
+        inline derived_t& set_image_array_layers(uint32_t layers)          { this->imageArrayLayers = layers; return *s(); }
+        inline derived_t& set_image_usage(VkImageUsageFlags usage)          { this->imageUsage = usage; return *s();        }
+        inline derived_t& set_pre_transform(VkSurfaceTransformFlagBitsKHR t){ this->preTransform = t; return *s();          }
+        inline derived_t& set_composite_alpha(VkCompositeAlphaFlagBitsKHR a){ this->compositeAlpha = a; return *s();        }
+        inline derived_t& set_present_mode(VkPresentModeKHR mode)           { this->presentMode = mode; return *s();        }
+        inline derived_t& set_clipped(VkBool32 clipped)                     { this->clipped = clipped; return *s();         }
+        inline derived_t& set_old_swapchain(VkSwapchainKHR old)             { this->oldSwapchain = old; return *s();        }
+
+        /// @brief Use concurrent sharing across the given queue families. Required when the graphics
+        ///        and presentation queues come from different families so images can be used by both
+        ///        without explicit ownership transfers. The supplied index list must outlive the
+        ///        create call (it is referenced, not copied).
+        inline derived_t& set_concurrent_queue_families(spx::array_view<uint32_t> indices)
+        {
+            this->imageSharingMode      = VK_SHARING_MODE_CONCURRENT;
+            this->queueFamilyIndexCount = static_cast<uint32_t>(indices.size());
+            this->pQueueFamilyIndices   = indices.data();
+            return *s();
+        }
+
+        /// @brief Use exclusive sharing (the common single-family case). Clears the index list.
+        inline derived_t& set_exclusive_queue_family()
+        {
+            this->imageSharingMode      = VK_SHARING_MODE_EXCLUSIVE;
+            this->queueFamilyIndexCount = 0;
+            this->pQueueFamilyIndices   = nullptr;
+            return *s();
+        }
+
+        private:
+            // surface members would shadow a private s() named member elsewhere; keep two spellings so
+            // the surface setter (which takes a parameter named s) doesn't collide with the helper.
+            inline derived_t* s()    { return reinterpret_cast<derived_t*>(this); }
+            inline derived_t* self() { return reinterpret_cast<derived_t*>(this); }
+
+    };
+
     // ---------------------------------------------------------------------------------------------
     // Using statements.
     //
@@ -1094,6 +1523,11 @@ namespace spx::vk
     using queue_family_properties_2_t           = vk_struct_base<VkQueueFamilyProperties2>;
     using device_queue_create_info_t            = vk_struct_base<VkDeviceQueueCreateInfo>;
     using device_create_info_t                  = vk_struct_base<VkDeviceCreateInfo>;
+
+    using component_mapping_t                   = vk_struct_base<VkComponentMapping>;
+    using image_subresource_range_t             = vk_struct_base<VkImageSubresourceRange>;
+    using image_view_create_info_t              = vk_struct_base<VkImageViewCreateInfo>;
+    using swapchain_create_info_t               = vk_struct_base<VkSwapchainCreateInfoKHR>;
 
     // ---------------------------------------------------------------------------------------------
     // Layout guards.
@@ -1320,6 +1754,52 @@ namespace spx::vk
     static_assert(offsetof(device_create_info_t, enabledExtensionCount) == offsetof(VkDeviceCreateInfo, enabledExtensionCount));
     static_assert(offsetof(device_create_info_t, ppEnabledExtensionNames) == offsetof(VkDeviceCreateInfo, ppEnabledExtensionNames));
     static_assert(offsetof(device_create_info_t, pEnabledFeatures) == offsetof(VkDeviceCreateInfo, pEnabledFeatures));
+
+    // VkComponentMapping checks.
+    static_assert(std::is_standard_layout_v<component_mapping_t>, "component_mapping_t must be standard-layout for native interop.");
+    static_assert(sizeof(component_mapping_t) == sizeof(VkComponentMapping), "component_mapping_t layout diverged from VkComponentMapping.");
+    static_assert(offsetof(component_mapping_t, r) == offsetof(VkComponentMapping, r));
+    static_assert(offsetof(component_mapping_t, a) == offsetof(VkComponentMapping, a));
+
+    // VkImageSubresourceRange checks.
+    static_assert(std::is_standard_layout_v<image_subresource_range_t>, "image_subresource_range_t must be standard-layout for native interop.");
+    static_assert(sizeof(image_subresource_range_t) == sizeof(VkImageSubresourceRange), "image_subresource_range_t layout diverged from VkImageSubresourceRange.");
+    static_assert(offsetof(image_subresource_range_t, aspectMask) == offsetof(VkImageSubresourceRange, aspectMask));
+    static_assert(offsetof(image_subresource_range_t, layerCount) == offsetof(VkImageSubresourceRange, layerCount));
+
+    // VkImageViewCreateInfo checks.
+    static_assert(std::is_standard_layout_v<image_view_create_info_t>, "image_view_create_info_t must be standard-layout for native interop.");
+    static_assert(sizeof(image_view_create_info_t) == sizeof(VkImageViewCreateInfo), "image_view_create_info_t layout diverged from VkImageViewCreateInfo.");
+    static_assert(offsetof(image_view_create_info_t, sType) == offsetof(VkImageViewCreateInfo, sType));
+    static_assert(offsetof(image_view_create_info_t, pNext) == offsetof(VkImageViewCreateInfo, pNext));
+    static_assert(offsetof(image_view_create_info_t, flags) == offsetof(VkImageViewCreateInfo, flags));
+    static_assert(offsetof(image_view_create_info_t, image) == offsetof(VkImageViewCreateInfo, image));
+    static_assert(offsetof(image_view_create_info_t, viewType) == offsetof(VkImageViewCreateInfo, viewType));
+    static_assert(offsetof(image_view_create_info_t, format) == offsetof(VkImageViewCreateInfo, format));
+    static_assert(offsetof(image_view_create_info_t, components) == offsetof(VkImageViewCreateInfo, components));
+    static_assert(offsetof(image_view_create_info_t, subresourceRange) == offsetof(VkImageViewCreateInfo, subresourceRange));
+
+    // VkSwapchainCreateInfoKHR checks.
+    static_assert(std::is_standard_layout_v<swapchain_create_info_t>, "swapchain_create_info_t must be standard-layout for native interop.");
+    static_assert(sizeof(swapchain_create_info_t) == sizeof(VkSwapchainCreateInfoKHR), "swapchain_create_info_t layout diverged from VkSwapchainCreateInfoKHR.");
+    static_assert(offsetof(swapchain_create_info_t, sType) == offsetof(VkSwapchainCreateInfoKHR, sType));
+    static_assert(offsetof(swapchain_create_info_t, pNext) == offsetof(VkSwapchainCreateInfoKHR, pNext));
+    static_assert(offsetof(swapchain_create_info_t, flags) == offsetof(VkSwapchainCreateInfoKHR, flags));
+    static_assert(offsetof(swapchain_create_info_t, surface) == offsetof(VkSwapchainCreateInfoKHR, surface));
+    static_assert(offsetof(swapchain_create_info_t, minImageCount) == offsetof(VkSwapchainCreateInfoKHR, minImageCount));
+    static_assert(offsetof(swapchain_create_info_t, imageFormat) == offsetof(VkSwapchainCreateInfoKHR, imageFormat));
+    static_assert(offsetof(swapchain_create_info_t, imageColorSpace) == offsetof(VkSwapchainCreateInfoKHR, imageColorSpace));
+    static_assert(offsetof(swapchain_create_info_t, imageExtent) == offsetof(VkSwapchainCreateInfoKHR, imageExtent));
+    static_assert(offsetof(swapchain_create_info_t, imageArrayLayers) == offsetof(VkSwapchainCreateInfoKHR, imageArrayLayers));
+    static_assert(offsetof(swapchain_create_info_t, imageUsage) == offsetof(VkSwapchainCreateInfoKHR, imageUsage));
+    static_assert(offsetof(swapchain_create_info_t, imageSharingMode) == offsetof(VkSwapchainCreateInfoKHR, imageSharingMode));
+    static_assert(offsetof(swapchain_create_info_t, queueFamilyIndexCount) == offsetof(VkSwapchainCreateInfoKHR, queueFamilyIndexCount));
+    static_assert(offsetof(swapchain_create_info_t, pQueueFamilyIndices) == offsetof(VkSwapchainCreateInfoKHR, pQueueFamilyIndices));
+    static_assert(offsetof(swapchain_create_info_t, preTransform) == offsetof(VkSwapchainCreateInfoKHR, preTransform));
+    static_assert(offsetof(swapchain_create_info_t, compositeAlpha) == offsetof(VkSwapchainCreateInfoKHR, compositeAlpha));
+    static_assert(offsetof(swapchain_create_info_t, presentMode) == offsetof(VkSwapchainCreateInfoKHR, presentMode));
+    static_assert(offsetof(swapchain_create_info_t, clipped) == offsetof(VkSwapchainCreateInfoKHR, clipped));
+    static_assert(offsetof(swapchain_create_info_t, oldSwapchain) == offsetof(VkSwapchainCreateInfoKHR, oldSwapchain));
 
 
 }

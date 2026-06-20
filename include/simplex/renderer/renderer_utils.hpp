@@ -16,6 +16,7 @@ enum RendererResultType : uint32_t
     RendererResultType_VulkanSurfaceCreationFailed,
     RendererResultType_VulkanPhysicalDeviceSelectionFailed,
     RendererResultType_VulkanLogicalDeviceCreationFailed,
+    RendererResultType_VulkanSwapchainCreationFailed,
 };
 
 namespace spx
