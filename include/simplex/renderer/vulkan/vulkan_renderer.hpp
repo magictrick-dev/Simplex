@@ -24,6 +24,7 @@ namespace spx::vk
             bool32_t create_logical_device();
             bool32_t create_surface();
             bool32_t create_swapchain();
+            bool32_t create_shaders();
 
             // Rebuilds the swapchain (and its image views) against the window's current size, reusing
             // create_swapchain after tearing the old resources down. Used to service window resizes.
@@ -67,6 +68,10 @@ namespace spx::vk
             spx::dynamic_array<spx::vk::image_view_t> swapchain_image_views;
             VkFormat                                  swapchain_format = VK_FORMAT_UNDEFINED;
             spx::vk::extent_2d_t                      swapchain_extent;
+
+            // The core shader compiled from Slang to SPIR-V. Slang packs every entry point (e.g. the
+            // vertex and fragment stages) into a single module, so one handle covers the whole program.
+            spx::vk::shader_module_t core_shader_module;
 
     };
 

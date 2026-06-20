@@ -329,4 +329,33 @@ namespace spx::vk
         view.native = nullptr;
     }
 
+    /// @brief Wraps vkCreateShaderModule, taking a wrapped create-info and writing into a wrapped
+    ///        handle. The driver copies the SPIR-V during this call, so the source blob the create
+    ///        info points at may be freed once it returns.
+    /// @param device      The logical device to create the module against.
+    /// @param create_info The shader module create info (a SPIR-V blob).
+    /// @param allocator   Optional allocation callbacks (may be nullptr).
+    /// @param out_module  The handle to populate on success.
+    /// @return The native VkResult from vkCreateShaderModule.
+    inline VkResult
+    create_shader_module(device_t& device,
+                         const shader_module_create_info_t& create_info,
+                         const VkAllocationCallbacks* allocator,
+                         shader_module_t& out_module)
+    {
+        const VkShaderModuleCreateInfo& native_create_info = create_info;
+        return vkCreateShaderModule(device.native, &native_create_info, allocator, &out_module.native);
+    }
+
+    /// @brief Wraps vkDestroyShaderModule. Null-safe; the handle is nulled afterward either way.
+    /// @param device        The logical device the module was created against.
+    /// @param shader_module The module to destroy.
+    /// @param allocator     Optional allocation callbacks (must match create_shader_module).
+    inline void
+    destroy_shader_module(device_t& device, shader_module_t& shader_module, const VkAllocationCallbacks* allocator = nullptr)
+    {
+        if (shader_module.native != nullptr) vkDestroyShaderModule(device.native, shader_module.native, allocator);
+        shader_module.native = nullptr;
+    }
+
 }

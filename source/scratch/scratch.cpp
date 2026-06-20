@@ -17,6 +17,7 @@
 #include <simplex/hashed_sparse_map.hpp>
 
 #include <simplex/platform/window.hpp>
+#include <simplex/platform/filesystem.hpp>
 #include <simplex/renderer/vulkan/vulkan_renderer.hpp>
 #include <simplex/renderer/vulkan/structures.hpp>
 #include <simplex/renderer/vulkan/handles.hpp>

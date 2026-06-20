@@ -1485,6 +1485,61 @@ namespace spx::vk
 
     };
 
+    /// @brief VkShaderModuleCreateInfo mixin (shader_module_create_info_t).
+    ///
+    /// Input struct wrapping a SPIR-V blob for vkCreateShaderModule. codeSize is measured in bytes
+    /// (and must be a multiple of 4) while pCode is a uint32_t word pointer -- set_code / from_spirv
+    /// bridge that split from a raw byte buffer. The SPIR-V storage is referenced, not copied, so it
+    /// must outlive the create call; the driver copies what it needs during vkCreateShaderModule, so
+    /// the source buffer can be freed once that returns.
+    template <typename derived_t>
+    struct vk_struct_ext<derived_t, VkShaderModuleCreateInfo>
+    {
+
+        VkStructureType             sType       { VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO };
+        const void*                 pNext       { nullptr };
+        VkShaderModuleCreateFlags   flags       {         };
+        size_t                      codeSize    {         };
+        const uint32_t*             pCode       { nullptr };
+
+        inline const void*               get_next() const       { return this->pNext;       }
+        inline VkShaderModuleCreateFlags get_flags() const      { return this->flags;       }
+        inline size_t                    get_code_size() const   { return this->codeSize;    }
+        inline const uint32_t*           get_code() const        { return this->pCode;       }
+
+        inline derived_t& set_next(const void* next)             { this->pNext = next; return *s();  }
+        inline derived_t& set_flags(VkShaderModuleCreateFlags f) { this->flags = f; return *s();     }
+
+        /// @brief Points the create-info at a SPIR-V blob. The blob is referenced, not copied.
+        /// @param code       Pointer to the SPIR-V words. Must be 4-byte aligned -- the engine's
+        ///                   allocator over-aligns, so any simplex_memory_alloc'd buffer qualifies.
+        /// @param size_bytes Size of the blob in bytes; must be a multiple of 4.
+        inline derived_t& set_code(const void* code, size_t size_bytes)
+        {
+            this->codeSize = size_bytes;
+            this->pCode    = reinterpret_cast<const uint32_t*>(code);
+            return *s();
+        }
+
+        /// @brief Builds a create-info pointing at the given SPIR-V blob. See set_code for the
+        ///        alignment/size contract; the blob must outlive the create call.
+        /// @param code       Pointer to the SPIR-V words.
+        /// @param size_bytes Size of the blob in bytes (a multiple of 4).
+        /// @return A create-info ready to hand to create_shader_module.
+        static inline derived_t
+        from_spirv(const void* code, size_t size_bytes)
+        {
+            derived_t info { };
+            info.codeSize = size_bytes;
+            info.pCode    = reinterpret_cast<const uint32_t*>(code);
+            return info;
+        }
+
+        private:
+            inline derived_t* s() { return reinterpret_cast<derived_t*>(this); }
+
+    };
+
     // ---------------------------------------------------------------------------------------------
     // Using statements.
     //
@@ -1528,6 +1583,7 @@ namespace spx::vk
     using image_subresource_range_t             = vk_struct_base<VkImageSubresourceRange>;
     using image_view_create_info_t              = vk_struct_base<VkImageViewCreateInfo>;
     using swapchain_create_info_t               = vk_struct_base<VkSwapchainCreateInfoKHR>;
+    using shader_module_create_info_t           = vk_struct_base<VkShaderModuleCreateInfo>;
 
     // ---------------------------------------------------------------------------------------------
     // Layout guards.
@@ -1800,6 +1856,15 @@ namespace spx::vk
     static_assert(offsetof(swapchain_create_info_t, presentMode) == offsetof(VkSwapchainCreateInfoKHR, presentMode));
     static_assert(offsetof(swapchain_create_info_t, clipped) == offsetof(VkSwapchainCreateInfoKHR, clipped));
     static_assert(offsetof(swapchain_create_info_t, oldSwapchain) == offsetof(VkSwapchainCreateInfoKHR, oldSwapchain));
+
+    // VkShaderModuleCreateInfo checks.
+    static_assert(std::is_standard_layout_v<shader_module_create_info_t>, "shader_module_create_info_t must be standard-layout for native interop.");
+    static_assert(sizeof(shader_module_create_info_t) == sizeof(VkShaderModuleCreateInfo), "shader_module_create_info_t layout diverged from VkShaderModuleCreateInfo.");
+    static_assert(offsetof(shader_module_create_info_t, sType) == offsetof(VkShaderModuleCreateInfo, sType));
+    static_assert(offsetof(shader_module_create_info_t, pNext) == offsetof(VkShaderModuleCreateInfo, pNext));
+    static_assert(offsetof(shader_module_create_info_t, flags) == offsetof(VkShaderModuleCreateInfo, flags));
+    static_assert(offsetof(shader_module_create_info_t, codeSize) == offsetof(VkShaderModuleCreateInfo, codeSize));
+    static_assert(offsetof(shader_module_create_info_t, pCode) == offsetof(VkShaderModuleCreateInfo, pCode));
 
 
 }

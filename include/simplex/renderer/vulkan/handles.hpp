@@ -72,6 +72,7 @@ namespace spx::vk
     using swapchain_t               = vk_handle<VkSwapchainKHR>;
     using image_t                   = vk_handle<VkImage>;
     using image_view_t              = vk_handle<VkImageView>;
+    using shader_module_t           = vk_handle<VkShaderModule>;
 
     // ---------------------------------------------------------------------------------------------
     // Handle mixins.

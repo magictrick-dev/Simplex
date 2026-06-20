@@ -1,6 +1,7 @@
 #include <utils/about.hpp>
 
 #include <simplex/renderer/vulkan/vulkan_renderer.hpp>
+#include <simplex/platform/filesystem.hpp>
 #include <simplex/platform/window.hpp>
 #include <simplex/dynamic_array.hpp>
 
@@ -13,6 +14,7 @@ internal_initialize()
     if (this->select_physical_device() == false)    return RendererResultType_VulkanPhysicalDeviceSelectionFailed;
     if (this->create_logical_device() == false)     return RendererResultType_VulkanLogicalDeviceCreationFailed;
     if (this->create_swapchain() == false)          return RendererResultType_VulkanSwapchainCreationFailed;
+    if (this->create_shaders() == false)            return RendererResultType_VulkanShaderCreationFailed;
 
     return RendererResultType_OK;
 
@@ -23,6 +25,7 @@ internal_deinitialize()
 {
 
     this->destroy_swapchain();
+    spx::vk::destroy_shader_module(this->device, this->core_shader_module);
     spx::vk::destroy_device(this->device);
     if constexpr (enable_validation) spx::vk::destroy_debug_utils_messenger(this->instance, this->debug_messenger);
     spx::vk::destroy_surface(this->instance, this->surface);
@@ -306,6 +309,7 @@ create_logical_device()
     spx::vk::physical_device_13_features_t features_13 { };
     spx::vk::physical_device_14_features_t features_14 { };
 
+    features_11.shaderDrawParameters = VK_TRUE;
     features_13.dynamicRendering = VK_TRUE;
     features_13.synchronization2 = VK_TRUE;
 
@@ -515,6 +519,71 @@ recreate_swapchain()
 
     this->destroy_swapchain();
     return this->create_swapchain();
+
+}
+
+bool32_t spx::vk::vulkan_renderer::
+create_shaders()
+{
+
+    // This will create our base shaders. First, we will load our module into memory.
+    spx::dynamic_string<char> shader_path = spx::fs::get_executable_directory();
+    shader_path.append("/../resources/shaders/scratch/core.spv");
+    shader_path = spx::fs::canonicalize_path(shader_path);
+    spx::logger::dispatch_diagnostic_log("Attempting load SPIR-V shader form: {}", shader_path.c_str());
+
+    if (spx::fs::path_is_file(shader_path) != PlatformFilesystemResult_OK)
+    {
+        spx::logger::dispatch_error_log("Failed to load essential core shader file, path is not file.");
+        spx::logger::process_message_queue();
+        THROW_SIMPLEX_RENDERER_EXCEPTION("Failed to load core shader.");
+        return false;
+    }
+
+    size_t shader_file_size { };
+    if (spx::fs::get_file_size(shader_path, &shader_file_size) != PlatformFilesystemResult_OK)
+    {
+        spx::logger::dispatch_error_log("Failed to fetch essential core shader file size.");
+        spx::logger::process_message_queue();
+        THROW_SIMPLEX_RENDERER_EXCEPTION("Failed to get core shader file size.");
+        return false;
+    }
+
+    void *shader_file_buffer = simplex_memory_alloc(shader_file_size);
+    size_t shader_bytes_read { };
+    if (spx::fs::read_entire_file(shader_path, shader_file_buffer, shader_file_size, &shader_bytes_read) != PlatformFilesystemResult_OK)
+    {
+        spx::logger::dispatch_error_log("Failed to read essential core shader into memory.");
+        spx::logger::process_message_queue();
+        THROW_SIMPLEX_RENDERER_EXCEPTION("Failed to read core shader file.");
+        return false;
+    }
+
+    if (shader_bytes_read != shader_file_size)
+    {
+        simplex_memory_free(shader_file_buffer);
+        THROW_SIMPLEX_RENDERER_EXCEPTION("Shader file did not read into memory correctly.");
+        return false;
+    }
+
+    // Now create the shader module. The driver copies the SPIR-V during creation, so the file buffer
+    // can be released as soon as the call returns -- regardless of outcome.
+    spx::vk::shader_module_create_info_t shader_create_info =
+        spx::vk::shader_module_create_info_t::from_spirv(shader_file_buffer, shader_file_size);
+
+    const auto result = spx::vk::create_shader_module(this->device, shader_create_info, NULL, this->core_shader_module);
+    simplex_memory_free(shader_file_buffer);
+
+    if (result != VK_SUCCESS)
+    {
+        THROW_SIMPLEX_RENDERER_EXCEPTION("Failed to create the core shader module.");
+        return false;
+    }
+
+    spx::logger::dispatch_diagnostic_log("Created the core shader module successfully ({} bytes of SPIR-V).",
+        shader_file_size);
+
+    return true;
 
 }
 
