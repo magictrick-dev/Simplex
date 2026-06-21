@@ -358,4 +358,33 @@ namespace spx::vk
         shader_module.native = nullptr;
     }
 
+    /// @brief Wraps vkCreatePipelineLayout, taking a wrapped create-info and writing into a wrapped
+    ///        handle. The descriptor-set-layout and push-constant arrays the create info points at are
+    ///        consumed during this call, so they need only live until it returns.
+    /// @param device      The logical device to create the layout against.
+    /// @param create_info The pipeline layout create info (set layouts + push constant ranges).
+    /// @param allocator   Optional allocation callbacks (may be nullptr).
+    /// @param out_layout  The handle to populate on success.
+    /// @return The native VkResult from vkCreatePipelineLayout.
+    inline VkResult
+    create_pipeline_layout(device_t& device,
+                           const pipeline_layout_create_info_t& create_info,
+                           const VkAllocationCallbacks* allocator,
+                           pipeline_layout_t& out_layout)
+    {
+        const VkPipelineLayoutCreateInfo& native_create_info = create_info;
+        return vkCreatePipelineLayout(device.native, &native_create_info, allocator, &out_layout.native);
+    }
+
+    /// @brief Wraps vkDestroyPipelineLayout. Null-safe; the handle is nulled afterward either way.
+    /// @param device    The logical device the layout was created against.
+    /// @param layout    The pipeline layout to destroy.
+    /// @param allocator Optional allocation callbacks (must match create_pipeline_layout).
+    inline void
+    destroy_pipeline_layout(device_t& device, pipeline_layout_t& layout, const VkAllocationCallbacks* allocator = nullptr)
+    {
+        if (layout.native != nullptr) vkDestroyPipelineLayout(device.native, layout.native, allocator);
+        layout.native = nullptr;
+    }
+
 }
