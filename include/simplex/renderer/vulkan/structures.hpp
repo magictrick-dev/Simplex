@@ -1541,6 +1541,767 @@ namespace spx::vk
     };
 
     // ---------------------------------------------------------------------------------------------
+    // Graphics pipeline fixed-function state.
+    //
+    // The structs below describe the fixed-function stages of a graphics pipeline (vertex input,
+    // input assembly, viewport/scissor, rasterization, multisampling, depth/stencil, color blending),
+    // plus the dynamic-state declaration and the pipeline layout. They are inputs assembled into a
+    // VkGraphicsPipelineCreateInfo; only the pipeline layout produces a handle of its own (the rest
+    // are transient descriptions). Defaults are chosen to be valid out of the box -- notably the
+    // rasterizer's lineWidth (1.0, required to be non-zero) and the color blend attachment's RGBA
+    // write mask (zero would silently discard all output).
+    // ---------------------------------------------------------------------------------------------
+
+    /// @brief VkOffset2D mixin (offset_2d_t). The integer origin of a VkRect2D (e.g. a scissor).
+    template <typename derived_t>
+    struct vk_struct_ext<derived_t, VkOffset2D>
+    {
+
+        int32_t x   {         };
+        int32_t y   {         };
+
+        inline int32_t get_x() const { return this->x; }
+        inline int32_t get_y() const { return this->y; }
+
+        inline derived_t& set_x(int32_t v) { this->x = v; return *s(); }
+        inline derived_t& set_y(int32_t v) { this->y = v; return *s(); }
+
+        private:
+            inline derived_t* s() { return reinterpret_cast<derived_t*>(this); }
+
+    };
+
+    /// @brief VkRect2D mixin (rect_2d_t). An integer rectangle (offset + extent); the scissor type.
+    template <typename derived_t>
+    struct vk_struct_ext<derived_t, VkRect2D>
+    {
+
+        vk_struct_base<VkOffset2D>  offset  {         };
+        vk_struct_base<VkExtent2D>  extent  {         };
+
+        inline const vk_struct_base<VkOffset2D>& get_offset() const { return this->offset; }
+        inline const vk_struct_base<VkExtent2D>& get_extent() const { return this->extent; }
+
+        inline derived_t& set_offset(const vk_struct_base<VkOffset2D>& o) { this->offset = o; return *s(); }
+        inline derived_t& set_extent(const vk_struct_base<VkExtent2D>& e) { this->extent = e; return *s(); }
+
+        private:
+            inline derived_t* s() { return reinterpret_cast<derived_t*>(this); }
+
+    };
+
+    /// @brief VkViewport mixin (viewport_t). x/y/width/height in pixels, depth range in [0, 1].
+    template <typename derived_t>
+    struct vk_struct_ext<derived_t, VkViewport>
+    {
+
+        float   x           {         };
+        float   y           {         };
+        float   width       {         };
+        float   height      {         };
+        float   minDepth    {         };
+        float   maxDepth    {         };
+
+        inline float get_x() const          { return this->x;           }
+        inline float get_y() const          { return this->y;           }
+        inline float get_width() const      { return this->width;       }
+        inline float get_height() const     { return this->height;      }
+        inline float get_min_depth() const  { return this->minDepth;    }
+        inline float get_max_depth() const  { return this->maxDepth;    }
+
+        inline derived_t& set_x(float v)          { this->x = v; return *s();         }
+        inline derived_t& set_y(float v)          { this->y = v; return *s();         }
+        inline derived_t& set_width(float v)      { this->width = v; return *s();     }
+        inline derived_t& set_height(float v)     { this->height = v; return *s();    }
+        inline derived_t& set_min_depth(float v)  { this->minDepth = v; return *s();  }
+        inline derived_t& set_max_depth(float v)  { this->maxDepth = v; return *s();  }
+
+        private:
+            inline derived_t* s() { return reinterpret_cast<derived_t*>(this); }
+
+    };
+
+    /// @brief VkVertexInputBindingDescription mixin (vertex_input_binding_description_t).
+    ///
+    /// Describes one bound vertex buffer: its binding number, the per-vertex (or per-instance) stride,
+    /// and whether it advances per vertex or per instance.
+    template <typename derived_t>
+    struct vk_struct_ext<derived_t, VkVertexInputBindingDescription>
+    {
+
+        uint32_t            binding     {         };
+        uint32_t            stride      {         };
+        VkVertexInputRate   inputRate   {         };
+
+        inline uint32_t          get_binding() const    { return this->binding;    }
+        inline uint32_t          get_stride() const     { return this->stride;     }
+        inline VkVertexInputRate get_input_rate() const { return this->inputRate;  }
+
+        inline derived_t& set_binding(uint32_t b)               { this->binding = b; return *s();   }
+        inline derived_t& set_stride(uint32_t s)                { this->stride = s; return *self(); }
+        inline derived_t& set_input_rate(VkVertexInputRate r)   { this->inputRate = r; return *s(); }
+
+        private:
+            inline derived_t* s()    { return reinterpret_cast<derived_t*>(this); }
+            inline derived_t* self() { return reinterpret_cast<derived_t*>(this); }
+
+    };
+
+    /// @brief VkVertexInputAttributeDescription mixin (vertex_input_attribute_description_t).
+    ///
+    /// Describes one vertex attribute: its shader location, which binding it is sourced from, its
+    /// format, and its byte offset within the vertex.
+    template <typename derived_t>
+    struct vk_struct_ext<derived_t, VkVertexInputAttributeDescription>
+    {
+
+        uint32_t    location    {         };
+        uint32_t    binding     {         };
+        VkFormat    format      {         };
+        uint32_t    offset      {         };
+
+        inline uint32_t get_location() const { return this->location;   }
+        inline uint32_t get_binding() const  { return this->binding;    }
+        inline VkFormat get_format() const   { return this->format;     }
+        inline uint32_t get_offset() const   { return this->offset;     }
+
+        inline derived_t& set_location(uint32_t l)  { this->location = l; return *s();  }
+        inline derived_t& set_binding(uint32_t b)   { this->binding = b; return *s();   }
+        inline derived_t& set_format(VkFormat f)    { this->format = f; return *s();    }
+        inline derived_t& set_offset(uint32_t o)    { this->offset = o; return *s();    }
+
+        private:
+            inline derived_t* s() { return reinterpret_cast<derived_t*>(this); }
+
+    };
+
+    /// @brief VkPipelineVertexInputStateCreateInfo mixin (pipeline_vertex_input_state_create_info_t).
+    ///
+    /// Aggregates the bound vertex buffers (binding descriptions) and their attributes. The default
+    /// (no bindings, no attributes) is exactly right for shaders that source their vertices without a
+    /// vertex buffer (e.g. a fullscreen triangle generated from gl_VertexIndex). The referenced
+    /// description arrays must outlive the pipeline create call.
+    template <typename derived_t>
+    struct vk_struct_ext<derived_t, VkPipelineVertexInputStateCreateInfo>
+    {
+
+        VkStructureType                                             sType                           { VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO };
+        const void*                                                 pNext                           { nullptr };
+        VkPipelineVertexInputStateCreateFlags                       flags                           {         };
+        uint32_t                                                    vertexBindingDescriptionCount   {         };
+        const vk_struct_base<VkVertexInputBindingDescription>*      pVertexBindingDescriptions      { nullptr };
+        uint32_t                                                    vertexAttributeDescriptionCount {         };
+        const vk_struct_base<VkVertexInputAttributeDescription>*    pVertexAttributeDescriptions    { nullptr };
+
+        inline const void*                       get_next() const   { return this->pNext;   }
+        inline VkPipelineVertexInputStateCreateFlags get_flags() const { return this->flags; }
+
+        inline derived_t& set_next(const void* next)                        { this->pNext = next; return *s();  }
+        inline derived_t& set_flags(VkPipelineVertexInputStateCreateFlags f){ this->flags = f; return *s();     }
+
+        inline derived_t& set_binding_descriptions(spx::array_view<const vk_struct_base<VkVertexInputBindingDescription>> bindings)
+        {
+            this->pVertexBindingDescriptions     = bindings.data();
+            this->vertexBindingDescriptionCount  = static_cast<uint32_t>(bindings.size());
+            return *s();
+        }
+
+        inline derived_t& set_attribute_descriptions(spx::array_view<const vk_struct_base<VkVertexInputAttributeDescription>> attributes)
+        {
+            this->pVertexAttributeDescriptions     = attributes.data();
+            this->vertexAttributeDescriptionCount  = static_cast<uint32_t>(attributes.size());
+            return *s();
+        }
+
+        private:
+            inline derived_t* s() { return reinterpret_cast<derived_t*>(this); }
+
+    };
+
+    /// @brief VkPipelineInputAssemblyStateCreateInfo mixin
+    ///        (pipeline_input_assembly_state_create_info_t).
+    ///
+    /// How vertices are assembled into primitives. Defaults to a triangle list with primitive restart
+    /// disabled -- the common case.
+    template <typename derived_t>
+    struct vk_struct_ext<derived_t, VkPipelineInputAssemblyStateCreateInfo>
+    {
+
+        VkStructureType                          sType                  { VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO };
+        const void*                              pNext                  { nullptr };
+        VkPipelineInputAssemblyStateCreateFlags  flags                  {         };
+        VkPrimitiveTopology                      topology               { VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST };
+        VkBool32                                 primitiveRestartEnable  {         };
+
+        inline const void*          get_next() const                    { return this->pNext;                   }
+        inline VkPrimitiveTopology  get_topology() const                { return this->topology;                }
+        inline VkBool32             get_primitive_restart_enable() const{ return this->primitiveRestartEnable;  }
+
+        inline derived_t& set_next(const void* next)                        { this->pNext = next; return *s();          }
+        inline derived_t& set_flags(VkPipelineInputAssemblyStateCreateFlags f) { this->flags = f; return *s();          }
+        inline derived_t& set_topology(VkPrimitiveTopology t)               { this->topology = t; return *s();          }
+        inline derived_t& set_primitive_restart_enable(VkBool32 enable)     { this->primitiveRestartEnable = enable; return *s(); }
+
+        private:
+            inline derived_t* s() { return reinterpret_cast<derived_t*>(this); }
+
+    };
+
+    /// @brief VkPipelineViewportStateCreateInfo mixin (pipeline_viewport_state_create_info_t).
+    ///
+    /// Declares the viewport and scissor counts (defaulting to one each). When the viewport/scissor
+    /// are dynamic state -- the recommended setup -- the counts are all that matter here and the
+    /// pointers stay null, with the actual rectangles supplied at draw time via vkCmdSetViewport /
+    /// vkCmdSetScissor. Otherwise the rectangle arrays are baked in and must outlive the create call.
+    template <typename derived_t>
+    struct vk_struct_ext<derived_t, VkPipelineViewportStateCreateInfo>
+    {
+
+        VkStructureType                     sType           { VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO };
+        const void*                         pNext           { nullptr };
+        VkPipelineViewportStateCreateFlags  flags           {         };
+        uint32_t                            viewportCount   { 1       };
+        const vk_struct_base<VkViewport>*   pViewports      { nullptr };
+        uint32_t                            scissorCount    { 1       };
+        const vk_struct_base<VkRect2D>*     pScissors       { nullptr };
+
+        inline const void*  get_next() const            { return this->pNext;           }
+        inline uint32_t     get_viewport_count() const  { return this->viewportCount;   }
+        inline uint32_t     get_scissor_count() const   { return this->scissorCount;    }
+
+        inline derived_t& set_next(const void* next)                    { this->pNext = next; return *s();          }
+        inline derived_t& set_flags(VkPipelineViewportStateCreateFlags f) { this->flags = f; return *s();           }
+        inline derived_t& set_viewport_count(uint32_t count)            { this->viewportCount = count; return *s(); }
+        inline derived_t& set_scissor_count(uint32_t count)             { this->scissorCount = count; return *s();  }
+
+        inline derived_t& set_viewports(spx::array_view<const vk_struct_base<VkViewport>> viewports)
+        {
+            this->pViewports    = viewports.data();
+            this->viewportCount = static_cast<uint32_t>(viewports.size());
+            return *s();
+        }
+
+        inline derived_t& set_scissors(spx::array_view<const vk_struct_base<VkRect2D>> scissors)
+        {
+            this->pScissors    = scissors.data();
+            this->scissorCount = static_cast<uint32_t>(scissors.size());
+            return *s();
+        }
+
+        private:
+            inline derived_t* s() { return reinterpret_cast<derived_t*>(this); }
+
+    };
+
+    /// @brief VkPipelineRasterizationStateCreateInfo mixin
+    ///        (pipeline_rasterization_state_create_info_t).
+    ///
+    /// Turns primitives into fragments. lineWidth defaults to 1.0 (the spec requires a non-zero width;
+    /// zero would be invalid). polygonMode defaults to fill, cullMode to none, and frontFace to
+    /// counter-clockwise (all the zero-valued enumerators) -- a culling-disabled config that draws
+    /// regardless of winding, which is the safest starting point. Enable back-face culling explicitly
+    /// once the winding of your geometry is settled.
+    template <typename derived_t>
+    struct vk_struct_ext<derived_t, VkPipelineRasterizationStateCreateInfo>
+    {
+
+        VkStructureType                          sType                      { VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO };
+        const void*                              pNext                      { nullptr };
+        VkPipelineRasterizationStateCreateFlags  flags                      {         };
+        VkBool32                                 depthClampEnable           {         };
+        VkBool32                                 rasterizerDiscardEnable    {         };
+        VkPolygonMode                            polygonMode                {         };
+        VkCullModeFlags                          cullMode                   {         };
+        VkFrontFace                              frontFace                  {         };
+        VkBool32                                 depthBiasEnable            {         };
+        float                                    depthBiasConstantFactor    {         };
+        float                                    depthBiasClamp             {         };
+        float                                    depthBiasSlopeFactor       {         };
+        float                                    lineWidth                  { 1.0f    };
+
+        inline const void*      get_next() const                        { return this->pNext;                   }
+        inline VkBool32         get_depth_clamp_enable() const          { return this->depthClampEnable;        }
+        inline VkBool32         get_rasterizer_discard_enable() const   { return this->rasterizerDiscardEnable; }
+        inline VkPolygonMode    get_polygon_mode() const                { return this->polygonMode;             }
+        inline VkCullModeFlags  get_cull_mode() const                   { return this->cullMode;                }
+        inline VkFrontFace      get_front_face() const                  { return this->frontFace;               }
+        inline VkBool32         get_depth_bias_enable() const           { return this->depthBiasEnable;         }
+        inline float            get_line_width() const                  { return this->lineWidth;               }
+
+        inline derived_t& set_next(const void* next)                        { this->pNext = next; return *s();              }
+        inline derived_t& set_flags(VkPipelineRasterizationStateCreateFlags f) { this->flags = f; return *s();              }
+        inline derived_t& set_depth_clamp_enable(VkBool32 enable)           { this->depthClampEnable = enable; return *s(); }
+        inline derived_t& set_rasterizer_discard_enable(VkBool32 enable)    { this->rasterizerDiscardEnable = enable; return *s(); }
+        inline derived_t& set_polygon_mode(VkPolygonMode mode)              { this->polygonMode = mode; return *s();        }
+        inline derived_t& set_cull_mode(VkCullModeFlags mode)               { this->cullMode = mode; return *s();           }
+        inline derived_t& set_front_face(VkFrontFace face)                  { this->frontFace = face; return *s();          }
+        inline derived_t& set_depth_bias_enable(VkBool32 enable)            { this->depthBiasEnable = enable; return *s();  }
+        inline derived_t& set_depth_bias_constant_factor(float v)           { this->depthBiasConstantFactor = v; return *s(); }
+        inline derived_t& set_depth_bias_clamp(float v)                     { this->depthBiasClamp = v; return *s();        }
+        inline derived_t& set_depth_bias_slope_factor(float v)              { this->depthBiasSlopeFactor = v; return *s();  }
+        inline derived_t& set_line_width(float w)                           { this->lineWidth = w; return *s();             }
+
+        private:
+            inline derived_t* s() { return reinterpret_cast<derived_t*>(this); }
+
+    };
+
+    /// @brief VkPipelineMultisampleStateCreateInfo mixin
+    ///        (pipeline_multisample_state_create_info_t).
+    ///
+    /// Defaults to multisampling disabled (one sample per pixel), which is the no-MSAA configuration.
+    template <typename derived_t>
+    struct vk_struct_ext<derived_t, VkPipelineMultisampleStateCreateInfo>
+    {
+
+        VkStructureType                         sType                   { VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO };
+        const void*                             pNext                   { nullptr };
+        VkPipelineMultisampleStateCreateFlags   flags                   {         };
+        VkSampleCountFlagBits                   rasterizationSamples    { VK_SAMPLE_COUNT_1_BIT };
+        VkBool32                                sampleShadingEnable     {         };
+        float                                   minSampleShading        { 1.0f    };
+        const VkSampleMask*                     pSampleMask             { nullptr };
+        VkBool32                                alphaToCoverageEnable   {         };
+        VkBool32                                alphaToOneEnable        {         };
+
+        inline const void*              get_next() const                    { return this->pNext;                   }
+        inline VkSampleCountFlagBits    get_rasterization_samples() const   { return this->rasterizationSamples;    }
+        inline VkBool32                 get_sample_shading_enable() const    { return this->sampleShadingEnable;     }
+        inline float                    get_min_sample_shading() const       { return this->minSampleShading;        }
+        inline VkBool32                 get_alpha_to_coverage_enable() const { return this->alphaToCoverageEnable;   }
+        inline VkBool32                 get_alpha_to_one_enable() const      { return this->alphaToOneEnable;        }
+
+        inline derived_t& set_next(const void* next)                        { this->pNext = next; return *s();      }
+        inline derived_t& set_flags(VkPipelineMultisampleStateCreateFlags f){ this->flags = f; return *s();         }
+        inline derived_t& set_rasterization_samples(VkSampleCountFlagBits s){ this->rasterizationSamples = s; return *self(); }
+        inline derived_t& set_sample_shading_enable(VkBool32 enable)        { this->sampleShadingEnable = enable; return *s(); }
+        inline derived_t& set_min_sample_shading(float v)                   { this->minSampleShading = v; return *s();  }
+        inline derived_t& set_sample_mask(const VkSampleMask* mask)         { this->pSampleMask = mask; return *s();    }
+        inline derived_t& set_alpha_to_coverage_enable(VkBool32 enable)     { this->alphaToCoverageEnable = enable; return *s(); }
+        inline derived_t& set_alpha_to_one_enable(VkBool32 enable)          { this->alphaToOneEnable = enable; return *s(); }
+
+        private:
+            inline derived_t* s()    { return reinterpret_cast<derived_t*>(this); }
+            inline derived_t* self() { return reinterpret_cast<derived_t*>(this); }
+
+    };
+
+    /// @brief VkStencilOpState mixin (stencil_op_state_t). The front/back stencil configuration nested
+    ///        in the depth/stencil state below.
+    template <typename derived_t>
+    struct vk_struct_ext<derived_t, VkStencilOpState>
+    {
+
+        VkStencilOp     failOp      {         };
+        VkStencilOp     passOp      {         };
+        VkStencilOp     depthFailOp {         };
+        VkCompareOp     compareOp   {         };
+        uint32_t        compareMask {         };
+        uint32_t        writeMask   {         };
+        uint32_t        reference   {         };
+
+        inline VkStencilOp  get_fail_op() const         { return this->failOp;      }
+        inline VkStencilOp  get_pass_op() const         { return this->passOp;      }
+        inline VkStencilOp  get_depth_fail_op() const   { return this->depthFailOp; }
+        inline VkCompareOp  get_compare_op() const      { return this->compareOp;   }
+        inline uint32_t     get_compare_mask() const    { return this->compareMask; }
+        inline uint32_t     get_write_mask() const      { return this->writeMask;   }
+        inline uint32_t     get_reference() const       { return this->reference;   }
+
+        inline derived_t& set_fail_op(VkStencilOp op)       { this->failOp = op; return *s();       }
+        inline derived_t& set_pass_op(VkStencilOp op)       { this->passOp = op; return *s();       }
+        inline derived_t& set_depth_fail_op(VkStencilOp op) { this->depthFailOp = op; return *s();  }
+        inline derived_t& set_compare_op(VkCompareOp op)    { this->compareOp = op; return *s();    }
+        inline derived_t& set_compare_mask(uint32_t mask)   { this->compareMask = mask; return *s();}
+        inline derived_t& set_write_mask(uint32_t mask)     { this->writeMask = mask; return *s();  }
+        inline derived_t& set_reference(uint32_t ref)       { this->reference = ref; return *s();   }
+
+        private:
+            inline derived_t* s() { return reinterpret_cast<derived_t*>(this); }
+
+    };
+
+    /// @brief VkPipelineDepthStencilStateCreateInfo mixin
+    ///        (pipeline_depth_stencil_state_create_info_t).
+    ///
+    /// Defaults to depth and stencil testing disabled. Enable depth testing and set depthCompareOp
+    /// (commonly VK_COMPARE_OP_LESS) when rendering with a depth attachment.
+    template <typename derived_t>
+    struct vk_struct_ext<derived_t, VkPipelineDepthStencilStateCreateInfo>
+    {
+
+        VkStructureType                         sType                   { VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO };
+        const void*                             pNext                   { nullptr };
+        VkPipelineDepthStencilStateCreateFlags  flags                   {         };
+        VkBool32                                depthTestEnable         {         };
+        VkBool32                                depthWriteEnable        {         };
+        VkCompareOp                             depthCompareOp          {         };
+        VkBool32                                depthBoundsTestEnable   {         };
+        VkBool32                                stencilTestEnable       {         };
+        vk_struct_base<VkStencilOpState>        front                   {         };
+        vk_struct_base<VkStencilOpState>        back                    {         };
+        float                                   minDepthBounds          {         };
+        float                                   maxDepthBounds          {         };
+
+        inline const void*  get_next() const                    { return this->pNext;                   }
+        inline VkBool32     get_depth_test_enable() const       { return this->depthTestEnable;         }
+        inline VkBool32     get_depth_write_enable() const      { return this->depthWriteEnable;        }
+        inline VkCompareOp  get_depth_compare_op() const        { return this->depthCompareOp;          }
+        inline VkBool32     get_depth_bounds_test_enable() const{ return this->depthBoundsTestEnable;   }
+        inline VkBool32     get_stencil_test_enable() const     { return this->stencilTestEnable;       }
+        inline const vk_struct_base<VkStencilOpState>& get_front() const { return this->front;          }
+        inline const vk_struct_base<VkStencilOpState>& get_back() const  { return this->back;           }
+
+        inline derived_t& set_next(const void* next)                        { this->pNext = next; return *s();          }
+        inline derived_t& set_flags(VkPipelineDepthStencilStateCreateFlags f) { this->flags = f; return *s();           }
+        inline derived_t& set_depth_test_enable(VkBool32 enable)            { this->depthTestEnable = enable; return *s(); }
+        inline derived_t& set_depth_write_enable(VkBool32 enable)           { this->depthWriteEnable = enable; return *s(); }
+        inline derived_t& set_depth_compare_op(VkCompareOp op)              { this->depthCompareOp = op; return *s();   }
+        inline derived_t& set_depth_bounds_test_enable(VkBool32 enable)     { this->depthBoundsTestEnable = enable; return *s(); }
+        inline derived_t& set_stencil_test_enable(VkBool32 enable)          { this->stencilTestEnable = enable; return *s(); }
+        inline derived_t& set_front(const vk_struct_base<VkStencilOpState>& f) { this->front = f; return *s();          }
+        inline derived_t& set_back(const vk_struct_base<VkStencilOpState>& b)  { this->back = b; return *s();           }
+        inline derived_t& set_min_depth_bounds(float v)                     { this->minDepthBounds = v; return *s();    }
+        inline derived_t& set_max_depth_bounds(float v)                     { this->maxDepthBounds = v; return *s();    }
+
+        private:
+            inline derived_t* s() { return reinterpret_cast<derived_t*>(this); }
+
+    };
+
+    /// @brief VkPipelineColorBlendAttachmentState mixin (pipeline_color_blend_attachment_state_t).
+    ///
+    /// Per-attachment blend configuration. colorWriteMask defaults to all four channels (a zero mask
+    /// would discard every fragment's output, a frequent silent bug). blendEnable defaults to false
+    /// (writes replace the destination). The opaque() and alpha_blend() factories cover the two common
+    /// cases.
+    template <typename derived_t>
+    struct vk_struct_ext<derived_t, VkPipelineColorBlendAttachmentState>
+    {
+
+        VkBool32                blendEnable         {         };
+        VkBlendFactor           srcColorBlendFactor {         };
+        VkBlendFactor           dstColorBlendFactor {         };
+        VkBlendOp               colorBlendOp        {         };
+        VkBlendFactor           srcAlphaBlendFactor {         };
+        VkBlendFactor           dstAlphaBlendFactor {         };
+        VkBlendOp               alphaBlendOp        {         };
+        VkColorComponentFlags   colorWriteMask      { VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
+                                                      VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT };
+
+        inline VkBool32                 get_blend_enable() const            { return this->blendEnable;         }
+        inline VkBlendFactor            get_src_color_blend_factor() const  { return this->srcColorBlendFactor; }
+        inline VkBlendFactor            get_dst_color_blend_factor() const  { return this->dstColorBlendFactor; }
+        inline VkBlendOp                get_color_blend_op() const          { return this->colorBlendOp;        }
+        inline VkBlendFactor            get_src_alpha_blend_factor() const  { return this->srcAlphaBlendFactor; }
+        inline VkBlendFactor            get_dst_alpha_blend_factor() const  { return this->dstAlphaBlendFactor; }
+        inline VkBlendOp                get_alpha_blend_op() const          { return this->alphaBlendOp;        }
+        inline VkColorComponentFlags    get_color_write_mask() const        { return this->colorWriteMask;      }
+
+        inline derived_t& set_blend_enable(VkBool32 enable)             { this->blendEnable = enable; return *s();          }
+        inline derived_t& set_src_color_blend_factor(VkBlendFactor f)   { this->srcColorBlendFactor = f; return *s();       }
+        inline derived_t& set_dst_color_blend_factor(VkBlendFactor f)   { this->dstColorBlendFactor = f; return *s();       }
+        inline derived_t& set_color_blend_op(VkBlendOp op)              { this->colorBlendOp = op; return *s();             }
+        inline derived_t& set_src_alpha_blend_factor(VkBlendFactor f)   { this->srcAlphaBlendFactor = f; return *s();       }
+        inline derived_t& set_dst_alpha_blend_factor(VkBlendFactor f)   { this->dstAlphaBlendFactor = f; return *s();       }
+        inline derived_t& set_alpha_blend_op(VkBlendOp op)              { this->alphaBlendOp = op; return *s();             }
+        inline derived_t& set_color_write_mask(VkColorComponentFlags m) { this->colorWriteMask = m; return *s();            }
+
+        /// @brief Opaque (no blending): fragment output replaces the destination, all channels written.
+        static inline derived_t
+        opaque()
+        {
+            derived_t state { };
+            state.blendEnable = VK_FALSE;
+            return state;
+        }
+
+        /// @brief Standard source-over alpha blending: out = src.a * src + (1 - src.a) * dst.
+        static inline derived_t
+        alpha_blend()
+        {
+            derived_t state { };
+            state.blendEnable         = VK_TRUE;
+            state.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+            state.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+            state.colorBlendOp        = VK_BLEND_OP_ADD;
+            state.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+            state.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+            state.alphaBlendOp        = VK_BLEND_OP_ADD;
+            return state;
+        }
+
+        private:
+            inline derived_t* s() { return reinterpret_cast<derived_t*>(this); }
+
+    };
+
+    /// @brief VkPipelineColorBlendStateCreateInfo mixin (pipeline_color_blend_state_create_info_t).
+    ///
+    /// Aggregates the per-attachment blend states and the (rarely used) logic-op path. The attachment
+    /// array must outlive the pipeline create call.
+    template <typename derived_t>
+    struct vk_struct_ext<derived_t, VkPipelineColorBlendStateCreateInfo>
+    {
+
+        VkStructureType                                             sType           { VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO };
+        const void*                                                 pNext           { nullptr };
+        VkPipelineColorBlendStateCreateFlags                        flags           {         };
+        VkBool32                                                    logicOpEnable   {         };
+        VkLogicOp                                                   logicOp         {         };
+        uint32_t                                                    attachmentCount {         };
+        const vk_struct_base<VkPipelineColorBlendAttachmentState>*  pAttachments    { nullptr };
+        float                                                       blendConstants[4] {       };
+
+        inline const void*  get_next() const            { return this->pNext;           }
+        inline VkBool32     get_logic_op_enable() const { return this->logicOpEnable;   }
+        inline VkLogicOp    get_logic_op() const        { return this->logicOp;         }
+        inline const float* get_blend_constants() const { return this->blendConstants;  }
+
+        inline derived_t& set_next(const void* next)                        { this->pNext = next; return *s();          }
+        inline derived_t& set_flags(VkPipelineColorBlendStateCreateFlags f) { this->flags = f; return *s();             }
+        inline derived_t& set_logic_op_enable(VkBool32 enable)              { this->logicOpEnable = enable; return *s();}
+        inline derived_t& set_logic_op(VkLogicOp op)                        { this->logicOp = op; return *s();          }
+
+        inline derived_t& set_attachments(spx::array_view<const vk_struct_base<VkPipelineColorBlendAttachmentState>> attachments)
+        {
+            this->pAttachments    = attachments.data();
+            this->attachmentCount = static_cast<uint32_t>(attachments.size());
+            return *s();
+        }
+
+        inline derived_t& set_blend_constants(float r, float g, float b, float a)
+        {
+            this->blendConstants[0] = r;
+            this->blendConstants[1] = g;
+            this->blendConstants[2] = b;
+            this->blendConstants[3] = a;
+            return *s();
+        }
+
+        private:
+            inline derived_t* s() { return reinterpret_cast<derived_t*>(this); }
+
+    };
+
+    /// @brief VkPipelineDynamicStateCreateInfo mixin (pipeline_dynamic_state_create_info_t).
+    ///
+    /// Lists the pipeline state that is supplied at command-record time rather than baked into the
+    /// pipeline. The usual pair is VK_DYNAMIC_STATE_VIEWPORT and VK_DYNAMIC_STATE_SCISSOR, which lets
+    /// one pipeline survive a swapchain resize without being rebuilt. The state array must outlive the
+    /// pipeline create call.
+    template <typename derived_t>
+    struct vk_struct_ext<derived_t, VkPipelineDynamicStateCreateInfo>
+    {
+
+        VkStructureType                     sType               { VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO };
+        const void*                         pNext               { nullptr };
+        VkPipelineDynamicStateCreateFlags   flags               {         };
+        uint32_t                            dynamicStateCount   {         };
+        const VkDynamicState*               pDynamicStates      { nullptr };
+
+        inline const void*  get_next() const                { return this->pNext;               }
+        inline uint32_t     get_dynamic_state_count() const { return this->dynamicStateCount;   }
+
+        inline derived_t& set_next(const void* next)                    { this->pNext = next; return *s();  }
+        inline derived_t& set_flags(VkPipelineDynamicStateCreateFlags f){ this->flags = f; return *s();     }
+
+        inline derived_t& set_dynamic_states(spx::array_view<VkDynamicState> states)
+        {
+            this->pDynamicStates    = states.data();
+            this->dynamicStateCount = static_cast<uint32_t>(states.size());
+            return *s();
+        }
+
+        private:
+            inline derived_t* s() { return reinterpret_cast<derived_t*>(this); }
+
+    };
+
+    /// @brief VkPushConstantRange mixin (push_constant_range_t). One push-constant block visible to a
+    ///        set of shader stages, by byte offset and size.
+    template <typename derived_t>
+    struct vk_struct_ext<derived_t, VkPushConstantRange>
+    {
+
+        VkShaderStageFlags  stageFlags  {         };
+        uint32_t            offset      {         };
+        uint32_t            size        {         };
+
+        inline VkShaderStageFlags   get_stage_flags() const { return this->stageFlags;  }
+        inline uint32_t             get_offset() const      { return this->offset;      }
+        inline uint32_t             get_size() const        { return this->size;        }
+
+        inline derived_t& set_stage_flags(VkShaderStageFlags flags) { this->stageFlags = flags; return *s(); }
+        inline derived_t& set_offset(uint32_t o)                    { this->offset = o; return *s();         }
+        inline derived_t& set_size(uint32_t sz)                     { this->size = sz; return *s();          }
+
+        private:
+            inline derived_t* s() { return reinterpret_cast<derived_t*>(this); }
+
+    };
+
+    /// @brief VkPipelineLayoutCreateInfo mixin (pipeline_layout_create_info_t).
+    ///
+    /// Declares the descriptor set layouts and push-constant ranges a pipeline reads through. The
+    /// default (no sets, no ranges) is a valid empty layout. Both referenced arrays must outlive the
+    /// create call. This is the one fixed-function input that yields a handle (pipeline_layout_t).
+    template <typename derived_t>
+    struct vk_struct_ext<derived_t, VkPipelineLayoutCreateInfo>
+    {
+
+        VkStructureType                             sType                   { VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO };
+        const void*                                 pNext                   { nullptr };
+        VkPipelineLayoutCreateFlags                 flags                   {         };
+        uint32_t                                    setLayoutCount          {         };
+        const VkDescriptorSetLayout*                pSetLayouts             { nullptr };
+        uint32_t                                    pushConstantRangeCount  {         };
+        const vk_struct_base<VkPushConstantRange>*  pPushConstantRanges     { nullptr };
+
+        inline const void*                  get_next() const    { return this->pNext;   }
+        inline VkPipelineLayoutCreateFlags  get_flags() const   { return this->flags;   }
+
+        inline derived_t& set_next(const void* next)                { this->pNext = next; return *s();  }
+        inline derived_t& set_flags(VkPipelineLayoutCreateFlags f)  { this->flags = f; return *s();     }
+
+        inline derived_t& set_descriptor_set_layouts(spx::array_view<VkDescriptorSetLayout> layouts)
+        {
+            this->pSetLayouts    = layouts.data();
+            this->setLayoutCount = static_cast<uint32_t>(layouts.size());
+            return *s();
+        }
+
+        inline derived_t& set_push_constant_ranges(spx::array_view<const vk_struct_base<VkPushConstantRange>> ranges)
+        {
+            this->pPushConstantRanges    = ranges.data();
+            this->pushConstantRangeCount = static_cast<uint32_t>(ranges.size());
+            return *s();
+        }
+
+        private:
+            inline derived_t* s() { return reinterpret_cast<derived_t*>(this); }
+
+    };
+
+    /// @brief VkSpecializationMapEntry mixin (specialization_map_entry_t). Maps one shader constant
+    ///        (by ID) to a byte range within a VkSpecializationInfo's data blob.
+    template <typename derived_t>
+    struct vk_struct_ext<derived_t, VkSpecializationMapEntry>
+    {
+
+        uint32_t    constantID  {         };
+        uint32_t    offset      {         };
+        size_t      size        {         };
+
+        inline uint32_t get_constant_id() const { return this->constantID; }
+        inline uint32_t get_offset() const      { return this->offset;     }
+        inline size_t   get_size() const        { return this->size;       }
+
+        inline derived_t& set_constant_id(uint32_t id)  { this->constantID = id; return *s();   }
+        inline derived_t& set_offset(uint32_t o)        { this->offset = o; return *s();        }
+        inline derived_t& set_size(size_t sz)           { this->size = sz; return *s();         }
+
+        private:
+            inline derived_t* s() { return reinterpret_cast<derived_t*>(this); }
+
+    };
+
+    /// @brief VkSpecializationInfo mixin (specialization_info_t).
+    ///
+    /// Supplies values for a shader's specialization constants at pipeline-creation time. The map
+    /// entries and the data blob they index into must both outlive the pipeline create call. Left null
+    /// on a shader stage when no specialization constants are used (the common case).
+    template <typename derived_t>
+    struct vk_struct_ext<derived_t, VkSpecializationInfo>
+    {
+
+        uint32_t                                            mapEntryCount   {         };
+        const vk_struct_base<VkSpecializationMapEntry>*     pMapEntries     { nullptr };
+        size_t                                              dataSize        {         };
+        const void*                                         pData           { nullptr };
+
+        inline uint32_t     get_map_entry_count() const { return this->mapEntryCount;   }
+        inline size_t       get_data_size() const       { return this->dataSize;        }
+        inline const void*  get_data() const            { return this->pData;           }
+
+        inline derived_t& set_map_entries(spx::array_view<const vk_struct_base<VkSpecializationMapEntry>> entries)
+        {
+            this->pMapEntries   = entries.data();
+            this->mapEntryCount = static_cast<uint32_t>(entries.size());
+            return *s();
+        }
+
+        inline derived_t& set_data(const void* data, size_t size_bytes)
+        {
+            this->pData    = data;
+            this->dataSize = size_bytes;
+            return *s();
+        }
+
+        private:
+            inline derived_t* s() { return reinterpret_cast<derived_t*>(this); }
+
+    };
+
+    /// @brief VkPipelineShaderStageCreateInfo mixin (pipeline_shader_stage_create_info_t).
+    ///
+    /// Binds one shader entry point into a pipeline: which stage it is, the module it lives in, and
+    /// the entry-point name. Because Slang compiles every entry point into a single module, the same
+    /// module handle is typically reused across stages with only the stage bit and name differing --
+    /// the from_module factory builds one such stage. The name string and any specialization info
+    /// must outlive the pipeline create call.
+    template <typename derived_t>
+    struct vk_struct_ext<derived_t, VkPipelineShaderStageCreateInfo>
+    {
+
+        VkStructureType                                 sType               { VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO };
+        const void*                                     pNext               { nullptr };
+        VkPipelineShaderStageCreateFlags                flags               {         };
+        VkShaderStageFlagBits                           stage               {         };
+        VkShaderModule                                  module              { VK_NULL_HANDLE };
+        const char*                                     pName               { nullptr };
+        const vk_struct_base<VkSpecializationInfo>*     pSpecializationInfo { nullptr };
+
+        inline const void*              get_next() const                { return this->pNext;       }
+        inline VkPipelineShaderStageCreateFlags get_flags() const       { return this->flags;       }
+        inline VkShaderStageFlagBits    get_stage() const               { return this->stage;       }
+        inline VkShaderModule           get_module() const              { return this->module;      }
+        inline const char*              get_name() const                { return this->pName;       }
+
+        inline derived_t& set_next(const void* next)                    { this->pNext = next; return *s();  }
+        inline derived_t& set_flags(VkPipelineShaderStageCreateFlags f) { this->flags = f; return *s();     }
+        inline derived_t& set_stage(VkShaderStageFlagBits stage)        { this->stage = stage; return *s(); }
+        inline derived_t& set_module(VkShaderModule shader_module)      { this->module = shader_module; return *s(); }
+        inline derived_t& set_name(const char* name)                    { this->pName = name; return *s();  }
+
+        inline derived_t& set_specialization_info(const vk_struct_base<VkSpecializationInfo>* info)
+        {
+            this->pSpecializationInfo = info;
+            return *s();
+        }
+
+        /// @brief Builds a stage for one entry point of a module. The entry-point name string must
+        ///        outlive the pipeline create call (a string literal or a stable buffer).
+        /// @param shader_module The module containing the entry point.
+        /// @param stage         The pipeline stage this entry point runs at.
+        /// @param entry_point   The entry-point name (e.g. "vertexMain", "fragmentMain").
+        /// @return A stage ready to place in a graphics pipeline's stage array.
+        static inline derived_t
+        from_module(VkShaderModule shader_module, VkShaderStageFlagBits stage, const char* entry_point)
+        {
+            derived_t info { };
+            info.stage  = stage;
+            info.module = shader_module;
+            info.pName  = entry_point;
+            return info;
+        }
+
+        private:
+            inline derived_t* s() { return reinterpret_cast<derived_t*>(this); }
+
+    };
+
+    // ---------------------------------------------------------------------------------------------
     // Using statements.
     //
     // Cleans up the template syntax and normalizes it to a friendlier to type
@@ -1584,6 +2345,27 @@ namespace spx::vk
     using image_view_create_info_t              = vk_struct_base<VkImageViewCreateInfo>;
     using swapchain_create_info_t               = vk_struct_base<VkSwapchainCreateInfoKHR>;
     using shader_module_create_info_t           = vk_struct_base<VkShaderModuleCreateInfo>;
+
+    using offset_2d_t                                   = vk_struct_base<VkOffset2D>;
+    using rect_2d_t                                     = vk_struct_base<VkRect2D>;
+    using viewport_t                                    = vk_struct_base<VkViewport>;
+    using vertex_input_binding_description_t            = vk_struct_base<VkVertexInputBindingDescription>;
+    using vertex_input_attribute_description_t          = vk_struct_base<VkVertexInputAttributeDescription>;
+    using pipeline_vertex_input_state_create_info_t     = vk_struct_base<VkPipelineVertexInputStateCreateInfo>;
+    using pipeline_input_assembly_state_create_info_t   = vk_struct_base<VkPipelineInputAssemblyStateCreateInfo>;
+    using pipeline_viewport_state_create_info_t         = vk_struct_base<VkPipelineViewportStateCreateInfo>;
+    using pipeline_rasterization_state_create_info_t    = vk_struct_base<VkPipelineRasterizationStateCreateInfo>;
+    using pipeline_multisample_state_create_info_t      = vk_struct_base<VkPipelineMultisampleStateCreateInfo>;
+    using stencil_op_state_t                            = vk_struct_base<VkStencilOpState>;
+    using pipeline_depth_stencil_state_create_info_t    = vk_struct_base<VkPipelineDepthStencilStateCreateInfo>;
+    using pipeline_color_blend_attachment_state_t       = vk_struct_base<VkPipelineColorBlendAttachmentState>;
+    using pipeline_color_blend_state_create_info_t      = vk_struct_base<VkPipelineColorBlendStateCreateInfo>;
+    using pipeline_dynamic_state_create_info_t          = vk_struct_base<VkPipelineDynamicStateCreateInfo>;
+    using push_constant_range_t                         = vk_struct_base<VkPushConstantRange>;
+    using pipeline_layout_create_info_t                 = vk_struct_base<VkPipelineLayoutCreateInfo>;
+    using specialization_map_entry_t                    = vk_struct_base<VkSpecializationMapEntry>;
+    using specialization_info_t                         = vk_struct_base<VkSpecializationInfo>;
+    using pipeline_shader_stage_create_info_t           = vk_struct_base<VkPipelineShaderStageCreateInfo>;
 
     // ---------------------------------------------------------------------------------------------
     // Layout guards.
@@ -1865,6 +2647,154 @@ namespace spx::vk
     static_assert(offsetof(shader_module_create_info_t, flags) == offsetof(VkShaderModuleCreateInfo, flags));
     static_assert(offsetof(shader_module_create_info_t, codeSize) == offsetof(VkShaderModuleCreateInfo, codeSize));
     static_assert(offsetof(shader_module_create_info_t, pCode) == offsetof(VkShaderModuleCreateInfo, pCode));
+
+    // VkOffset2D checks.
+    static_assert(std::is_standard_layout_v<offset_2d_t>, "offset_2d_t must be standard-layout for native interop.");
+    static_assert(sizeof(offset_2d_t) == sizeof(VkOffset2D), "offset_2d_t layout diverged from VkOffset2D.");
+    static_assert(offsetof(offset_2d_t, x) == offsetof(VkOffset2D, x));
+    static_assert(offsetof(offset_2d_t, y) == offsetof(VkOffset2D, y));
+
+    // VkRect2D checks.
+    static_assert(std::is_standard_layout_v<rect_2d_t>, "rect_2d_t must be standard-layout for native interop.");
+    static_assert(sizeof(rect_2d_t) == sizeof(VkRect2D), "rect_2d_t layout diverged from VkRect2D.");
+    static_assert(offsetof(rect_2d_t, offset) == offsetof(VkRect2D, offset));
+    static_assert(offsetof(rect_2d_t, extent) == offsetof(VkRect2D, extent));
+
+    // VkViewport checks.
+    static_assert(std::is_standard_layout_v<viewport_t>, "viewport_t must be standard-layout for native interop.");
+    static_assert(sizeof(viewport_t) == sizeof(VkViewport), "viewport_t layout diverged from VkViewport.");
+    static_assert(offsetof(viewport_t, x) == offsetof(VkViewport, x));
+    static_assert(offsetof(viewport_t, maxDepth) == offsetof(VkViewport, maxDepth));
+
+    // VkVertexInputBindingDescription checks.
+    static_assert(std::is_standard_layout_v<vertex_input_binding_description_t>, "vertex_input_binding_description_t must be standard-layout for native interop.");
+    static_assert(sizeof(vertex_input_binding_description_t) == sizeof(VkVertexInputBindingDescription), "vertex_input_binding_description_t layout diverged from VkVertexInputBindingDescription.");
+    static_assert(offsetof(vertex_input_binding_description_t, binding) == offsetof(VkVertexInputBindingDescription, binding));
+    static_assert(offsetof(vertex_input_binding_description_t, inputRate) == offsetof(VkVertexInputBindingDescription, inputRate));
+
+    // VkVertexInputAttributeDescription checks.
+    static_assert(std::is_standard_layout_v<vertex_input_attribute_description_t>, "vertex_input_attribute_description_t must be standard-layout for native interop.");
+    static_assert(sizeof(vertex_input_attribute_description_t) == sizeof(VkVertexInputAttributeDescription), "vertex_input_attribute_description_t layout diverged from VkVertexInputAttributeDescription.");
+    static_assert(offsetof(vertex_input_attribute_description_t, location) == offsetof(VkVertexInputAttributeDescription, location));
+    static_assert(offsetof(vertex_input_attribute_description_t, offset) == offsetof(VkVertexInputAttributeDescription, offset));
+
+    // VkPipelineVertexInputStateCreateInfo checks.
+    static_assert(std::is_standard_layout_v<pipeline_vertex_input_state_create_info_t>, "pipeline_vertex_input_state_create_info_t must be standard-layout for native interop.");
+    static_assert(sizeof(pipeline_vertex_input_state_create_info_t) == sizeof(VkPipelineVertexInputStateCreateInfo), "pipeline_vertex_input_state_create_info_t layout diverged from VkPipelineVertexInputStateCreateInfo.");
+    static_assert(offsetof(pipeline_vertex_input_state_create_info_t, sType) == offsetof(VkPipelineVertexInputStateCreateInfo, sType));
+    static_assert(offsetof(pipeline_vertex_input_state_create_info_t, pNext) == offsetof(VkPipelineVertexInputStateCreateInfo, pNext));
+    static_assert(offsetof(pipeline_vertex_input_state_create_info_t, vertexBindingDescriptionCount) == offsetof(VkPipelineVertexInputStateCreateInfo, vertexBindingDescriptionCount));
+    static_assert(offsetof(pipeline_vertex_input_state_create_info_t, pVertexBindingDescriptions) == offsetof(VkPipelineVertexInputStateCreateInfo, pVertexBindingDescriptions));
+    static_assert(offsetof(pipeline_vertex_input_state_create_info_t, pVertexAttributeDescriptions) == offsetof(VkPipelineVertexInputStateCreateInfo, pVertexAttributeDescriptions));
+
+    // VkPipelineInputAssemblyStateCreateInfo checks.
+    static_assert(std::is_standard_layout_v<pipeline_input_assembly_state_create_info_t>, "pipeline_input_assembly_state_create_info_t must be standard-layout for native interop.");
+    static_assert(sizeof(pipeline_input_assembly_state_create_info_t) == sizeof(VkPipelineInputAssemblyStateCreateInfo), "pipeline_input_assembly_state_create_info_t layout diverged from VkPipelineInputAssemblyStateCreateInfo.");
+    static_assert(offsetof(pipeline_input_assembly_state_create_info_t, sType) == offsetof(VkPipelineInputAssemblyStateCreateInfo, sType));
+    static_assert(offsetof(pipeline_input_assembly_state_create_info_t, topology) == offsetof(VkPipelineInputAssemblyStateCreateInfo, topology));
+    static_assert(offsetof(pipeline_input_assembly_state_create_info_t, primitiveRestartEnable) == offsetof(VkPipelineInputAssemblyStateCreateInfo, primitiveRestartEnable));
+
+    // VkPipelineViewportStateCreateInfo checks.
+    static_assert(std::is_standard_layout_v<pipeline_viewport_state_create_info_t>, "pipeline_viewport_state_create_info_t must be standard-layout for native interop.");
+    static_assert(sizeof(pipeline_viewport_state_create_info_t) == sizeof(VkPipelineViewportStateCreateInfo), "pipeline_viewport_state_create_info_t layout diverged from VkPipelineViewportStateCreateInfo.");
+    static_assert(offsetof(pipeline_viewport_state_create_info_t, sType) == offsetof(VkPipelineViewportStateCreateInfo, sType));
+    static_assert(offsetof(pipeline_viewport_state_create_info_t, viewportCount) == offsetof(VkPipelineViewportStateCreateInfo, viewportCount));
+    static_assert(offsetof(pipeline_viewport_state_create_info_t, pViewports) == offsetof(VkPipelineViewportStateCreateInfo, pViewports));
+    static_assert(offsetof(pipeline_viewport_state_create_info_t, scissorCount) == offsetof(VkPipelineViewportStateCreateInfo, scissorCount));
+    static_assert(offsetof(pipeline_viewport_state_create_info_t, pScissors) == offsetof(VkPipelineViewportStateCreateInfo, pScissors));
+
+    // VkPipelineRasterizationStateCreateInfo checks.
+    static_assert(std::is_standard_layout_v<pipeline_rasterization_state_create_info_t>, "pipeline_rasterization_state_create_info_t must be standard-layout for native interop.");
+    static_assert(sizeof(pipeline_rasterization_state_create_info_t) == sizeof(VkPipelineRasterizationStateCreateInfo), "pipeline_rasterization_state_create_info_t layout diverged from VkPipelineRasterizationStateCreateInfo.");
+    static_assert(offsetof(pipeline_rasterization_state_create_info_t, sType) == offsetof(VkPipelineRasterizationStateCreateInfo, sType));
+    static_assert(offsetof(pipeline_rasterization_state_create_info_t, depthClampEnable) == offsetof(VkPipelineRasterizationStateCreateInfo, depthClampEnable));
+    static_assert(offsetof(pipeline_rasterization_state_create_info_t, polygonMode) == offsetof(VkPipelineRasterizationStateCreateInfo, polygonMode));
+    static_assert(offsetof(pipeline_rasterization_state_create_info_t, lineWidth) == offsetof(VkPipelineRasterizationStateCreateInfo, lineWidth));
+
+    // VkPipelineMultisampleStateCreateInfo checks.
+    static_assert(std::is_standard_layout_v<pipeline_multisample_state_create_info_t>, "pipeline_multisample_state_create_info_t must be standard-layout for native interop.");
+    static_assert(sizeof(pipeline_multisample_state_create_info_t) == sizeof(VkPipelineMultisampleStateCreateInfo), "pipeline_multisample_state_create_info_t layout diverged from VkPipelineMultisampleStateCreateInfo.");
+    static_assert(offsetof(pipeline_multisample_state_create_info_t, sType) == offsetof(VkPipelineMultisampleStateCreateInfo, sType));
+    static_assert(offsetof(pipeline_multisample_state_create_info_t, rasterizationSamples) == offsetof(VkPipelineMultisampleStateCreateInfo, rasterizationSamples));
+    static_assert(offsetof(pipeline_multisample_state_create_info_t, pSampleMask) == offsetof(VkPipelineMultisampleStateCreateInfo, pSampleMask));
+    static_assert(offsetof(pipeline_multisample_state_create_info_t, alphaToOneEnable) == offsetof(VkPipelineMultisampleStateCreateInfo, alphaToOneEnable));
+
+    // VkStencilOpState checks.
+    static_assert(std::is_standard_layout_v<stencil_op_state_t>, "stencil_op_state_t must be standard-layout for native interop.");
+    static_assert(sizeof(stencil_op_state_t) == sizeof(VkStencilOpState), "stencil_op_state_t layout diverged from VkStencilOpState.");
+    static_assert(offsetof(stencil_op_state_t, failOp) == offsetof(VkStencilOpState, failOp));
+    static_assert(offsetof(stencil_op_state_t, reference) == offsetof(VkStencilOpState, reference));
+
+    // VkPipelineDepthStencilStateCreateInfo checks.
+    static_assert(std::is_standard_layout_v<pipeline_depth_stencil_state_create_info_t>, "pipeline_depth_stencil_state_create_info_t must be standard-layout for native interop.");
+    static_assert(sizeof(pipeline_depth_stencil_state_create_info_t) == sizeof(VkPipelineDepthStencilStateCreateInfo), "pipeline_depth_stencil_state_create_info_t layout diverged from VkPipelineDepthStencilStateCreateInfo.");
+    static_assert(offsetof(pipeline_depth_stencil_state_create_info_t, sType) == offsetof(VkPipelineDepthStencilStateCreateInfo, sType));
+    static_assert(offsetof(pipeline_depth_stencil_state_create_info_t, depthTestEnable) == offsetof(VkPipelineDepthStencilStateCreateInfo, depthTestEnable));
+    static_assert(offsetof(pipeline_depth_stencil_state_create_info_t, front) == offsetof(VkPipelineDepthStencilStateCreateInfo, front));
+    static_assert(offsetof(pipeline_depth_stencil_state_create_info_t, back) == offsetof(VkPipelineDepthStencilStateCreateInfo, back));
+    static_assert(offsetof(pipeline_depth_stencil_state_create_info_t, maxDepthBounds) == offsetof(VkPipelineDepthStencilStateCreateInfo, maxDepthBounds));
+
+    // VkPipelineColorBlendAttachmentState checks.
+    static_assert(std::is_standard_layout_v<pipeline_color_blend_attachment_state_t>, "pipeline_color_blend_attachment_state_t must be standard-layout for native interop.");
+    static_assert(sizeof(pipeline_color_blend_attachment_state_t) == sizeof(VkPipelineColorBlendAttachmentState), "pipeline_color_blend_attachment_state_t layout diverged from VkPipelineColorBlendAttachmentState.");
+    static_assert(offsetof(pipeline_color_blend_attachment_state_t, blendEnable) == offsetof(VkPipelineColorBlendAttachmentState, blendEnable));
+    static_assert(offsetof(pipeline_color_blend_attachment_state_t, colorWriteMask) == offsetof(VkPipelineColorBlendAttachmentState, colorWriteMask));
+
+    // VkPipelineColorBlendStateCreateInfo checks.
+    static_assert(std::is_standard_layout_v<pipeline_color_blend_state_create_info_t>, "pipeline_color_blend_state_create_info_t must be standard-layout for native interop.");
+    static_assert(sizeof(pipeline_color_blend_state_create_info_t) == sizeof(VkPipelineColorBlendStateCreateInfo), "pipeline_color_blend_state_create_info_t layout diverged from VkPipelineColorBlendStateCreateInfo.");
+    static_assert(offsetof(pipeline_color_blend_state_create_info_t, sType) == offsetof(VkPipelineColorBlendStateCreateInfo, sType));
+    static_assert(offsetof(pipeline_color_blend_state_create_info_t, logicOpEnable) == offsetof(VkPipelineColorBlendStateCreateInfo, logicOpEnable));
+    static_assert(offsetof(pipeline_color_blend_state_create_info_t, attachmentCount) == offsetof(VkPipelineColorBlendStateCreateInfo, attachmentCount));
+    static_assert(offsetof(pipeline_color_blend_state_create_info_t, pAttachments) == offsetof(VkPipelineColorBlendStateCreateInfo, pAttachments));
+    static_assert(offsetof(pipeline_color_blend_state_create_info_t, blendConstants) == offsetof(VkPipelineColorBlendStateCreateInfo, blendConstants));
+
+    // VkPipelineDynamicStateCreateInfo checks.
+    static_assert(std::is_standard_layout_v<pipeline_dynamic_state_create_info_t>, "pipeline_dynamic_state_create_info_t must be standard-layout for native interop.");
+    static_assert(sizeof(pipeline_dynamic_state_create_info_t) == sizeof(VkPipelineDynamicStateCreateInfo), "pipeline_dynamic_state_create_info_t layout diverged from VkPipelineDynamicStateCreateInfo.");
+    static_assert(offsetof(pipeline_dynamic_state_create_info_t, sType) == offsetof(VkPipelineDynamicStateCreateInfo, sType));
+    static_assert(offsetof(pipeline_dynamic_state_create_info_t, dynamicStateCount) == offsetof(VkPipelineDynamicStateCreateInfo, dynamicStateCount));
+    static_assert(offsetof(pipeline_dynamic_state_create_info_t, pDynamicStates) == offsetof(VkPipelineDynamicStateCreateInfo, pDynamicStates));
+
+    // VkPushConstantRange checks.
+    static_assert(std::is_standard_layout_v<push_constant_range_t>, "push_constant_range_t must be standard-layout for native interop.");
+    static_assert(sizeof(push_constant_range_t) == sizeof(VkPushConstantRange), "push_constant_range_t layout diverged from VkPushConstantRange.");
+    static_assert(offsetof(push_constant_range_t, stageFlags) == offsetof(VkPushConstantRange, stageFlags));
+    static_assert(offsetof(push_constant_range_t, size) == offsetof(VkPushConstantRange, size));
+
+    // VkPipelineLayoutCreateInfo checks.
+    static_assert(std::is_standard_layout_v<pipeline_layout_create_info_t>, "pipeline_layout_create_info_t must be standard-layout for native interop.");
+    static_assert(sizeof(pipeline_layout_create_info_t) == sizeof(VkPipelineLayoutCreateInfo), "pipeline_layout_create_info_t layout diverged from VkPipelineLayoutCreateInfo.");
+    static_assert(offsetof(pipeline_layout_create_info_t, sType) == offsetof(VkPipelineLayoutCreateInfo, sType));
+    static_assert(offsetof(pipeline_layout_create_info_t, setLayoutCount) == offsetof(VkPipelineLayoutCreateInfo, setLayoutCount));
+    static_assert(offsetof(pipeline_layout_create_info_t, pSetLayouts) == offsetof(VkPipelineLayoutCreateInfo, pSetLayouts));
+    static_assert(offsetof(pipeline_layout_create_info_t, pushConstantRangeCount) == offsetof(VkPipelineLayoutCreateInfo, pushConstantRangeCount));
+    static_assert(offsetof(pipeline_layout_create_info_t, pPushConstantRanges) == offsetof(VkPipelineLayoutCreateInfo, pPushConstantRanges));
+
+    // VkSpecializationMapEntry checks.
+    static_assert(std::is_standard_layout_v<specialization_map_entry_t>, "specialization_map_entry_t must be standard-layout for native interop.");
+    static_assert(sizeof(specialization_map_entry_t) == sizeof(VkSpecializationMapEntry), "specialization_map_entry_t layout diverged from VkSpecializationMapEntry.");
+    static_assert(offsetof(specialization_map_entry_t, constantID) == offsetof(VkSpecializationMapEntry, constantID));
+    static_assert(offsetof(specialization_map_entry_t, size) == offsetof(VkSpecializationMapEntry, size));
+
+    // VkSpecializationInfo checks.
+    static_assert(std::is_standard_layout_v<specialization_info_t>, "specialization_info_t must be standard-layout for native interop.");
+    static_assert(sizeof(specialization_info_t) == sizeof(VkSpecializationInfo), "specialization_info_t layout diverged from VkSpecializationInfo.");
+    static_assert(offsetof(specialization_info_t, mapEntryCount) == offsetof(VkSpecializationInfo, mapEntryCount));
+    static_assert(offsetof(specialization_info_t, pMapEntries) == offsetof(VkSpecializationInfo, pMapEntries));
+    static_assert(offsetof(specialization_info_t, dataSize) == offsetof(VkSpecializationInfo, dataSize));
+    static_assert(offsetof(specialization_info_t, pData) == offsetof(VkSpecializationInfo, pData));
+
+    // VkPipelineShaderStageCreateInfo checks.
+    static_assert(std::is_standard_layout_v<pipeline_shader_stage_create_info_t>, "pipeline_shader_stage_create_info_t must be standard-layout for native interop.");
+    static_assert(sizeof(pipeline_shader_stage_create_info_t) == sizeof(VkPipelineShaderStageCreateInfo), "pipeline_shader_stage_create_info_t layout diverged from VkPipelineShaderStageCreateInfo.");
+    static_assert(offsetof(pipeline_shader_stage_create_info_t, sType) == offsetof(VkPipelineShaderStageCreateInfo, sType));
+    static_assert(offsetof(pipeline_shader_stage_create_info_t, pNext) == offsetof(VkPipelineShaderStageCreateInfo, pNext));
+    static_assert(offsetof(pipeline_shader_stage_create_info_t, flags) == offsetof(VkPipelineShaderStageCreateInfo, flags));
+    static_assert(offsetof(pipeline_shader_stage_create_info_t, stage) == offsetof(VkPipelineShaderStageCreateInfo, stage));
+    static_assert(offsetof(pipeline_shader_stage_create_info_t, module) == offsetof(VkPipelineShaderStageCreateInfo, module));
+    static_assert(offsetof(pipeline_shader_stage_create_info_t, pName) == offsetof(VkPipelineShaderStageCreateInfo, pName));
+    static_assert(offsetof(pipeline_shader_stage_create_info_t, pSpecializationInfo) == offsetof(VkPipelineShaderStageCreateInfo, pSpecializationInfo));
 
 
 }

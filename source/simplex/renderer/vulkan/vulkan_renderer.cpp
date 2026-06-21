@@ -4,6 +4,7 @@
 #include <simplex/platform/filesystem.hpp>
 #include <simplex/platform/window.hpp>
 #include <simplex/dynamic_array.hpp>
+#include <simplex/static_array.hpp>
 
 RendererResultType spx::vk::vulkan_renderer::
 internal_initialize()
@@ -580,9 +581,106 @@ create_shaders()
         return false;
     }
 
-    spx::logger::dispatch_diagnostic_log("Created the core shader module successfully ({} bytes of SPIR-V).",
+    spx::logger::dispatch_diagnostic_log(
+        "Created the core shader module successfully ({} bytes of SPIR-V).",
         shader_file_size);
 
+    // Now to create the shader stages.
+    spx::vk::pipeline_shader_stage_create_info_t vertex_shader_stage;
+    vertex_shader_stage.set_stage(VK_SHADER_STAGE_VERTEX_BIT);
+    vertex_shader_stage.set_module(this->core_shader_module);
+    vertex_shader_stage.set_name("vertex_main");
+
+    spx::vk::pipeline_shader_stage_create_info_t fragment_shader_stage;
+    fragment_shader_stage.set_stage(VK_SHADER_STAGE_FRAGMENT_BIT);
+    fragment_shader_stage.set_module(this->core_shader_module);
+    fragment_shader_stage.set_name("fragment_main");
+
+    spx::static_array<spx::vk::pipeline_shader_stage_create_info_t, 2> stages;
+    stages.emplace_back(vertex_shader_stage);
+    stages.emplace_back(fragment_shader_stage);
+
+    // Setting our dynamic states.
+    spx::static_array<VkDynamicState, 2> dynamic_states;
+    dynamic_states.emplace_back(VK_DYNAMIC_STATE_VIEWPORT);
+    dynamic_states.emplace_back(VK_DYNAMIC_STATE_SCISSOR);
+
+    // Vertex input (not currently used).
+    spx::vk::pipeline_vertex_input_state_create_info_t vertex_input_info { };
+
+    // Setting the pipeline to use triangles.
+    spx::vk::pipeline_input_assembly_state_create_info_t assembly_state_info { };
+    assembly_state_info.set_topology(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
+
+    // Set the view.
+    this->viewport.x = 0;
+    this->viewport.y = 0;
+    this->viewport.width = this->swapchain_extent.get_width();
+    this->viewport.height = this->swapchain_extent.get_height();
+    this->viewport.minDepth = 0.0f;
+    this->viewport.maxDepth = 1.0f;
+
+    // Set the scissor.
+    this->scissor.set_offset(spx::vk::offset_2d_t({0, 0}));
+    this->scissor.set_extent(this->swapchain_extent);
+
+    spx::vk::pipeline_viewport_state_create_info_t viewport_state { };
+    viewport_state.viewportCount = 0;
+    viewport_state.pViewports = &this->viewport;
+    viewport_state.scissorCount = 0;
+    viewport_state.pScissors = &this->scissor;
+    
+    // Creating the rasterizer.
+    spx::vk::pipeline_rasterization_state_create_info_t rasterization_state_info { };
+    rasterization_state_info.depthClampEnable = VK_FALSE;
+    rasterization_state_info.rasterizerDiscardEnable = VK_FALSE;
+    rasterization_state_info.polygonMode = VK_POLYGON_MODE_FILL;
+    rasterization_state_info.cullMode = VK_CULL_MODE_BACK_BIT;
+    rasterization_state_info.frontFace = VK_FRONT_FACE_CLOCKWISE;
+    rasterization_state_info.depthBiasEnable = VK_FALSE;
+    rasterization_state_info.lineWidth = 1.0f;
+    
+    // Multisampling.
+    spx::vk::pipeline_multisample_state_create_info_t pipeline_multisampling_info { };
+    pipeline_multisampling_info.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+    pipeline_multisampling_info.sampleShadingEnable = VK_FALSE;
+    
+    // Depth and stencil testing. (NULL for now.)
+    void *depth_testing = NULL;
+    
+    // Color blending.
+    spx::vk::pipeline_color_blend_attachment_state_t color_blend_attachment { };
+    color_blend_attachment.blendEnable = VK_FALSE;
+    color_blend_attachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | 
+                                            VK_COLOR_COMPONENT_G_BIT |
+                                            VK_COLOR_COMPONENT_B_BIT |
+                                            VK_COLOR_COMPONENT_A_BIT;
+    color_blend_attachment.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+    color_blend_attachment.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+    color_blend_attachment.colorBlendOp = VK_BLEND_OP_ADD;
+    color_blend_attachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+    color_blend_attachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+    color_blend_attachment.alphaBlendOp = VK_BLEND_OP_ADD;
+    
+    spx::vk::pipeline_color_blend_state_create_info_t color_blending { };
+    color_blending.logicOpEnable = VK_FALSE;
+    color_blending.logicOp = VK_LOGIC_OP_COPY;
+    color_blending.attachmentCount = 1;
+    color_blending.pAttachments = &color_blend_attachment;
+
+    spx::vk::pipeline_layout_create_info_t layout_info { };
+    layout_info.setLayoutCount = 0;
+    layout_info.pushConstantRangeCount = 0;
+    
+    auto layout_result = spx::vk::create_pipeline_layout(this->device, layout_info, NULL, this->pipeline_layout);
+    if (layout_result != VK_SUCCESS)
+    {
+        THROW_SIMPLEX_RENDERER_EXCEPTION("Failed to create pipeline layout.");
+        return false;
+    }
+
+    spx::logger::dispatch_diagnostic_log("Successfully created pipeline layout.");
+    
     return true;
 
 }

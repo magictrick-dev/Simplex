@@ -73,6 +73,7 @@ namespace spx::vk
     using image_t                   = vk_handle<VkImage>;
     using image_view_t              = vk_handle<VkImageView>;
     using shader_module_t           = vk_handle<VkShaderModule>;
+    using pipeline_layout_t         = vk_handle<VkPipelineLayout>;
 
     // ---------------------------------------------------------------------------------------------
     // Handle mixins.

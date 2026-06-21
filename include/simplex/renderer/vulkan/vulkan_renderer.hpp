@@ -69,9 +69,13 @@ namespace spx::vk
             VkFormat                                  swapchain_format = VK_FORMAT_UNDEFINED;
             spx::vk::extent_2d_t                      swapchain_extent;
 
+            spx::vk::viewport_t viewport;
+            spx::vk::rect_2d_t scissor;                        
+
             // The core shader compiled from Slang to SPIR-V. Slang packs every entry point (e.g. the
             // vertex and fragment stages) into a single module, so one handle covers the whole program.
             spx::vk::shader_module_t core_shader_module;
+            spx::vk::pipeline_layout_t pipeline_layout;
 
     };
 
