@@ -2301,6 +2301,140 @@ namespace spx::vk
 
     };
 
+    /// @brief VkPipelineTessellationStateCreateInfo mixin (pipeline_tessellation_state_create_info_t).
+    ///
+    /// Only relevant when the pipeline has tessellation shader stages; otherwise the graphics pipeline
+    /// leaves pTessellationState null. Carries the patch control point count.
+    template <typename derived_t>
+    struct vk_struct_ext<derived_t, VkPipelineTessellationStateCreateInfo>
+    {
+
+        VkStructureType                         sType               { VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_STATE_CREATE_INFO };
+        const void*                             pNext               { nullptr };
+        VkPipelineTessellationStateCreateFlags  flags               {         };
+        uint32_t                                patchControlPoints  {         };
+
+        inline const void*  get_next() const                    { return this->pNext;               }
+        inline uint32_t     get_patch_control_points() const    { return this->patchControlPoints;  }
+
+        inline derived_t& set_next(const void* next)                        { this->pNext = next; return *s();  }
+        inline derived_t& set_flags(VkPipelineTessellationStateCreateFlags f){ this->flags = f; return *s();    }
+        inline derived_t& set_patch_control_points(uint32_t points)         { this->patchControlPoints = points; return *s(); }
+
+        private:
+            inline derived_t* s() { return reinterpret_cast<derived_t*>(this); }
+
+    };
+
+    /// @brief VkPipelineRenderingCreateInfo mixin (pipeline_rendering_create_info_t).
+    ///
+    /// The dynamic-rendering replacement for a render pass at pipeline-build time. Chained off a
+    /// graphics pipeline create info's pNext (with renderPass left VK_NULL_HANDLE), it declares the
+    /// attachment formats the pipeline will render to. Core since Vulkan 1.3. The color-format array
+    /// must outlive the pipeline create call.
+    template <typename derived_t>
+    struct vk_struct_ext<derived_t, VkPipelineRenderingCreateInfo>
+    {
+
+        VkStructureType     sType                   { VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO };
+        const void*         pNext                   { nullptr };
+        uint32_t            viewMask                {         };
+        uint32_t            colorAttachmentCount    {         };
+        const VkFormat*     pColorAttachmentFormats { nullptr };
+        VkFormat            depthAttachmentFormat   { VK_FORMAT_UNDEFINED };
+        VkFormat            stencilAttachmentFormat { VK_FORMAT_UNDEFINED };
+
+        inline const void*  get_next() const                    { return this->pNext;                   }
+        inline uint32_t     get_view_mask() const               { return this->viewMask;                }
+        inline VkFormat     get_depth_attachment_format() const { return this->depthAttachmentFormat;   }
+        inline VkFormat     get_stencil_attachment_format() const { return this->stencilAttachmentFormat; }
+        inline spx::array_view<VkFormat> get_color_attachment_formats() const { return { this->pColorAttachmentFormats, this->colorAttachmentCount }; }
+
+        inline derived_t& set_next(const void* next)                    { this->pNext = next; return *s();              }
+        inline derived_t& set_view_mask(uint32_t mask)                  { this->viewMask = mask; return *s();           }
+        inline derived_t& set_depth_attachment_format(VkFormat format)  { this->depthAttachmentFormat = format; return *s(); }
+        inline derived_t& set_stencil_attachment_format(VkFormat format){ this->stencilAttachmentFormat = format; return *s(); }
+
+        inline derived_t& set_color_attachment_formats(spx::array_view<VkFormat> formats)
+        {
+            this->pColorAttachmentFormats = formats.data();
+            this->colorAttachmentCount    = static_cast<uint32_t>(formats.size());
+            return *s();
+        }
+
+        private:
+            inline derived_t* s() { return reinterpret_cast<derived_t*>(this); }
+
+    };
+
+    /// @brief VkGraphicsPipelineCreateInfo mixin (graphics_pipeline_create_info_t).
+    ///
+    /// The full description of a graphics pipeline. Each fixed-function state pointer references one
+    /// of the wrapped state structs above (layout-identical, so the wrapped pointer is bit-compatible
+    /// with the native pointer the API expects). Every referenced struct/array must outlive the
+    /// pipeline create call. For dynamic rendering, leave renderPass VK_NULL_HANDLE and chain a
+    /// pipeline_rendering_create_info_t off pNext.
+    template <typename derived_t>
+    struct vk_struct_ext<derived_t, VkGraphicsPipelineCreateInfo>
+    {
+
+        VkStructureType                                                 sType               { VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO };
+        const void*                                                     pNext               { nullptr };
+        VkPipelineCreateFlags                                           flags               {         };
+        uint32_t                                                        stageCount          {         };
+        const vk_struct_base<VkPipelineShaderStageCreateInfo>*          pStages             { nullptr };
+        const vk_struct_base<VkPipelineVertexInputStateCreateInfo>*     pVertexInputState   { nullptr };
+        const vk_struct_base<VkPipelineInputAssemblyStateCreateInfo>*   pInputAssemblyState { nullptr };
+        const vk_struct_base<VkPipelineTessellationStateCreateInfo>*    pTessellationState  { nullptr };
+        const vk_struct_base<VkPipelineViewportStateCreateInfo>*        pViewportState      { nullptr };
+        const vk_struct_base<VkPipelineRasterizationStateCreateInfo>*   pRasterizationState { nullptr };
+        const vk_struct_base<VkPipelineMultisampleStateCreateInfo>*     pMultisampleState   { nullptr };
+        const vk_struct_base<VkPipelineDepthStencilStateCreateInfo>*    pDepthStencilState  { nullptr };
+        const vk_struct_base<VkPipelineColorBlendStateCreateInfo>*      pColorBlendState    { nullptr };
+        const vk_struct_base<VkPipelineDynamicStateCreateInfo>*         pDynamicState       { nullptr };
+        VkPipelineLayout                                                layout              { VK_NULL_HANDLE };
+        VkRenderPass                                                    renderPass          { VK_NULL_HANDLE };
+        uint32_t                                                        subpass             {         };
+        VkPipeline                                                      basePipelineHandle  { VK_NULL_HANDLE };
+        int32_t                                                         basePipelineIndex   { -1 };
+
+        inline const void*              get_next() const    { return this->pNext;   }
+        inline VkPipelineCreateFlags    get_flags() const   { return this->flags;   }
+        inline VkPipelineLayout         get_layout() const  { return this->layout;  }
+        inline VkRenderPass             get_render_pass() const { return this->renderPass; }
+        inline uint32_t                 get_subpass() const { return this->subpass; }
+
+        inline derived_t& set_next(const void* next)            { this->pNext = next; return *s();  }
+        inline derived_t& set_flags(VkPipelineCreateFlags f)    { this->flags = f; return *s();     }
+
+        inline derived_t& set_stages(spx::array_view<const vk_struct_base<VkPipelineShaderStageCreateInfo>> stages)
+        {
+            this->pStages    = stages.data();
+            this->stageCount = static_cast<uint32_t>(stages.size());
+            return *s();
+        }
+
+        inline derived_t& set_vertex_input_state(const vk_struct_base<VkPipelineVertexInputStateCreateInfo>* state)   { this->pVertexInputState = state; return *s(); }
+        inline derived_t& set_input_assembly_state(const vk_struct_base<VkPipelineInputAssemblyStateCreateInfo>* state){ this->pInputAssemblyState = state; return *s(); }
+        inline derived_t& set_tessellation_state(const vk_struct_base<VkPipelineTessellationStateCreateInfo>* state)  { this->pTessellationState = state; return *s(); }
+        inline derived_t& set_viewport_state(const vk_struct_base<VkPipelineViewportStateCreateInfo>* state)          { this->pViewportState = state; return *s(); }
+        inline derived_t& set_rasterization_state(const vk_struct_base<VkPipelineRasterizationStateCreateInfo>* state){ this->pRasterizationState = state; return *s(); }
+        inline derived_t& set_multisample_state(const vk_struct_base<VkPipelineMultisampleStateCreateInfo>* state)    { this->pMultisampleState = state; return *s(); }
+        inline derived_t& set_depth_stencil_state(const vk_struct_base<VkPipelineDepthStencilStateCreateInfo>* state) { this->pDepthStencilState = state; return *s(); }
+        inline derived_t& set_color_blend_state(const vk_struct_base<VkPipelineColorBlendStateCreateInfo>* state)     { this->pColorBlendState = state; return *s(); }
+        inline derived_t& set_dynamic_state(const vk_struct_base<VkPipelineDynamicStateCreateInfo>* state)            { this->pDynamicState = state; return *s(); }
+
+        inline derived_t& set_layout(VkPipelineLayout pipeline_layout)       { this->layout = pipeline_layout; return *s();  }
+        inline derived_t& set_render_pass(VkRenderPass render_pass)          { this->renderPass = render_pass; return *s();  }
+        inline derived_t& set_subpass(uint32_t subpass_index)               { this->subpass = subpass_index; return *s();   }
+        inline derived_t& set_base_pipeline_handle(VkPipeline base)         { this->basePipelineHandle = base; return *s(); }
+        inline derived_t& set_base_pipeline_index(int32_t index)            { this->basePipelineIndex = index; return *s(); }
+
+        private:
+            inline derived_t* s() { return reinterpret_cast<derived_t*>(this); }
+
+    };
+
     // ---------------------------------------------------------------------------------------------
     // Using statements.
     //
@@ -2366,6 +2500,9 @@ namespace spx::vk
     using specialization_map_entry_t                    = vk_struct_base<VkSpecializationMapEntry>;
     using specialization_info_t                         = vk_struct_base<VkSpecializationInfo>;
     using pipeline_shader_stage_create_info_t           = vk_struct_base<VkPipelineShaderStageCreateInfo>;
+    using pipeline_tessellation_state_create_info_t     = vk_struct_base<VkPipelineTessellationStateCreateInfo>;
+    using pipeline_rendering_create_info_t              = vk_struct_base<VkPipelineRenderingCreateInfo>;
+    using graphics_pipeline_create_info_t               = vk_struct_base<VkGraphicsPipelineCreateInfo>;
 
     // ---------------------------------------------------------------------------------------------
     // Layout guards.
@@ -2795,6 +2932,47 @@ namespace spx::vk
     static_assert(offsetof(pipeline_shader_stage_create_info_t, module) == offsetof(VkPipelineShaderStageCreateInfo, module));
     static_assert(offsetof(pipeline_shader_stage_create_info_t, pName) == offsetof(VkPipelineShaderStageCreateInfo, pName));
     static_assert(offsetof(pipeline_shader_stage_create_info_t, pSpecializationInfo) == offsetof(VkPipelineShaderStageCreateInfo, pSpecializationInfo));
+
+    // VkPipelineTessellationStateCreateInfo checks.
+    static_assert(std::is_standard_layout_v<pipeline_tessellation_state_create_info_t>, "pipeline_tessellation_state_create_info_t must be standard-layout for native interop.");
+    static_assert(sizeof(pipeline_tessellation_state_create_info_t) == sizeof(VkPipelineTessellationStateCreateInfo), "pipeline_tessellation_state_create_info_t layout diverged from VkPipelineTessellationStateCreateInfo.");
+    static_assert(offsetof(pipeline_tessellation_state_create_info_t, sType) == offsetof(VkPipelineTessellationStateCreateInfo, sType));
+    static_assert(offsetof(pipeline_tessellation_state_create_info_t, pNext) == offsetof(VkPipelineTessellationStateCreateInfo, pNext));
+    static_assert(offsetof(pipeline_tessellation_state_create_info_t, patchControlPoints) == offsetof(VkPipelineTessellationStateCreateInfo, patchControlPoints));
+
+    // VkPipelineRenderingCreateInfo checks.
+    static_assert(std::is_standard_layout_v<pipeline_rendering_create_info_t>, "pipeline_rendering_create_info_t must be standard-layout for native interop.");
+    static_assert(sizeof(pipeline_rendering_create_info_t) == sizeof(VkPipelineRenderingCreateInfo), "pipeline_rendering_create_info_t layout diverged from VkPipelineRenderingCreateInfo.");
+    static_assert(offsetof(pipeline_rendering_create_info_t, sType) == offsetof(VkPipelineRenderingCreateInfo, sType));
+    static_assert(offsetof(pipeline_rendering_create_info_t, pNext) == offsetof(VkPipelineRenderingCreateInfo, pNext));
+    static_assert(offsetof(pipeline_rendering_create_info_t, viewMask) == offsetof(VkPipelineRenderingCreateInfo, viewMask));
+    static_assert(offsetof(pipeline_rendering_create_info_t, colorAttachmentCount) == offsetof(VkPipelineRenderingCreateInfo, colorAttachmentCount));
+    static_assert(offsetof(pipeline_rendering_create_info_t, pColorAttachmentFormats) == offsetof(VkPipelineRenderingCreateInfo, pColorAttachmentFormats));
+    static_assert(offsetof(pipeline_rendering_create_info_t, depthAttachmentFormat) == offsetof(VkPipelineRenderingCreateInfo, depthAttachmentFormat));
+    static_assert(offsetof(pipeline_rendering_create_info_t, stencilAttachmentFormat) == offsetof(VkPipelineRenderingCreateInfo, stencilAttachmentFormat));
+
+    // VkGraphicsPipelineCreateInfo checks.
+    static_assert(std::is_standard_layout_v<graphics_pipeline_create_info_t>, "graphics_pipeline_create_info_t must be standard-layout for native interop.");
+    static_assert(sizeof(graphics_pipeline_create_info_t) == sizeof(VkGraphicsPipelineCreateInfo), "graphics_pipeline_create_info_t layout diverged from VkGraphicsPipelineCreateInfo.");
+    static_assert(offsetof(graphics_pipeline_create_info_t, sType) == offsetof(VkGraphicsPipelineCreateInfo, sType));
+    static_assert(offsetof(graphics_pipeline_create_info_t, pNext) == offsetof(VkGraphicsPipelineCreateInfo, pNext));
+    static_assert(offsetof(graphics_pipeline_create_info_t, flags) == offsetof(VkGraphicsPipelineCreateInfo, flags));
+    static_assert(offsetof(graphics_pipeline_create_info_t, stageCount) == offsetof(VkGraphicsPipelineCreateInfo, stageCount));
+    static_assert(offsetof(graphics_pipeline_create_info_t, pStages) == offsetof(VkGraphicsPipelineCreateInfo, pStages));
+    static_assert(offsetof(graphics_pipeline_create_info_t, pVertexInputState) == offsetof(VkGraphicsPipelineCreateInfo, pVertexInputState));
+    static_assert(offsetof(graphics_pipeline_create_info_t, pInputAssemblyState) == offsetof(VkGraphicsPipelineCreateInfo, pInputAssemblyState));
+    static_assert(offsetof(graphics_pipeline_create_info_t, pTessellationState) == offsetof(VkGraphicsPipelineCreateInfo, pTessellationState));
+    static_assert(offsetof(graphics_pipeline_create_info_t, pViewportState) == offsetof(VkGraphicsPipelineCreateInfo, pViewportState));
+    static_assert(offsetof(graphics_pipeline_create_info_t, pRasterizationState) == offsetof(VkGraphicsPipelineCreateInfo, pRasterizationState));
+    static_assert(offsetof(graphics_pipeline_create_info_t, pMultisampleState) == offsetof(VkGraphicsPipelineCreateInfo, pMultisampleState));
+    static_assert(offsetof(graphics_pipeline_create_info_t, pDepthStencilState) == offsetof(VkGraphicsPipelineCreateInfo, pDepthStencilState));
+    static_assert(offsetof(graphics_pipeline_create_info_t, pColorBlendState) == offsetof(VkGraphicsPipelineCreateInfo, pColorBlendState));
+    static_assert(offsetof(graphics_pipeline_create_info_t, pDynamicState) == offsetof(VkGraphicsPipelineCreateInfo, pDynamicState));
+    static_assert(offsetof(graphics_pipeline_create_info_t, layout) == offsetof(VkGraphicsPipelineCreateInfo, layout));
+    static_assert(offsetof(graphics_pipeline_create_info_t, renderPass) == offsetof(VkGraphicsPipelineCreateInfo, renderPass));
+    static_assert(offsetof(graphics_pipeline_create_info_t, subpass) == offsetof(VkGraphicsPipelineCreateInfo, subpass));
+    static_assert(offsetof(graphics_pipeline_create_info_t, basePipelineHandle) == offsetof(VkGraphicsPipelineCreateInfo, basePipelineHandle));
+    static_assert(offsetof(graphics_pipeline_create_info_t, basePipelineIndex) == offsetof(VkGraphicsPipelineCreateInfo, basePipelineIndex));
 
 
 }

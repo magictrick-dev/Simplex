@@ -387,4 +387,39 @@ namespace spx::vk
         layout.native = nullptr;
     }
 
+    /// @brief Wraps vkCreateGraphicsPipelines for the single-pipeline case (createInfoCount == 1).
+    ///
+    /// Everything the create info points at (shader stages, state structs, any chained
+    /// pipeline_rendering_create_info_t) must still be alive for the duration of this call. The
+    /// optional pipeline cache lets the driver reuse prior compilation work; pass VK_NULL_HANDLE to
+    /// skip it.
+    /// @param device       The logical device to create the pipeline against.
+    /// @param create_info  The graphics pipeline create info.
+    /// @param allocator    Optional allocation callbacks (may be nullptr).
+    /// @param out_pipeline The handle to populate on success.
+    /// @param cache        Optional pipeline cache (defaults to VK_NULL_HANDLE).
+    /// @return The native VkResult from vkCreateGraphicsPipelines.
+    inline VkResult
+    create_graphics_pipeline(device_t& device,
+                             const graphics_pipeline_create_info_t& create_info,
+                             const VkAllocationCallbacks* allocator,
+                             pipeline_t& out_pipeline,
+                             VkPipelineCache cache = VK_NULL_HANDLE)
+    {
+        const VkGraphicsPipelineCreateInfo& native_create_info = create_info;
+        return vkCreateGraphicsPipelines(device.native, cache, 1, &native_create_info, allocator,
+            &out_pipeline.native);
+    }
+
+    /// @brief Wraps vkDestroyPipeline. Null-safe; the handle is nulled afterward either way.
+    /// @param device    The logical device the pipeline was created against.
+    /// @param pipeline  The pipeline to destroy.
+    /// @param allocator Optional allocation callbacks (must match create_graphics_pipeline).
+    inline void
+    destroy_pipeline(device_t& device, pipeline_t& pipeline, const VkAllocationCallbacks* allocator = nullptr)
+    {
+        if (pipeline.native != nullptr) vkDestroyPipeline(device.native, pipeline.native, allocator);
+        pipeline.native = nullptr;
+    }
+
 }
