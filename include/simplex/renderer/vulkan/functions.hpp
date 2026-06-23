@@ -422,4 +422,440 @@ namespace spx::vk
         pipeline.native = nullptr;
     }
 
+    // ---------------------------------------------------------------------------------------------
+    // Command pools and command buffers.
+    // ---------------------------------------------------------------------------------------------
+
+    /// @brief Wraps vkCreateCommandPool, taking a wrapped create-info and writing into a wrapped handle.
+    /// @param device      The logical device to create the pool against.
+    /// @param create_info The command pool create info (queue family + flags).
+    /// @param allocator   Optional allocation callbacks (may be nullptr).
+    /// @param out_pool    The handle to populate on success.
+    /// @return The native VkResult from vkCreateCommandPool.
+    inline VkResult
+    create_command_pool(device_t& device,
+                        const command_pool_create_info_t& create_info,
+                        const VkAllocationCallbacks* allocator,
+                        command_pool_t& out_pool)
+    {
+        const VkCommandPoolCreateInfo& native_create_info = create_info;
+        return vkCreateCommandPool(device.native, &native_create_info, allocator, &out_pool.native);
+    }
+
+    /// @brief Wraps vkDestroyCommandPool. Null-safe; the handle is nulled afterward either way.
+    ///        Destroying the pool frees every command buffer allocated from it.
+    /// @param device    The logical device the pool was created against.
+    /// @param pool      The command pool to destroy.
+    /// @param allocator Optional allocation callbacks (must match create_command_pool).
+    inline void
+    destroy_command_pool(device_t& device, command_pool_t& pool, const VkAllocationCallbacks* allocator = nullptr)
+    {
+        if (pool.native != nullptr) vkDestroyCommandPool(device.native, pool.native, allocator);
+        pool.native = nullptr;
+    }
+
+    /// @brief Allocates a single command buffer from a pool (the common case). Builds a one-buffer
+    ///        VkCommandBufferAllocateInfo internally. For multiple buffers, call once per buffer.
+    /// @param device     The logical device the pool belongs to.
+    /// @param pool       The pool to allocate from.
+    /// @param out_buffer The handle to populate on success.
+    /// @param level      Primary (default) or secondary.
+    /// @return The native VkResult from vkAllocateCommandBuffers.
+    inline VkResult
+    allocate_command_buffer(device_t& device, command_pool_t& pool, command_buffer_t& out_buffer,
+                            VkCommandBufferLevel level = VK_COMMAND_BUFFER_LEVEL_PRIMARY)
+    {
+        command_buffer_allocate_info_t info { };
+        info.commandPool        = pool.native;
+        info.level              = level;
+        info.commandBufferCount = 1;
+
+        const VkCommandBufferAllocateInfo& native_info = info;
+        return vkAllocateCommandBuffers(device.native, &native_info, &out_buffer.native);
+    }
+
+    /// @brief Frees a single command buffer back to its pool. Null-safe; the handle is nulled
+    ///        afterward either way.
+    /// @param device The logical device the pool belongs to.
+    /// @param pool   The pool the buffer was allocated from.
+    /// @param buffer The buffer to free.
+    inline void
+    free_command_buffer(device_t& device, command_pool_t& pool, command_buffer_t& buffer)
+    {
+        if (buffer.native != nullptr) vkFreeCommandBuffers(device.native, pool.native, 1, &buffer.native);
+        buffer.native = nullptr;
+    }
+
+    /// @brief Wraps vkBeginCommandBuffer, taking a wrapped begin-info. Transitions the buffer into the
+    ///        recording state; subsequent cmd_* calls record into it until end_command_buffer.
+    /// @param buffer The command buffer to begin recording.
+    /// @param info   The begin info (usage flags).
+    /// @return The native VkResult.
+    inline VkResult
+    begin_command_buffer(command_buffer_t& buffer, const command_buffer_begin_info_t& info)
+    {
+        const VkCommandBufferBeginInfo& native_info = info;
+        return vkBeginCommandBuffer(buffer.native, &native_info);
+    }
+
+    /// @brief Wraps vkEndCommandBuffer. Finishes recording; the buffer is then submittable.
+    /// @param buffer The command buffer to finish.
+    /// @return The native VkResult.
+    inline VkResult
+    end_command_buffer(command_buffer_t& buffer)
+    {
+        return vkEndCommandBuffer(buffer.native);
+    }
+
+    /// @brief Wraps vkResetCommandBuffer. Returns the buffer to the initial state for re-recording
+    ///        (the pool must have been created with RESET_COMMAND_BUFFER).
+    /// @param buffer The command buffer to reset.
+    /// @param flags  Reset flags (default 0).
+    /// @return The native VkResult.
+    inline VkResult
+    reset_command_buffer(command_buffer_t& buffer, VkCommandBufferResetFlags flags = 0)
+    {
+        return vkResetCommandBuffer(buffer.native, flags);
+    }
+
+    // ---------------------------------------------------------------------------------------------
+    // Synchronization primitives (semaphores and fences).
+    // ---------------------------------------------------------------------------------------------
+
+    /// @brief Wraps vkCreateSemaphore, taking a wrapped create-info and writing into a wrapped handle.
+    /// @param device       The logical device to create the semaphore against.
+    /// @param create_info  The semaphore create info.
+    /// @param allocator    Optional allocation callbacks (may be nullptr).
+    /// @param out_semaphore The handle to populate on success.
+    /// @return The native VkResult from vkCreateSemaphore.
+    inline VkResult
+    create_semaphore(device_t& device,
+                     const semaphore_create_info_t& create_info,
+                     const VkAllocationCallbacks* allocator,
+                     semaphore_t& out_semaphore)
+    {
+        const VkSemaphoreCreateInfo& native_create_info = create_info;
+        return vkCreateSemaphore(device.native, &native_create_info, allocator, &out_semaphore.native);
+    }
+
+    /// @brief Wraps vkDestroySemaphore. Null-safe; the handle is nulled afterward either way.
+    /// @param device    The logical device the semaphore was created against.
+    /// @param semaphore The semaphore to destroy.
+    /// @param allocator Optional allocation callbacks (must match create_semaphore).
+    inline void
+    destroy_semaphore(device_t& device, semaphore_t& semaphore, const VkAllocationCallbacks* allocator = nullptr)
+    {
+        if (semaphore.native != nullptr) vkDestroySemaphore(device.native, semaphore.native, allocator);
+        semaphore.native = nullptr;
+    }
+
+    /// @brief Wraps vkCreateFence, taking a wrapped create-info and writing into a wrapped handle.
+    /// @param device      The logical device to create the fence against.
+    /// @param create_info The fence create info (set_signaled to create it already signaled).
+    /// @param allocator   Optional allocation callbacks (may be nullptr).
+    /// @param out_fence   The handle to populate on success.
+    /// @return The native VkResult from vkCreateFence.
+    inline VkResult
+    create_fence(device_t& device,
+                 const fence_create_info_t& create_info,
+                 const VkAllocationCallbacks* allocator,
+                 fence_t& out_fence)
+    {
+        const VkFenceCreateInfo& native_create_info = create_info;
+        return vkCreateFence(device.native, &native_create_info, allocator, &out_fence.native);
+    }
+
+    /// @brief Wraps vkDestroyFence. Null-safe; the handle is nulled afterward either way.
+    /// @param device    The logical device the fence was created against.
+    /// @param fence     The fence to destroy.
+    /// @param allocator Optional allocation callbacks (must match create_fence).
+    inline void
+    destroy_fence(device_t& device, fence_t& fence, const VkAllocationCallbacks* allocator = nullptr)
+    {
+        if (fence.native != nullptr) vkDestroyFence(device.native, fence.native, allocator);
+        fence.native = nullptr;
+    }
+
+    /// @brief Waits on a single fence (the per-frame case). Wraps vkWaitForFences with count 1.
+    /// @param device  The logical device the fence belongs to.
+    /// @param fence   The fence to wait on.
+    /// @param timeout Timeout in nanoseconds (default: wait indefinitely).
+    /// @return The native VkResult (VK_SUCCESS, or VK_TIMEOUT if the timeout elapses).
+    inline VkResult
+    wait_for_fence(device_t& device, fence_t& fence, uint64_t timeout = UINT64_MAX)
+    {
+        return vkWaitForFences(device.native, 1, &fence.native, VK_TRUE, timeout);
+    }
+
+    /// @brief Resets a single fence back to the unsignaled state. Wraps vkResetFences with count 1.
+    /// @param device The logical device the fence belongs to.
+    /// @param fence  The fence to reset.
+    /// @return The native VkResult.
+    inline VkResult
+    reset_fence(device_t& device, fence_t& fence)
+    {
+        return vkResetFences(device.native, 1, &fence.native);
+    }
+
+    // ---------------------------------------------------------------------------------------------
+    // Presentation and submission.
+    // ---------------------------------------------------------------------------------------------
+
+    /// @brief Wraps vkAcquireNextImageKHR. Acquires the index of the next presentable swapchain image,
+    ///        signaling a semaphore (and optionally a fence) when the image is ready to render into.
+    /// @param device           The logical device the swapchain belongs to.
+    /// @param swapchain        The swapchain to acquire from.
+    /// @param timeout          Timeout in nanoseconds (UINT64_MAX to wait indefinitely).
+    /// @param signal_semaphore Semaphore signaled when the image is available.
+    /// @param fence            Optional fence signaled when the image is available (may be nullptr).
+    /// @param out_image_index  Receives the acquired image index.
+    /// @return The native VkResult (notably VK_ERROR_OUT_OF_DATE_KHR / VK_SUBOPTIMAL_KHR on resize).
+    inline VkResult
+    acquire_next_image(device_t& device, swapchain_t& swapchain, uint64_t timeout,
+                       semaphore_t& signal_semaphore, fence_t* fence, uint32_t* out_image_index)
+    {
+        return vkAcquireNextImageKHR(device.native, swapchain.native, timeout,
+            signal_semaphore.native, fence ? fence->native : VK_NULL_HANDLE, out_image_index);
+    }
+
+    /// @brief Wraps vkQueueSubmit for the single-submit case (submitCount == 1). The wait/signal
+    ///        semaphores and command buffers come from the submit info; the optional fence is signaled
+    ///        when the submitted work completes.
+    /// @param queue The queue to submit to.
+    /// @param info  The submit info (wait/signal semaphores, command buffers).
+    /// @param fence Optional fence signaled on completion (may be nullptr).
+    /// @return The native VkResult.
+    inline VkResult
+    queue_submit(queue_t& queue, const submit_info_t& info, fence_t* fence = nullptr)
+    {
+        const VkSubmitInfo& native_info = info;
+        return vkQueueSubmit(queue.native, 1, &native_info, fence ? fence->native : VK_NULL_HANDLE);
+    }
+
+    /// @brief Wraps vkQueueWaitIdle. Blocks until the queue has finished all submitted work.
+    /// @param queue The queue to wait on.
+    /// @return The native VkResult.
+    inline VkResult
+    queue_wait_idle(queue_t& queue)
+    {
+        return vkQueueWaitIdle(queue.native);
+    }
+
+    /// @brief Wraps vkQueuePresentKHR, taking a wrapped present-info.
+    /// @param queue The presentation queue.
+    /// @param info  The present info (wait semaphores, swapchains, image indices).
+    /// @return The native VkResult (notably VK_ERROR_OUT_OF_DATE_KHR / VK_SUBOPTIMAL_KHR on resize).
+    inline VkResult
+    queue_present(queue_t& queue, const present_info_t& info)
+    {
+        const VkPresentInfoKHR& native_info = info;
+        return vkQueuePresentKHR(queue.native, &native_info);
+    }
+
+    // ---------------------------------------------------------------------------------------------
+    // Command recording.
+    //
+    // Recorded between begin_command_buffer and end_command_buffer. cmd_begin_rendering /
+    // cmd_end_rendering are the dynamic-rendering replacement for the render-pass begin/end scope.
+    // ---------------------------------------------------------------------------------------------
+
+    /// @brief Wraps vkCmdBeginRendering (Vulkan 1.3 core). Opens a dynamic-rendering scope described
+    ///        by the rendering info (render area + attachments); draw commands are recorded inside it.
+    /// @param buffer The command buffer being recorded.
+    /// @param info   The rendering info.
+    inline void
+    cmd_begin_rendering(command_buffer_t& buffer, const rendering_info_t& info)
+    {
+        const VkRenderingInfo& native_info = info;
+        vkCmdBeginRendering(buffer.native, &native_info);
+    }
+
+    /// @brief Wraps vkCmdEndRendering. Closes the dynamic-rendering scope opened by cmd_begin_rendering.
+    /// @param buffer The command buffer being recorded.
+    inline void
+    cmd_end_rendering(command_buffer_t& buffer)
+    {
+        vkCmdEndRendering(buffer.native);
+    }
+
+    /// @brief Wraps vkCmdBindPipeline.
+    /// @param buffer     The command buffer being recorded.
+    /// @param bind_point The bind point (e.g. VK_PIPELINE_BIND_POINT_GRAPHICS).
+    /// @param pipeline   The pipeline to bind.
+    inline void
+    cmd_bind_pipeline(command_buffer_t& buffer, VkPipelineBindPoint bind_point, pipeline_t& pipeline)
+    {
+        vkCmdBindPipeline(buffer.native, bind_point, pipeline.native);
+    }
+
+    /// @brief Wraps vkCmdSetViewport for the single-viewport case (sets viewport 0). Used when the
+    ///        pipeline declares VK_DYNAMIC_STATE_VIEWPORT.
+    /// @param buffer   The command buffer being recorded.
+    /// @param viewport The viewport to set.
+    inline void
+    cmd_set_viewport(command_buffer_t& buffer, const viewport_t& viewport)
+    {
+        const VkViewport& native_viewport = viewport;
+        vkCmdSetViewport(buffer.native, 0, 1, &native_viewport);
+    }
+
+    /// @brief Wraps vkCmdSetScissor for the single-scissor case (sets scissor 0). Used when the
+    ///        pipeline declares VK_DYNAMIC_STATE_SCISSOR.
+    /// @param buffer  The command buffer being recorded.
+    /// @param scissor The scissor rectangle to set.
+    inline void
+    cmd_set_scissor(command_buffer_t& buffer, const rect_2d_t& scissor)
+    {
+        const VkRect2D& native_scissor = scissor;
+        vkCmdSetScissor(buffer.native, 0, 1, &native_scissor);
+    }
+
+    /// @brief Wraps vkCmdDraw (non-indexed draw).
+    /// @param buffer         The command buffer being recorded.
+    /// @param vertex_count   Vertices to draw.
+    /// @param instance_count Instances to draw.
+    /// @param first_vertex   Index of the first vertex.
+    /// @param first_instance Index of the first instance.
+    inline void
+    cmd_draw(command_buffer_t& buffer, uint32_t vertex_count, uint32_t instance_count,
+             uint32_t first_vertex, uint32_t first_instance)
+    {
+        vkCmdDraw(buffer.native, vertex_count, instance_count, first_vertex, first_instance);
+    }
+
+    /// @brief Wraps vkCmdBindVertexBuffers for the single-binding case.
+    /// @param buffer        The command buffer being recorded.
+    /// @param binding       The binding number to bind to.
+    /// @param vertex_buffer The vertex buffer to bind.
+    /// @param offset        Byte offset into the buffer (default 0).
+    inline void
+    cmd_bind_vertex_buffer(command_buffer_t& buffer, uint32_t binding, buffer_t& vertex_buffer,
+                           VkDeviceSize offset = 0)
+    {
+        VkBuffer native_buffer = vertex_buffer.native;
+        vkCmdBindVertexBuffers(buffer.native, binding, 1, &native_buffer, &offset);
+    }
+
+    /// @brief Wraps vkCmdCopyBuffer for the single-region case. Used to upload from a host-visible
+    ///        staging buffer into a device-local vertex buffer.
+    /// @param buffer The command buffer being recorded (on a transfer-capable queue).
+    /// @param src    The source buffer.
+    /// @param dst    The destination buffer.
+    /// @param region The copy region (src offset, dst offset, size).
+    inline void
+    cmd_copy_buffer(command_buffer_t& buffer, buffer_t& src, buffer_t& dst, const VkBufferCopy& region)
+    {
+        vkCmdCopyBuffer(buffer.native, src.native, dst.native, 1, &region);
+    }
+
+    // ---------------------------------------------------------------------------------------------
+    // Buffers and device memory.
+    // ---------------------------------------------------------------------------------------------
+
+    /// @brief Wraps vkCreateBuffer, taking a wrapped create-info and writing into a wrapped handle.
+    ///        A freshly created buffer has no backing store -- allocate_memory + bind_buffer_memory
+    ///        must follow before it can be used.
+    /// @param device      The logical device to create the buffer against.
+    /// @param create_info The buffer create info (size, usage, sharing).
+    /// @param allocator   Optional allocation callbacks (may be nullptr).
+    /// @param out_buffer  The handle to populate on success.
+    /// @return The native VkResult from vkCreateBuffer.
+    inline VkResult
+    create_buffer(device_t& device,
+                  const buffer_create_info_t& create_info,
+                  const VkAllocationCallbacks* allocator,
+                  buffer_t& out_buffer)
+    {
+        const VkBufferCreateInfo& native_create_info = create_info;
+        return vkCreateBuffer(device.native, &native_create_info, allocator, &out_buffer.native);
+    }
+
+    /// @brief Wraps vkDestroyBuffer. Null-safe; the handle is nulled afterward either way. Does not
+    ///        free the bound device memory -- free that separately with free_memory.
+    /// @param device    The logical device the buffer was created against.
+    /// @param buffer    The buffer to destroy.
+    /// @param allocator Optional allocation callbacks (must match create_buffer).
+    inline void
+    destroy_buffer(device_t& device, buffer_t& buffer, const VkAllocationCallbacks* allocator = nullptr)
+    {
+        if (buffer.native != nullptr) vkDestroyBuffer(device.native, buffer.native, allocator);
+        buffer.native = nullptr;
+    }
+
+    /// @brief Wraps vkGetBufferMemoryRequirements, writing into a wrapped requirements struct. The
+    ///        returned memoryTypeBits feeds physical_device_t::find_memory_type.
+    /// @param device           The logical device the buffer belongs to.
+    /// @param buffer           The buffer to query.
+    /// @param out_requirements The requirements struct to populate.
+    inline void
+    get_buffer_memory_requirements(device_t& device, buffer_t& buffer, memory_requirements_t& out_requirements)
+    {
+        VkMemoryRequirements& native_requirements = out_requirements;
+        vkGetBufferMemoryRequirements(device.native, buffer.native, &native_requirements);
+    }
+
+    /// @brief Wraps vkAllocateMemory, taking a wrapped allocate-info and writing into a wrapped handle.
+    /// @param device      The logical device to allocate from.
+    /// @param info        The memory allocate info (size + type index).
+    /// @param allocator   Optional allocation callbacks (may be nullptr).
+    /// @param out_memory  The handle to populate on success.
+    /// @return The native VkResult from vkAllocateMemory.
+    inline VkResult
+    allocate_memory(device_t& device,
+                    const memory_allocate_info_t& info,
+                    const VkAllocationCallbacks* allocator,
+                    device_memory_t& out_memory)
+    {
+        const VkMemoryAllocateInfo& native_info = info;
+        return vkAllocateMemory(device.native, &native_info, allocator, &out_memory.native);
+    }
+
+    /// @brief Wraps vkFreeMemory. Null-safe; the handle is nulled afterward either way. Any buffer
+    ///        still bound to this memory must already have been destroyed.
+    /// @param device    The logical device the memory was allocated from.
+    /// @param memory    The memory to free.
+    /// @param allocator Optional allocation callbacks (must match allocate_memory).
+    inline void
+    free_memory(device_t& device, device_memory_t& memory, const VkAllocationCallbacks* allocator = nullptr)
+    {
+        if (memory.native != nullptr) vkFreeMemory(device.native, memory.native, allocator);
+        memory.native = nullptr;
+    }
+
+    /// @brief Wraps vkBindBufferMemory. Backs a buffer with a region of an allocation.
+    /// @param device The logical device.
+    /// @param buffer The buffer to bind.
+    /// @param memory The memory to bind it to.
+    /// @param offset Byte offset into the memory (must satisfy the buffer's alignment; default 0).
+    /// @return The native VkResult.
+    inline VkResult
+    bind_buffer_memory(device_t& device, buffer_t& buffer, device_memory_t& memory, VkDeviceSize offset = 0)
+    {
+        return vkBindBufferMemory(device.native, buffer.native, memory.native, offset);
+    }
+
+    /// @brief Wraps vkMapMemory. Maps a host-visible allocation into application address space.
+    /// @param device   The logical device the memory belongs to.
+    /// @param memory   The memory to map (must be HOST_VISIBLE).
+    /// @param offset   Byte offset into the allocation.
+    /// @param size     Bytes to map (VK_WHOLE_SIZE for the rest of the allocation).
+    /// @param flags    Reserved; pass 0.
+    /// @param out_data Receives the pointer to the mapped region.
+    /// @return The native VkResult.
+    inline VkResult
+    map_memory(device_t& device, device_memory_t& memory, VkDeviceSize offset, VkDeviceSize size,
+               VkMemoryMapFlags flags, void** out_data)
+    {
+        return vkMapMemory(device.native, memory.native, offset, size, flags, out_data);
+    }
+
+    /// @brief Wraps vkUnmapMemory.
+    /// @param device The logical device the memory belongs to.
+    /// @param memory The memory to unmap.
+    inline void
+    unmap_memory(device_t& device, device_memory_t& memory)
+    {
+        vkUnmapMemory(device.native, memory.native);
+    }
+
 }

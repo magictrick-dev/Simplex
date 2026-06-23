@@ -2436,6 +2436,450 @@ namespace spx::vk
     };
 
     // ---------------------------------------------------------------------------------------------
+    // Command, synchronization, dynamic-rendering, submission and buffer/memory state.
+    //
+    // These carry a frame from a built pipeline through to on-screen presentation, and stand up the
+    // buffer/memory machinery vertex buffers are built on. Because the renderer uses dynamic
+    // rendering (VkPipelineRenderingCreateInfo, Vulkan 1.3 core) there is no render pass or
+    // framebuffer object -- the per-frame attachment set is described inline by rendering_info_t /
+    // rendering_attachment_info_t and handed to vkCmdBeginRendering instead.
+    // ---------------------------------------------------------------------------------------------
+
+    /// @brief VkCommandPoolCreateInfo mixin (command_pool_create_info_t).
+    ///
+    /// Input struct for the pool command buffers are allocated from. A pool is bound to one queue
+    /// family; buffers allocated from it may only be submitted to a queue of that family. The
+    /// RESET_COMMAND_BUFFER flag lets individual buffers be re-recorded, which a per-frame draw loop
+    /// relies on.
+    template <typename derived_t>
+    struct vk_struct_ext<derived_t, VkCommandPoolCreateInfo>
+    {
+
+        VkStructureType             sType               { VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO };
+        const void*                 pNext               { nullptr };
+        VkCommandPoolCreateFlags    flags               {         };
+        uint32_t                    queueFamilyIndex    {         };
+
+        inline const void*               get_next() const               { return this->pNext;            }
+        inline VkCommandPoolCreateFlags  get_flags() const              { return this->flags;            }
+        inline uint32_t                  get_queue_family_index() const { return this->queueFamilyIndex; }
+
+        inline derived_t& set_next(const void* next)                { this->pNext = next; return *s();             }
+        inline derived_t& set_flags(VkCommandPoolCreateFlags f)     { this->flags = f; return *s();                }
+        inline derived_t& set_queue_family_index(uint32_t index)    { this->queueFamilyIndex = index; return *s(); }
+
+        private:
+            inline derived_t* s() { return reinterpret_cast<derived_t*>(this); }
+
+    };
+
+    /// @brief VkCommandBufferAllocateInfo mixin (command_buffer_allocate_info_t).
+    ///
+    /// Input struct describing the command buffers to allocate from a pool. Defaults to a single
+    /// primary buffer (the common case); commandPool is a raw handle (the wrappers sit above this
+    /// layer).
+    template <typename derived_t>
+    struct vk_struct_ext<derived_t, VkCommandBufferAllocateInfo>
+    {
+
+        VkStructureType         sType               { VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO };
+        const void*             pNext               { nullptr };
+        VkCommandPool           commandPool         { VK_NULL_HANDLE };
+        VkCommandBufferLevel    level               { VK_COMMAND_BUFFER_LEVEL_PRIMARY };
+        uint32_t                commandBufferCount  { 1 };
+
+        inline const void*           get_next() const                  { return this->pNext;              }
+        inline VkCommandPool         get_command_pool() const          { return this->commandPool;        }
+        inline VkCommandBufferLevel  get_level() const                 { return this->level;              }
+        inline uint32_t              get_command_buffer_count() const  { return this->commandBufferCount; }
+
+        inline derived_t& set_next(const void* next)                { this->pNext = next; return *s();             }
+        inline derived_t& set_command_pool(VkCommandPool pool)      { this->commandPool = pool; return *s();       }
+        inline derived_t& set_level(VkCommandBufferLevel level)     { this->level = level; return *s();            }
+        inline derived_t& set_command_buffer_count(uint32_t count)  { this->commandBufferCount = count; return *s(); }
+
+        private:
+            inline derived_t* s() { return reinterpret_cast<derived_t*>(this); }
+
+    };
+
+    /// @brief VkCommandBufferBeginInfo mixin (command_buffer_begin_info_t).
+    ///
+    /// Input struct for vkBeginCommandBuffer. pInheritanceInfo is a raw pointer and is only used by
+    /// secondary buffers; primary buffers (all this layer needs) leave it null. ONE_TIME_SUBMIT is
+    /// the typical flag for a buffer re-recorded every frame.
+    template <typename derived_t>
+    struct vk_struct_ext<derived_t, VkCommandBufferBeginInfo>
+    {
+
+        VkStructureType                          sType            { VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO };
+        const void*                              pNext            { nullptr };
+        VkCommandBufferUsageFlags                flags            {         };
+        const VkCommandBufferInheritanceInfo*    pInheritanceInfo { nullptr };
+
+        inline const void*                get_next() const  { return this->pNext; }
+        inline VkCommandBufferUsageFlags  get_flags() const { return this->flags; }
+
+        inline derived_t& set_next(const void* next)                            { this->pNext = next; return *s();  }
+        inline derived_t& set_flags(VkCommandBufferUsageFlags f)                { this->flags = f; return *s();     }
+        inline derived_t& set_inheritance_info(const VkCommandBufferInheritanceInfo* info) { this->pInheritanceInfo = info; return *s(); }
+
+        private:
+            inline derived_t* s() { return reinterpret_cast<derived_t*>(this); }
+
+    };
+
+    /// @brief VkRenderingAttachmentInfo mixin (rendering_attachment_info_t).
+    ///
+    /// Describes one attachment (color, depth or stencil) for a dynamic-rendering pass. imageView /
+    /// resolveImageView are raw handles. clearValue is the native VkClearValue union, left raw since
+    /// it is a plain POD union; set_clear_color is provided for the common color case. The image
+    /// the view refers to must be in imageLayout when rendering begins.
+    template <typename derived_t>
+    struct vk_struct_ext<derived_t, VkRenderingAttachmentInfo>
+    {
+
+        VkStructureType         sType               { VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO };
+        const void*             pNext               { nullptr };
+        VkImageView             imageView           { VK_NULL_HANDLE };
+        VkImageLayout           imageLayout         {         };
+        VkResolveModeFlagBits   resolveMode         {         };
+        VkImageView             resolveImageView    { VK_NULL_HANDLE };
+        VkImageLayout           resolveImageLayout  {         };
+        VkAttachmentLoadOp      loadOp              {         };
+        VkAttachmentStoreOp     storeOp             {         };
+        VkClearValue            clearValue          {         };
+
+        inline const void*           get_next() const              { return this->pNext;            }
+        inline VkImageView           get_image_view() const        { return this->imageView;        }
+        inline VkImageLayout         get_image_layout() const      { return this->imageLayout;      }
+        inline VkAttachmentLoadOp    get_load_op() const           { return this->loadOp;           }
+        inline VkAttachmentStoreOp   get_store_op() const          { return this->storeOp;          }
+        inline const VkClearValue&   get_clear_value() const       { return this->clearValue;       }
+
+        inline derived_t& set_next(const void* next)                    { this->pNext = next; return *s();             }
+        inline derived_t& set_image_view(VkImageView view)             { this->imageView = view; return *s();         }
+        inline derived_t& set_image_layout(VkImageLayout layout)       { this->imageLayout = layout; return *s();     }
+        inline derived_t& set_resolve_mode(VkResolveModeFlagBits mode) { this->resolveMode = mode; return *s();       }
+        inline derived_t& set_resolve_image_view(VkImageView view)     { this->resolveImageView = view; return *s();  }
+        inline derived_t& set_resolve_image_layout(VkImageLayout l)    { this->resolveImageLayout = l; return *s();   }
+        inline derived_t& set_load_op(VkAttachmentLoadOp op)           { this->loadOp = op; return *s();              }
+        inline derived_t& set_store_op(VkAttachmentStoreOp op)         { this->storeOp = op; return *s();             }
+        inline derived_t& set_clear_value(const VkClearValue& value)   { this->clearValue = value; return *s();       }
+
+        /// @brief Sets the clear color (used when loadOp is VK_ATTACHMENT_LOAD_OP_CLEAR).
+        inline derived_t& set_clear_color(float r, float g, float b, float a)
+        {
+            this->clearValue.color.float32[0] = r;
+            this->clearValue.color.float32[1] = g;
+            this->clearValue.color.float32[2] = b;
+            this->clearValue.color.float32[3] = a;
+            return *s();
+        }
+
+        private:
+            inline derived_t* s() { return reinterpret_cast<derived_t*>(this); }
+
+    };
+
+    /// @brief VkRenderingInfo mixin (rendering_info_t).
+    ///
+    /// The dynamic-rendering counterpart of a render-pass begin: describes the render area and the
+    /// color/depth/stencil attachments for a vkCmdBeginRendering scope. layerCount defaults to 1.
+    /// The attachment arrays/pointers are referenced, not copied, and must outlive the begin call.
+    template <typename derived_t>
+    struct vk_struct_ext<derived_t, VkRenderingInfo>
+    {
+
+        VkStructureType                                     sType                { VK_STRUCTURE_TYPE_RENDERING_INFO };
+        const void*                                         pNext                { nullptr };
+        VkRenderingFlags                                    flags                {         };
+        vk_struct_base<VkRect2D>                            renderArea           {         };
+        uint32_t                                            layerCount           { 1       };
+        uint32_t                                            viewMask             {         };
+        uint32_t                                            colorAttachmentCount {         };
+        const vk_struct_base<VkRenderingAttachmentInfo>*    pColorAttachments    { nullptr };
+        const vk_struct_base<VkRenderingAttachmentInfo>*    pDepthAttachment     { nullptr };
+        const vk_struct_base<VkRenderingAttachmentInfo>*    pStencilAttachment   { nullptr };
+
+        inline const void*              get_next() const        { return this->pNext;       }
+        inline VkRenderingFlags         get_flags() const       { return this->flags;       }
+        inline const vk_struct_base<VkRect2D>& get_render_area() const { return this->renderArea; }
+        inline uint32_t                 get_layer_count() const { return this->layerCount;  }
+        inline uint32_t                 get_view_mask() const   { return this->viewMask;    }
+
+        inline derived_t& set_next(const void* next)                                 { this->pNext = next; return *s();      }
+        inline derived_t& set_flags(VkRenderingFlags f)                              { this->flags = f; return *s();         }
+        inline derived_t& set_render_area(const vk_struct_base<VkRect2D>& area)      { this->renderArea = area; return *s(); }
+        inline derived_t& set_layer_count(uint32_t count)                           { this->layerCount = count; return *s();}
+        inline derived_t& set_view_mask(uint32_t mask)                              { this->viewMask = mask; return *s();   }
+        inline derived_t& set_depth_attachment(const vk_struct_base<VkRenderingAttachmentInfo>* a)   { this->pDepthAttachment = a; return *s();   }
+        inline derived_t& set_stencil_attachment(const vk_struct_base<VkRenderingAttachmentInfo>* a) { this->pStencilAttachment = a; return *s(); }
+
+        inline derived_t& set_color_attachments(spx::array_view<const vk_struct_base<VkRenderingAttachmentInfo>> attachments)
+        {
+            this->pColorAttachments    = attachments.data();
+            this->colorAttachmentCount = static_cast<uint32_t>(attachments.size());
+            return *s();
+        }
+
+        private:
+            inline derived_t* s() { return reinterpret_cast<derived_t*>(this); }
+
+    };
+
+    /// @brief VkSemaphoreCreateInfo mixin (semaphore_create_info_t).
+    ///
+    /// Input struct for a binary semaphore (GPU-GPU ordering, e.g. image-acquired / render-finished).
+    /// Carries no parameters beyond flags, which are reserved and normally zero.
+    template <typename derived_t>
+    struct vk_struct_ext<derived_t, VkSemaphoreCreateInfo>
+    {
+
+        VkStructureType         sType   { VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO };
+        const void*             pNext   { nullptr };
+        VkSemaphoreCreateFlags  flags   {         };
+
+        inline const void*              get_next() const  { return this->pNext; }
+        inline VkSemaphoreCreateFlags   get_flags() const { return this->flags; }
+
+        inline derived_t& set_next(const void* next)             { this->pNext = next; return *s();  }
+        inline derived_t& set_flags(VkSemaphoreCreateFlags f)    { this->flags = f; return *s();     }
+
+        private:
+            inline derived_t* s() { return reinterpret_cast<derived_t*>(this); }
+
+    };
+
+    /// @brief VkFenceCreateInfo mixin (fence_create_info_t).
+    ///
+    /// Input struct for a fence (GPU-CPU ordering). set_signaled creates it already signaled, which
+    /// the frames-in-flight loop uses so the first wait on a never-submitted frame doesn't deadlock.
+    template <typename derived_t>
+    struct vk_struct_ext<derived_t, VkFenceCreateInfo>
+    {
+
+        VkStructureType     sType   { VK_STRUCTURE_TYPE_FENCE_CREATE_INFO };
+        const void*         pNext   { nullptr };
+        VkFenceCreateFlags  flags   {         };
+
+        inline const void*          get_next() const  { return this->pNext; }
+        inline VkFenceCreateFlags   get_flags() const { return this->flags; }
+
+        inline derived_t& set_next(const void* next)         { this->pNext = next; return *s();  }
+        inline derived_t& set_flags(VkFenceCreateFlags f)    { this->flags = f; return *s();     }
+
+        /// @brief Creates the fence in the signaled state (flags |= VK_FENCE_CREATE_SIGNALED_BIT).
+        inline derived_t& set_signaled()
+        {
+            this->flags |= VK_FENCE_CREATE_SIGNALED_BIT;
+            return *s();
+        }
+
+        private:
+            inline derived_t* s() { return reinterpret_cast<derived_t*>(this); }
+
+    };
+
+    /// @brief VkSubmitInfo mixin (submit_info_t).
+    ///
+    /// Input struct for vkQueueSubmit. The semaphore/command-buffer arrays are raw native handle
+    /// arrays (handles carry no layout guard, unlike the struct wrappers) and are referenced, not
+    /// copied. The wait-semaphore and wait-dst-stage-mask arrays must be the same length -- entry i
+    /// of the stage mask says which pipeline stage waits on wait-semaphore i.
+    template <typename derived_t>
+    struct vk_struct_ext<derived_t, VkSubmitInfo>
+    {
+
+        VkStructureType                sType                { VK_STRUCTURE_TYPE_SUBMIT_INFO };
+        const void*                    pNext                { nullptr };
+        uint32_t                       waitSemaphoreCount   {         };
+        const VkSemaphore*             pWaitSemaphores      { nullptr };
+        const VkPipelineStageFlags*    pWaitDstStageMask    { nullptr };
+        uint32_t                       commandBufferCount   {         };
+        const VkCommandBuffer*         pCommandBuffers      { nullptr };
+        uint32_t                       signalSemaphoreCount {         };
+        const VkSemaphore*             pSignalSemaphores    { nullptr };
+
+        inline const void* get_next() const { return this->pNext; }
+
+        inline derived_t& set_next(const void* next) { this->pNext = next; return *s(); }
+
+        /// @brief Sets the wait semaphores together with the matching per-semaphore stage masks. Both
+        ///        spans must be the same length; the count is taken from the semaphore span.
+        inline derived_t& set_wait_semaphores(spx::array_view<const VkSemaphore> semaphores,
+                                              spx::array_view<const VkPipelineStageFlags> stage_masks)
+        {
+            this->pWaitSemaphores   = semaphores.data();
+            this->pWaitDstStageMask = stage_masks.data();
+            this->waitSemaphoreCount = static_cast<uint32_t>(semaphores.size());
+            return *s();
+        }
+
+        inline derived_t& set_command_buffers(spx::array_view<const VkCommandBuffer> buffers)
+        {
+            this->pCommandBuffers    = buffers.data();
+            this->commandBufferCount = static_cast<uint32_t>(buffers.size());
+            return *s();
+        }
+
+        inline derived_t& set_signal_semaphores(spx::array_view<const VkSemaphore> semaphores)
+        {
+            this->pSignalSemaphores    = semaphores.data();
+            this->signalSemaphoreCount = static_cast<uint32_t>(semaphores.size());
+            return *s();
+        }
+
+        private:
+            inline derived_t* s() { return reinterpret_cast<derived_t*>(this); }
+
+    };
+
+    /// @brief VkPresentInfoKHR mixin (present_info_t).
+    ///
+    /// Input struct for vkQueuePresentKHR. The semaphore/swapchain arrays are raw native handle
+    /// arrays, referenced not copied. pImageIndices selects, per swapchain, which image to present;
+    /// pResults optionally receives a per-swapchain VkResult (left null for the single-swapchain case
+    /// where the call's own return value suffices).
+    template <typename derived_t>
+    struct vk_struct_ext<derived_t, VkPresentInfoKHR>
+    {
+
+        VkStructureType          sType              { VK_STRUCTURE_TYPE_PRESENT_INFO_KHR };
+        const void*              pNext              { nullptr };
+        uint32_t                 waitSemaphoreCount {         };
+        const VkSemaphore*       pWaitSemaphores    { nullptr };
+        uint32_t                 swapchainCount     {         };
+        const VkSwapchainKHR*    pSwapchains        { nullptr };
+        const uint32_t*          pImageIndices      { nullptr };
+        VkResult*                pResults           { nullptr };
+
+        inline const void* get_next() const { return this->pNext; }
+
+        inline derived_t& set_next(const void* next)                { this->pNext = next; return *s();      }
+        inline derived_t& set_image_indices(const uint32_t* indices){ this->pImageIndices = indices; return *s(); }
+        inline derived_t& set_results(VkResult* results)            { this->pResults = results; return *s(); }
+
+        inline derived_t& set_wait_semaphores(spx::array_view<const VkSemaphore> semaphores)
+        {
+            this->pWaitSemaphores    = semaphores.data();
+            this->waitSemaphoreCount = static_cast<uint32_t>(semaphores.size());
+            return *s();
+        }
+
+        inline derived_t& set_swapchains(spx::array_view<const VkSwapchainKHR> swapchains)
+        {
+            this->pSwapchains    = swapchains.data();
+            this->swapchainCount = static_cast<uint32_t>(swapchains.size());
+            return *s();
+        }
+
+        private:
+            inline derived_t* s() { return reinterpret_cast<derived_t*>(this); }
+
+    };
+
+    /// @brief VkBufferCreateInfo mixin (buffer_create_info_t).
+    ///
+    /// Input struct for vkCreateBuffer. Defaults to exclusive sharing (the common single-family
+    /// case); set_concurrent_queue_families switches to concurrent sharing for buffers touched by
+    /// more than one queue family (e.g. a separate transfer queue), mirroring the swapchain helper.
+    template <typename derived_t>
+    struct vk_struct_ext<derived_t, VkBufferCreateInfo>
+    {
+
+        VkStructureType        sType                 { VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
+        const void*            pNext                 { nullptr };
+        VkBufferCreateFlags    flags                 {         };
+        VkDeviceSize           size                  {         };
+        VkBufferUsageFlags     usage                 {         };
+        VkSharingMode          sharingMode           { VK_SHARING_MODE_EXCLUSIVE };
+        uint32_t               queueFamilyIndexCount {         };
+        const uint32_t*        pQueueFamilyIndices   { nullptr };
+
+        inline const void*          get_next() const    { return this->pNext;  }
+        inline VkBufferCreateFlags  get_flags() const   { return this->flags;  }
+        inline VkDeviceSize         get_size() const    { return this->size;   }
+        inline VkBufferUsageFlags   get_usage() const   { return this->usage;  }
+        inline VkSharingMode        get_sharing_mode() const { return this->sharingMode; }
+
+        inline derived_t& set_next(const void* next)            { this->pNext = next; return *s();  }
+        inline derived_t& set_flags(VkBufferCreateFlags f)      { this->flags = f; return *s();     }
+        inline derived_t& set_size(VkDeviceSize size)           { this->size = size; return *s();   }
+        inline derived_t& set_usage(VkBufferUsageFlags usage)   { this->usage = usage; return *s(); }
+
+        /// @brief Use concurrent sharing across the given queue families. The index list is
+        ///        referenced, not copied, and must outlive the create call.
+        inline derived_t& set_concurrent_queue_families(spx::array_view<uint32_t> indices)
+        {
+            this->sharingMode           = VK_SHARING_MODE_CONCURRENT;
+            this->queueFamilyIndexCount = static_cast<uint32_t>(indices.size());
+            this->pQueueFamilyIndices   = indices.data();
+            return *s();
+        }
+
+        /// @brief Use exclusive sharing (the common single-family case). Clears the index list.
+        inline derived_t& set_exclusive_queue_family()
+        {
+            this->sharingMode           = VK_SHARING_MODE_EXCLUSIVE;
+            this->queueFamilyIndexCount = 0;
+            this->pQueueFamilyIndices   = nullptr;
+            return *s();
+        }
+
+        private:
+            inline derived_t* s() { return reinterpret_cast<derived_t*>(this); }
+
+    };
+
+    /// @brief VkMemoryRequirements mixin (memory_requirements_t).
+    ///
+    /// Output struct from vkGetBufferMemoryRequirements: the size and alignment a buffer's backing
+    /// allocation needs, plus memoryTypeBits -- a bitmask of which memory types are acceptable, fed
+    /// to physical_device_t::find_memory_type to pick a concrete index.
+    template <typename derived_t>
+    struct vk_struct_ext<derived_t, VkMemoryRequirements>
+    {
+
+        VkDeviceSize    size            {         };
+        VkDeviceSize    alignment       {         };
+        uint32_t        memoryTypeBits  {         };
+
+        inline VkDeviceSize get_size() const             { return this->size;           }
+        inline VkDeviceSize get_alignment() const        { return this->alignment;      }
+        inline uint32_t     get_memory_type_bits() const { return this->memoryTypeBits; }
+
+    };
+
+    /// @brief VkMemoryAllocateInfo mixin (memory_allocate_info_t).
+    ///
+    /// Input struct for vkAllocateMemory. memoryTypeIndex must be one of the types allowed by the
+    /// buffer's memory requirements (see find_memory_type); allocationSize is typically the size from
+    /// those requirements (which may exceed the buffer's logical size due to alignment).
+    template <typename derived_t>
+    struct vk_struct_ext<derived_t, VkMemoryAllocateInfo>
+    {
+
+        VkStructureType     sType           { VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO };
+        const void*         pNext           { nullptr };
+        VkDeviceSize        allocationSize  {         };
+        uint32_t            memoryTypeIndex {         };
+
+        inline const void*  get_next() const             { return this->pNext;           }
+        inline VkDeviceSize get_allocation_size() const  { return this->allocationSize;  }
+        inline uint32_t     get_memory_type_index() const { return this->memoryTypeIndex; }
+
+        inline derived_t& set_next(const void* next)            { this->pNext = next; return *s();             }
+        inline derived_t& set_allocation_size(VkDeviceSize s)   { this->allocationSize = s; return *self();    }
+        inline derived_t& set_memory_type_index(uint32_t index) { this->memoryTypeIndex = index; return *s();  }
+
+        private:
+            inline derived_t* s()    { return reinterpret_cast<derived_t*>(this); }
+            inline derived_t* self() { return reinterpret_cast<derived_t*>(this); }
+
+    };
+
+    // ---------------------------------------------------------------------------------------------
     // Using statements.
     //
     // Cleans up the template syntax and normalizes it to a friendlier to type
@@ -2503,6 +2947,19 @@ namespace spx::vk
     using pipeline_tessellation_state_create_info_t     = vk_struct_base<VkPipelineTessellationStateCreateInfo>;
     using pipeline_rendering_create_info_t              = vk_struct_base<VkPipelineRenderingCreateInfo>;
     using graphics_pipeline_create_info_t               = vk_struct_base<VkGraphicsPipelineCreateInfo>;
+
+    using command_pool_create_info_t                    = vk_struct_base<VkCommandPoolCreateInfo>;
+    using command_buffer_allocate_info_t                = vk_struct_base<VkCommandBufferAllocateInfo>;
+    using command_buffer_begin_info_t                   = vk_struct_base<VkCommandBufferBeginInfo>;
+    using rendering_attachment_info_t                   = vk_struct_base<VkRenderingAttachmentInfo>;
+    using rendering_info_t                              = vk_struct_base<VkRenderingInfo>;
+    using semaphore_create_info_t                       = vk_struct_base<VkSemaphoreCreateInfo>;
+    using fence_create_info_t                           = vk_struct_base<VkFenceCreateInfo>;
+    using submit_info_t                                 = vk_struct_base<VkSubmitInfo>;
+    using present_info_t                                = vk_struct_base<VkPresentInfoKHR>;
+    using buffer_create_info_t                          = vk_struct_base<VkBufferCreateInfo>;
+    using memory_requirements_t                         = vk_struct_base<VkMemoryRequirements>;
+    using memory_allocate_info_t                        = vk_struct_base<VkMemoryAllocateInfo>;
 
     // ---------------------------------------------------------------------------------------------
     // Layout guards.
@@ -2973,6 +3430,125 @@ namespace spx::vk
     static_assert(offsetof(graphics_pipeline_create_info_t, subpass) == offsetof(VkGraphicsPipelineCreateInfo, subpass));
     static_assert(offsetof(graphics_pipeline_create_info_t, basePipelineHandle) == offsetof(VkGraphicsPipelineCreateInfo, basePipelineHandle));
     static_assert(offsetof(graphics_pipeline_create_info_t, basePipelineIndex) == offsetof(VkGraphicsPipelineCreateInfo, basePipelineIndex));
+
+    // VkCommandPoolCreateInfo checks.
+    static_assert(std::is_standard_layout_v<command_pool_create_info_t>, "command_pool_create_info_t must be standard-layout for native interop.");
+    static_assert(sizeof(command_pool_create_info_t) == sizeof(VkCommandPoolCreateInfo), "command_pool_create_info_t layout diverged from VkCommandPoolCreateInfo.");
+    static_assert(offsetof(command_pool_create_info_t, sType) == offsetof(VkCommandPoolCreateInfo, sType));
+    static_assert(offsetof(command_pool_create_info_t, pNext) == offsetof(VkCommandPoolCreateInfo, pNext));
+    static_assert(offsetof(command_pool_create_info_t, flags) == offsetof(VkCommandPoolCreateInfo, flags));
+    static_assert(offsetof(command_pool_create_info_t, queueFamilyIndex) == offsetof(VkCommandPoolCreateInfo, queueFamilyIndex));
+
+    // VkCommandBufferAllocateInfo checks.
+    static_assert(std::is_standard_layout_v<command_buffer_allocate_info_t>, "command_buffer_allocate_info_t must be standard-layout for native interop.");
+    static_assert(sizeof(command_buffer_allocate_info_t) == sizeof(VkCommandBufferAllocateInfo), "command_buffer_allocate_info_t layout diverged from VkCommandBufferAllocateInfo.");
+    static_assert(offsetof(command_buffer_allocate_info_t, sType) == offsetof(VkCommandBufferAllocateInfo, sType));
+    static_assert(offsetof(command_buffer_allocate_info_t, pNext) == offsetof(VkCommandBufferAllocateInfo, pNext));
+    static_assert(offsetof(command_buffer_allocate_info_t, commandPool) == offsetof(VkCommandBufferAllocateInfo, commandPool));
+    static_assert(offsetof(command_buffer_allocate_info_t, level) == offsetof(VkCommandBufferAllocateInfo, level));
+    static_assert(offsetof(command_buffer_allocate_info_t, commandBufferCount) == offsetof(VkCommandBufferAllocateInfo, commandBufferCount));
+
+    // VkCommandBufferBeginInfo checks.
+    static_assert(std::is_standard_layout_v<command_buffer_begin_info_t>, "command_buffer_begin_info_t must be standard-layout for native interop.");
+    static_assert(sizeof(command_buffer_begin_info_t) == sizeof(VkCommandBufferBeginInfo), "command_buffer_begin_info_t layout diverged from VkCommandBufferBeginInfo.");
+    static_assert(offsetof(command_buffer_begin_info_t, sType) == offsetof(VkCommandBufferBeginInfo, sType));
+    static_assert(offsetof(command_buffer_begin_info_t, pNext) == offsetof(VkCommandBufferBeginInfo, pNext));
+    static_assert(offsetof(command_buffer_begin_info_t, flags) == offsetof(VkCommandBufferBeginInfo, flags));
+    static_assert(offsetof(command_buffer_begin_info_t, pInheritanceInfo) == offsetof(VkCommandBufferBeginInfo, pInheritanceInfo));
+
+    // VkRenderingAttachmentInfo checks.
+    static_assert(std::is_standard_layout_v<rendering_attachment_info_t>, "rendering_attachment_info_t must be standard-layout for native interop.");
+    static_assert(sizeof(rendering_attachment_info_t) == sizeof(VkRenderingAttachmentInfo), "rendering_attachment_info_t layout diverged from VkRenderingAttachmentInfo.");
+    static_assert(offsetof(rendering_attachment_info_t, sType) == offsetof(VkRenderingAttachmentInfo, sType));
+    static_assert(offsetof(rendering_attachment_info_t, pNext) == offsetof(VkRenderingAttachmentInfo, pNext));
+    static_assert(offsetof(rendering_attachment_info_t, imageView) == offsetof(VkRenderingAttachmentInfo, imageView));
+    static_assert(offsetof(rendering_attachment_info_t, imageLayout) == offsetof(VkRenderingAttachmentInfo, imageLayout));
+    static_assert(offsetof(rendering_attachment_info_t, resolveMode) == offsetof(VkRenderingAttachmentInfo, resolveMode));
+    static_assert(offsetof(rendering_attachment_info_t, resolveImageView) == offsetof(VkRenderingAttachmentInfo, resolveImageView));
+    static_assert(offsetof(rendering_attachment_info_t, resolveImageLayout) == offsetof(VkRenderingAttachmentInfo, resolveImageLayout));
+    static_assert(offsetof(rendering_attachment_info_t, loadOp) == offsetof(VkRenderingAttachmentInfo, loadOp));
+    static_assert(offsetof(rendering_attachment_info_t, storeOp) == offsetof(VkRenderingAttachmentInfo, storeOp));
+    static_assert(offsetof(rendering_attachment_info_t, clearValue) == offsetof(VkRenderingAttachmentInfo, clearValue));
+
+    // VkRenderingInfo checks.
+    static_assert(std::is_standard_layout_v<rendering_info_t>, "rendering_info_t must be standard-layout for native interop.");
+    static_assert(sizeof(rendering_info_t) == sizeof(VkRenderingInfo), "rendering_info_t layout diverged from VkRenderingInfo.");
+    static_assert(offsetof(rendering_info_t, sType) == offsetof(VkRenderingInfo, sType));
+    static_assert(offsetof(rendering_info_t, pNext) == offsetof(VkRenderingInfo, pNext));
+    static_assert(offsetof(rendering_info_t, flags) == offsetof(VkRenderingInfo, flags));
+    static_assert(offsetof(rendering_info_t, renderArea) == offsetof(VkRenderingInfo, renderArea));
+    static_assert(offsetof(rendering_info_t, layerCount) == offsetof(VkRenderingInfo, layerCount));
+    static_assert(offsetof(rendering_info_t, viewMask) == offsetof(VkRenderingInfo, viewMask));
+    static_assert(offsetof(rendering_info_t, colorAttachmentCount) == offsetof(VkRenderingInfo, colorAttachmentCount));
+    static_assert(offsetof(rendering_info_t, pColorAttachments) == offsetof(VkRenderingInfo, pColorAttachments));
+    static_assert(offsetof(rendering_info_t, pDepthAttachment) == offsetof(VkRenderingInfo, pDepthAttachment));
+    static_assert(offsetof(rendering_info_t, pStencilAttachment) == offsetof(VkRenderingInfo, pStencilAttachment));
+
+    // VkSemaphoreCreateInfo checks.
+    static_assert(std::is_standard_layout_v<semaphore_create_info_t>, "semaphore_create_info_t must be standard-layout for native interop.");
+    static_assert(sizeof(semaphore_create_info_t) == sizeof(VkSemaphoreCreateInfo), "semaphore_create_info_t layout diverged from VkSemaphoreCreateInfo.");
+    static_assert(offsetof(semaphore_create_info_t, sType) == offsetof(VkSemaphoreCreateInfo, sType));
+    static_assert(offsetof(semaphore_create_info_t, pNext) == offsetof(VkSemaphoreCreateInfo, pNext));
+    static_assert(offsetof(semaphore_create_info_t, flags) == offsetof(VkSemaphoreCreateInfo, flags));
+
+    // VkFenceCreateInfo checks.
+    static_assert(std::is_standard_layout_v<fence_create_info_t>, "fence_create_info_t must be standard-layout for native interop.");
+    static_assert(sizeof(fence_create_info_t) == sizeof(VkFenceCreateInfo), "fence_create_info_t layout diverged from VkFenceCreateInfo.");
+    static_assert(offsetof(fence_create_info_t, sType) == offsetof(VkFenceCreateInfo, sType));
+    static_assert(offsetof(fence_create_info_t, pNext) == offsetof(VkFenceCreateInfo, pNext));
+    static_assert(offsetof(fence_create_info_t, flags) == offsetof(VkFenceCreateInfo, flags));
+
+    // VkSubmitInfo checks.
+    static_assert(std::is_standard_layout_v<submit_info_t>, "submit_info_t must be standard-layout for native interop.");
+    static_assert(sizeof(submit_info_t) == sizeof(VkSubmitInfo), "submit_info_t layout diverged from VkSubmitInfo.");
+    static_assert(offsetof(submit_info_t, sType) == offsetof(VkSubmitInfo, sType));
+    static_assert(offsetof(submit_info_t, pNext) == offsetof(VkSubmitInfo, pNext));
+    static_assert(offsetof(submit_info_t, waitSemaphoreCount) == offsetof(VkSubmitInfo, waitSemaphoreCount));
+    static_assert(offsetof(submit_info_t, pWaitSemaphores) == offsetof(VkSubmitInfo, pWaitSemaphores));
+    static_assert(offsetof(submit_info_t, pWaitDstStageMask) == offsetof(VkSubmitInfo, pWaitDstStageMask));
+    static_assert(offsetof(submit_info_t, commandBufferCount) == offsetof(VkSubmitInfo, commandBufferCount));
+    static_assert(offsetof(submit_info_t, pCommandBuffers) == offsetof(VkSubmitInfo, pCommandBuffers));
+    static_assert(offsetof(submit_info_t, signalSemaphoreCount) == offsetof(VkSubmitInfo, signalSemaphoreCount));
+    static_assert(offsetof(submit_info_t, pSignalSemaphores) == offsetof(VkSubmitInfo, pSignalSemaphores));
+
+    // VkPresentInfoKHR checks.
+    static_assert(std::is_standard_layout_v<present_info_t>, "present_info_t must be standard-layout for native interop.");
+    static_assert(sizeof(present_info_t) == sizeof(VkPresentInfoKHR), "present_info_t layout diverged from VkPresentInfoKHR.");
+    static_assert(offsetof(present_info_t, sType) == offsetof(VkPresentInfoKHR, sType));
+    static_assert(offsetof(present_info_t, pNext) == offsetof(VkPresentInfoKHR, pNext));
+    static_assert(offsetof(present_info_t, waitSemaphoreCount) == offsetof(VkPresentInfoKHR, waitSemaphoreCount));
+    static_assert(offsetof(present_info_t, pWaitSemaphores) == offsetof(VkPresentInfoKHR, pWaitSemaphores));
+    static_assert(offsetof(present_info_t, swapchainCount) == offsetof(VkPresentInfoKHR, swapchainCount));
+    static_assert(offsetof(present_info_t, pSwapchains) == offsetof(VkPresentInfoKHR, pSwapchains));
+    static_assert(offsetof(present_info_t, pImageIndices) == offsetof(VkPresentInfoKHR, pImageIndices));
+    static_assert(offsetof(present_info_t, pResults) == offsetof(VkPresentInfoKHR, pResults));
+
+    // VkBufferCreateInfo checks.
+    static_assert(std::is_standard_layout_v<buffer_create_info_t>, "buffer_create_info_t must be standard-layout for native interop.");
+    static_assert(sizeof(buffer_create_info_t) == sizeof(VkBufferCreateInfo), "buffer_create_info_t layout diverged from VkBufferCreateInfo.");
+    static_assert(offsetof(buffer_create_info_t, sType) == offsetof(VkBufferCreateInfo, sType));
+    static_assert(offsetof(buffer_create_info_t, pNext) == offsetof(VkBufferCreateInfo, pNext));
+    static_assert(offsetof(buffer_create_info_t, flags) == offsetof(VkBufferCreateInfo, flags));
+    static_assert(offsetof(buffer_create_info_t, size) == offsetof(VkBufferCreateInfo, size));
+    static_assert(offsetof(buffer_create_info_t, usage) == offsetof(VkBufferCreateInfo, usage));
+    static_assert(offsetof(buffer_create_info_t, sharingMode) == offsetof(VkBufferCreateInfo, sharingMode));
+    static_assert(offsetof(buffer_create_info_t, queueFamilyIndexCount) == offsetof(VkBufferCreateInfo, queueFamilyIndexCount));
+    static_assert(offsetof(buffer_create_info_t, pQueueFamilyIndices) == offsetof(VkBufferCreateInfo, pQueueFamilyIndices));
+
+    // VkMemoryRequirements checks.
+    static_assert(std::is_standard_layout_v<memory_requirements_t>, "memory_requirements_t must be standard-layout for native interop.");
+    static_assert(sizeof(memory_requirements_t) == sizeof(VkMemoryRequirements), "memory_requirements_t layout diverged from VkMemoryRequirements.");
+    static_assert(offsetof(memory_requirements_t, size) == offsetof(VkMemoryRequirements, size));
+    static_assert(offsetof(memory_requirements_t, alignment) == offsetof(VkMemoryRequirements, alignment));
+    static_assert(offsetof(memory_requirements_t, memoryTypeBits) == offsetof(VkMemoryRequirements, memoryTypeBits));
+
+    // VkMemoryAllocateInfo checks.
+    static_assert(std::is_standard_layout_v<memory_allocate_info_t>, "memory_allocate_info_t must be standard-layout for native interop.");
+    static_assert(sizeof(memory_allocate_info_t) == sizeof(VkMemoryAllocateInfo), "memory_allocate_info_t layout diverged from VkMemoryAllocateInfo.");
+    static_assert(offsetof(memory_allocate_info_t, sType) == offsetof(VkMemoryAllocateInfo, sType));
+    static_assert(offsetof(memory_allocate_info_t, pNext) == offsetof(VkMemoryAllocateInfo, pNext));
+    static_assert(offsetof(memory_allocate_info_t, allocationSize) == offsetof(VkMemoryAllocateInfo, allocationSize));
+    static_assert(offsetof(memory_allocate_info_t, memoryTypeIndex) == offsetof(VkMemoryAllocateInfo, memoryTypeIndex));
 
 
 }

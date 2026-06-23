@@ -75,6 +75,12 @@ namespace spx::vk
     using shader_module_t           = vk_handle<VkShaderModule>;
     using pipeline_layout_t         = vk_handle<VkPipelineLayout>;
     using pipeline_t                = vk_handle<VkPipeline>;
+    using command_pool_t            = vk_handle<VkCommandPool>;
+    using command_buffer_t          = vk_handle<VkCommandBuffer>;
+    using semaphore_t               = vk_handle<VkSemaphore>;
+    using fence_t                   = vk_handle<VkFence>;
+    using buffer_t                  = vk_handle<VkBuffer>;
+    using device_memory_t           = vk_handle<VkDeviceMemory>;
 
     // ---------------------------------------------------------------------------------------------
     // Handle mixins.
@@ -314,6 +320,33 @@ namespace spx::vk
             }
 
             return false;
+        }
+
+        /// @brief Picks a memory type index satisfying a buffer/image's requirements and the desired
+        ///        memory properties. The type_filter is the memoryTypeBits from a resource's
+        ///        VkMemoryRequirements (bit i set means memory type i is allowed); properties is the
+        ///        VkMemoryPropertyFlags the chosen type must contain (e.g. DEVICE_LOCAL for a GPU-side
+        ///        buffer, or HOST_VISIBLE | HOST_COHERENT for a CPU-writable staging buffer). Queried
+        ///        live since it is only needed at allocation time.
+        /// @param type_filter The allowed memory types (a resource's memoryTypeBits).
+        /// @param properties  The memory property flags the chosen type must include.
+        /// @return The matching memory type index, or (uint32_t)-1 if none qualifies.
+        inline uint32_t
+        find_memory_type(uint32_t type_filter, VkMemoryPropertyFlags properties) const
+        {
+            VkPhysicalDevice handle = static_cast<const derived_t*>(this)->native;
+
+            VkPhysicalDeviceMemoryProperties memory_properties { };
+            vkGetPhysicalDeviceMemoryProperties(handle, &memory_properties);
+
+            for (uint32_t i = 0; i < memory_properties.memoryTypeCount; ++i)
+            {
+                if ((type_filter & (1u << i)) &&
+                    (memory_properties.memoryTypes[i].propertyFlags & properties) == properties)
+                    return i;
+            }
+
+            return (uint32_t)-1;
         }
 
         /// @brief Checks that every base (Vulkan 1.0) feature requested in `features` is supported by
